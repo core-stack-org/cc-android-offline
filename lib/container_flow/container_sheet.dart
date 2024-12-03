@@ -75,25 +75,50 @@ class ContainerSheets {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        alignment: Alignment.centerLeft,
                       ),
-                      child: Text(
-                        locationSelected
-                            ? 'Location: ${selectedLat?.toStringAsFixed(4)}, ${selectedLon?.toStringAsFixed(4)}'
-                            : 'Step 1: Select Location',
-                        style: const TextStyle(color: Colors.white),
+                      child: Container(
+                        width: double.infinity,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          locationSelected
+                              ? 'Latitude: ${selectedLat?.toStringAsFixed(4)}, Longitude: ${selectedLon?.toStringAsFixed(4)}'
+                              : 'Mark a Location',
+                          style: const TextStyle(color: Colors.white),
+                        ),
                       ),
                     ),
 
                     const SizedBox(height: 20),
 
                     // Step 2: Container Name (disabled until location is selected)
-                    TextField(
-                      controller: containerNameController,
-                      enabled: locationSelected,
-                      decoration: InputDecoration(
-                        labelText: 'Step 2: Name your container',
-                        border: const OutlineInputBorder(),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: locationSelected ? Colors.black : Colors.grey,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: TextField(
+                        controller: containerNameController,
                         enabled: locationSelected,
+                        style: TextStyle(
+                          color: Colors.white,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Name your container',
+                          labelStyle: TextStyle(
+                            color: Color.fromARGB(179, 211, 211, 211),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 15,
+                          ),
+                          enabled: locationSelected,
+                        ),
                       ),
                     ),
 
@@ -171,212 +196,185 @@ class ContainerSheets {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (BuildContext context) {
-        return FutureBuilder<List<OfflineContainer>>(
-          future: ContainerManager.getContainers(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.4,
+        minChildSize: 0.2,
+        maxChildSize: 0.75,
+        expand: false,
+        builder: (context, scrollController) => Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Text(
+                    'Select a container',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.all(16),
+                child: FutureBuilder<List<OfflineContainer>>(
+                  future: ContainerManager.getContainers(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-            final containers = snapshot.data!;
+                    final containers = snapshot.data!;
 
-            return DraggableScrollableSheet(
-              initialChildSize: 0.6,
-              minChildSize: 0.4,
-              maxChildSize: 0.9,
-              expand: false,
-              builder: (_, controller) {
-                return Container(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            "Select Container",
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF592941),
+                    return ListView.separated(
+                      controller: scrollController,
+                      itemCount: containers.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final container = containers[index];
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.black, width: 1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
                             ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      if (containers.isEmpty)
-                        Expanded(
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(Icons.inbox, size: 64, color: Colors.grey),
-                                SizedBox(height: 16),
+                            title: Text(
+                              container.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 4),
                                 Text(
-                                  "No containers available",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.grey,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  '${container.state} > ${container.district} > ${container.block}',
+                                  style: const TextStyle(fontSize: 14),
                                 ),
-                                SizedBox(height: 8),
-                                Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 32),
-                                  child: Text(
-                                    "Create a new container and download data for offline use",
-                                    style: TextStyle(
-                                        fontSize: 14, color: Colors.grey),
-                                    textAlign: TextAlign.center,
+                                const SizedBox(height: 4),
+                                Text(
+                                  container.isDownloaded
+                                      ? 'Ready for offline use'
+                                      : 'Not yet downloaded',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: container.isDownloaded
+                                        ? Colors.green
+                                        : Colors.orange,
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                        )
-                      else
-                        Expanded(
-                          child: ListView.separated(
-                            controller: controller,
-                            itemCount: containers.length,
-                            separatorBuilder: (context, index) =>
-                                const Divider(),
-                            itemBuilder: (context, index) {
-                              final container = containers[index];
-                              return // Inside the ListView.separated builder in showContainerList:
-                                  ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                title: Text(
-                                  container.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    padding: const EdgeInsets.all(12),
+                                  ),
+                                  onPressed: () async {
+                                    bool confirm = await showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title:
+                                                const Text('Delete Container'),
+                                            content: Text(
+                                                'This will delete all offline data for ${container.name}. Continue?'),
+                                            actions: [
+                                              TextButton(
+                                                child: const Text('Cancel'),
+                                                onPressed: () => Navigator.pop(
+                                                    context, false),
+                                              ),
+                                              TextButton(
+                                                child: const Text('Delete'),
+                                                onPressed: () => Navigator.pop(
+                                                    context, true),
+                                              ),
+                                            ],
+                                          ),
+                                        ) ??
+                                        false;
+
+                                    if (confirm && context.mounted) {
+                                      await _deleteContainerAndData(
+                                          container.name);
+                                      Navigator.pop(context);
+                                      // Show confirmation snackbar
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              'Container ${container.name} deleted'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: Icon(
+                                    Icons.delete,
+                                    color: Colors.white,
+                                    size: 20,
                                   ),
                                 ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${container.state} > ${container.district} > ${container.block}',
-                                      style: const TextStyle(fontSize: 14),
+                                const SizedBox(width: 12),
+                                if (container.isDownloaded)
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.green,
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      container.isDownloaded
-                                          ? 'Ready for offline use'
-                                          : 'Not yet downloaded',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: container.isDownloaded
-                                            ? Colors.green
-                                            : Colors.orange,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
+                                    child: IconButton(
                                       icon: const Icon(
-                                        Icons.delete,
-                                        color: Colors.red,
+                                        Icons.play_arrow,
+                                        color: Colors.white,
                                       ),
-                                      onPressed: () async {
-                                        bool confirm = await showDialog(
-                                              context: context,
-                                              builder: (context) => AlertDialog(
-                                                title: const Text(
-                                                    'Delete Container'),
-                                                content: Text(
-                                                    'This will delete all offline data for ${container.name}. Continue?'),
-                                                actions: [
-                                                  TextButton(
-                                                    child: const Text('Cancel'),
-                                                    onPressed: () =>
-                                                        Navigator.pop(
-                                                            context, false),
-                                                  ),
-                                                  TextButton(
-                                                    child: const Text('Delete'),
-                                                    onPressed: () =>
-                                                        Navigator.pop(
-                                                            context, true),
-                                                  ),
-                                                ],
-                                              ),
-                                            ) ??
-                                            false;
-
-                                        if (confirm && context.mounted) {
-                                          await _deleteContainerAndData(
-                                              container.name);
-                                          Navigator.pop(context);
-                                          // Show confirmation snackbar
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                  'Container ${container.name} deleted'),
-                                              backgroundColor: Colors.red,
-                                            ),
-                                          );
-                                        }
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                        onContainerSelected(container);
                                       },
                                     ),
-                                    if (container.isDownloaded)
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.green,
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                        ),
-                                        child: IconButton(
-                                          icon: const Icon(
-                                            Icons.play_arrow,
-                                            color: Colors.white,
-                                          ),
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                            onContainerSelected(container);
-                                          },
-                                        ),
-                                      )
-                                    else
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        child: const Icon(
-                                          Icons.download_outlined,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              );
-                            },
+                                  )
+                                else
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    child: const Icon(
+                                      Icons.download_outlined,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
-        );
-      },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

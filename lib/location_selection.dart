@@ -7,6 +7,9 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
 import 'webview.dart';
+import 'dart:convert';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:nrmflutter/db/location_db.dart';
 import './server/local_server.dart';
 import './utils/offline_asset.dart';
 import './utils/use_info.dart';
@@ -56,14 +59,77 @@ class _LocationSelectionState extends State<LocationSelection> {
     );
   }
 
+  // Future<void> fetchLocationData() async {
+  //   final response = await http.get(
+  //       Uri.parse('https://geoserver.gramvaani.org/api/v1/proposed_blocks/'));
+  //   if (response.statusCode == 200) {
+  //     final data = json.decode(response.body);
+  //     setState(() {
+  //       states = List<Map<String, dynamic>>.from(data);
+  //     });
+  //   }
+  // }
+
+  List<Map<String, dynamic>> sortLocationData(List<Map<String, dynamic>> data) {
+    // Sort states
+    data.sort((a, b) => (a['label'] as String).compareTo(b['label'] as String));
+
+    // Sort districts within each state
+    for (var state in data) {
+      List<Map<String, dynamic>> districts =
+          List<Map<String, dynamic>>.from(state['district']);
+      districts.sort(
+          (a, b) => (a['label'] as String).compareTo(b['label'] as String));
+
+      // Sort blocks within each district
+      for (var district in districts) {
+        List<Map<String, dynamic>> blocks =
+            List<Map<String, dynamic>>.from(district['blocks']);
+        blocks.sort(
+            (a, b) => (a['label'] as String).compareTo(b['label'] as String));
+        district['blocks'] = blocks;
+      }
+
+      state['district'] = districts;
+    }
+
+    return data;
+  }
+
   Future<void> fetchLocationData() async {
-    final response = await http.get(
-        Uri.parse('https://geoserver.gramvaani.org/api/v1/proposed_blocks/'));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      setState(() {
-        states = List<Map<String, dynamic>>.from(data);
-      });
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult != ConnectivityResult.none) {
+        // Online mode
+        final response = await http.get(Uri.parse(
+            'https://geoserver.gramvaani.org/api/v1/proposed_blocks/'));
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          // Save to local database
+          await LocationDatabase.instance
+              .insertLocationData(List<Map<String, dynamic>>.from(data));
+          setState(() {
+            states = sortLocationData(List<Map<String, dynamic>>.from(data));
+          });
+        }
+      } else {
+        // Offline mode - fetch from local database
+        final data = await LocationDatabase.instance.getLocationData();
+        setState(() {
+          states = sortLocationData(data);
+        });
+      }
+    } catch (e) {
+      print('Error fetching location data: $e');
+      // Try to fetch from local database as fallback
+      try {
+        final data = await LocationDatabase.instance.getLocationData();
+        setState(() {
+          states = sortLocationData(data);
+        });
+      } catch (dbError) {
+        print('Error fetching from local database: $dbError');
+      }
     }
   }
 

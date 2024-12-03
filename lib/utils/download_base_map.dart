@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
@@ -8,6 +9,23 @@ class BaseMapDownloader {
   final Function(double) onProgressUpdate;
 
   BaseMapDownloader({required this.onProgressUpdate});
+
+  Future<void> saveTileInfo(
+      String basePath, int zoom, int minX, int maxX, int minY, int maxY) async {
+    final tileInfo = {
+      'minX': minX,
+      'maxX': maxX,
+      'minY': minY,
+      'maxY': maxY,
+      'zoom': zoom,
+      'downloadDate': DateTime.now().toUtc().toIso8601String(),
+    };
+
+    final file = File('$basePath/$zoom/tileInfo.json');
+    await file.create(recursive: true);
+    await file.writeAsString(jsonEncode(tileInfo));
+    print('Saved tileInfo.json for zoom level $zoom');
+  }
 
   Future<void> downloadBaseMap(
       double centerLat, double centerLon, double radiusKm) async {
@@ -42,7 +60,7 @@ class BaseMapDownloader {
 
       final directory = await getApplicationDocumentsDirectory();
       final offlineDir =
-          Directory('${directory.path}/assets/offline_data/base_map_tiles');
+          Directory('${directory.path}/persistent_offline_data/base_map_tiles');
       await offlineDir.create(recursive: true);
 
       for (int z = minZoom; z <= maxZoom; z++) {
@@ -51,6 +69,9 @@ class BaseMapDownloader {
         int maxX = lon2tile(maxLon, z);
         int minY = lat2tile(maxLat, z);
         int maxY = lat2tile(minLat, z);
+
+        // Save tile info before downloading tiles
+        await saveTileInfo(offlineDir.path, z, minX, maxX, minY, maxY);
 
         for (int x = minX; x <= maxX; x++) {
           for (int y = minY; y <= maxY; y++) {
