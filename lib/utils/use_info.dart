@@ -41,64 +41,45 @@ class UseInfo {
                   const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          "• You can operate the application in either online mode or offline mode",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF592941),
-                          ),
+                      Text(
+                        "Operate in Online Mode (Requires Internet)",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF592941),
                         ),
                       ),
-                      Padding(
-                        padding: EdgeInsets.only(bottom: 8),
-                        child: Text(
-                          "• To operate in offline mode:",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF592941),
-                          ),
+                      SizedBox(height: 12),
+                      Text(
+                        "STEP 1: Select State > District > Block\nSTEP 2: Press Submit",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF592941),
                         ),
                       ),
-                      Padding(
-                        padding: EdgeInsets.only(left: 16, bottom: 8),
-                        child: Text(
-                          "• Step 1: Download collection of layers for an area",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF592941),
-                          ),
+                      SizedBox(height: 24),
+                      Text(
+                        "Operate in Offline Mode",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF592941),
                         ),
                       ),
-                      Padding(
-                        padding: EdgeInsets.only(left: 16, bottom: 8),
-                        child: Text(
-                          "• Step 2: Name your collection",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF592941),
-                          ),
+                      SizedBox(height: 12),
+                      Text(
+                        "You need to download the layers beforehand on your mobile storage to use them without internet.",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF592941),
                         ),
                       ),
-                      Padding(
-                        padding: EdgeInsets.only(left: 16, bottom: 8),
-                        child: Text(
-                          "• Step 3: After selecting the state, dist and block, click on Offline button and select your collection to use the downloaded layers",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF592941),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(left: 16, bottom: 8),
-                        child: Text(
-                          "• Step 4: Now, you can operate offline while being in remote areas",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF592941),
-                          ),
+                      SizedBox(height: 12),
+                      Text(
+                        "STEP 1: Select State > District > Block\nSTEP 2: Create a new container.\nSTEP 3: Mark the location for which you are downloading the layers.\nSTEP 4: Name your container.\nSTEP 5: Download the respective layers.\nSTEP 6: Now press Work offline\nSTEP 7: Choose the container you created from the list.\nSTEP 8: Navigate to the app in offline mode (does not require internet).",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF592941),
                         ),
                       ),
                     ],

@@ -25,17 +25,15 @@ class MapLocationSelector extends StatefulWidget {
 
 class _MapLocationSelectorState extends State<MapLocationSelector> {
   LatLng? selectedLocation;
-  List<LatLng> boundaryPoints = [];
-  List<LatLng> panchayatBoundary = [];
+  List<List<LatLng>> allPolygons = [];
   bool isLoading = true;
-  double _currentZoom = 13.0;
+  double _currentZoom = 11.0;
   final MapController mapController = MapController();
 
   @override
   void initState() {
     super.initState();
     fetchPanchayatBoundary();
-    fetchBoundaryPoints();
   }
 
   Future<void> fetchPanchayatBoundary() async {
@@ -50,103 +48,77 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
         final geojson = jsonDecode(response.body);
 
         if (geojson['features'] != null && geojson['features'].isNotEmpty) {
-          // Extract coordinates from the first feature
-          final List<dynamic> rings =
-              geojson['features'][0]['geometry']['coordinates'];
+          List<List<LatLng>> polygonsFromAllFeatures = [];
 
-          List<LatLng> boundaryPoints = [];
+          // Parse all features
+          for (var feature in geojson['features']) {
+            final geometry = feature['geometry'];
+            final geomType = geometry['type'];
+            final coords = geometry['coordinates'];
 
-          for (var ring in rings) {
-            for (var coord in ring) {
-              final double lon = (coord[0] is int)
-                  ? (coord[0] as int).toDouble()
-                  : coord[0] as double;
-              final double lat = (coord[1] is int)
-                  ? (coord[1] as int).toDouble()
-                  : coord[1] as double;
-              boundaryPoints.add(LatLng(lat, lon));
+            if (geomType == 'Polygon') {
+              // coordinates = [[ [lon, lat], [lon, lat], ... ]]
+              // Take the outer ring (coords[0])
+              List<LatLng> polygonPoints = [];
+              for (var coord in coords[0]) {
+                polygonPoints.add(LatLng(coord[1], coord[0]));
+              }
+              polygonsFromAllFeatures.add(polygonPoints);
+            } else if (geomType == 'MultiPolygon') {
+              // coordinates = [ [ [ [lon, lat], ... ] ], ... ]
+              for (var polygon in coords) {
+                // polygon[0] is the outer ring
+                List<LatLng> polygonPoints = [];
+                for (var ring in polygon) {
+                  for (var coord in ring) {
+                    polygonPoints.add(LatLng(coord[1], coord[0]));
+                  }
+                }
+                polygonsFromAllFeatures.add(polygonPoints);
+              }
             }
           }
 
-          setState(() {
-            panchayatBoundary = boundaryPoints;
-          });
+          // Calculate bounding box for all polygons
+          double minLat = double.infinity;
+          double maxLat = -double.infinity;
+          double minLon = double.infinity;
+          double maxLon = -double.infinity;
 
-          // If boundary is loaded, zoom to it
-          if (panchayatBoundary.isNotEmpty) {
-            double minLat = panchayatBoundary[0].latitude;
-            double maxLat = panchayatBoundary[0].latitude;
-            double minLon = panchayatBoundary[0].longitude;
-            double maxLon = panchayatBoundary[0].longitude;
-
-            for (var point in panchayatBoundary) {
+          for (var polygonPoints in polygonsFromAllFeatures) {
+            for (var point in polygonPoints) {
               minLat = math.min(minLat, point.latitude);
               maxLat = math.max(maxLat, point.latitude);
               minLon = math.min(minLon, point.longitude);
               maxLon = math.max(maxLon, point.longitude);
             }
+          }
 
-            // Calculate center and zoom level
+          setState(() {
+            allPolygons = polygonsFromAllFeatures;
+            isLoading = false;
+          });
+
+          // Move map to show all polygons
+          if (allPolygons.isNotEmpty) {
             final centerLat = (minLat + maxLat) / 2;
             final centerLon = (minLon + maxLon) / 2;
-
-            // Move map to center of boundary
-            mapController.move(
-              LatLng(centerLat, centerLon),
-              13.0, // You can adjust this zoom level
-            );
+            mapController.move(LatLng(centerLat, centerLon), 13.0);
           }
+        } else {
+          print('No features found in the response.');
+          setState(() {
+            isLoading = false;
+          });
         }
       } else {
         print('Failed to fetch panchayat boundary: ${response.statusCode}');
+        setState(() {
+          isLoading = false;
+        });
       }
     } catch (e) {
       print('Error fetching panchayat boundary: $e');
-    }
-  }
-
-  Future<void> fetchBoundaryPoints() async {
-    try {
-      final url = '${widget.geoserverUrl}/geoserver/panchayat_boundaries/ows'
-          '?service=WFS'
-          '&version=1.0.0'
-          '&request=GetFeature'
-          '&typeName=panchayat_boundaries:${widget.districtName.toLowerCase()}_${widget.blockName.toLowerCase()}'
-          '&outputFormat=application/json'
-          '&screen=main';
-
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['features'] != null && data['features'].isNotEmpty) {
-          final coordinates = data['features'][0]['geometry']['coordinates'][0];
-          boundaryPoints = coordinates.map<LatLng>((coord) {
-            return LatLng(coord[1], coord[0]);
-          }).toList();
-
-          // Center map on boundary
-          if (boundaryPoints.isNotEmpty) {
-            double minLat = double.infinity;
-            double maxLat = -double.infinity;
-            double minLng = double.infinity;
-            double maxLng = -double.infinity;
-
-            for (var point in boundaryPoints) {
-              minLat = minLat < point.latitude ? minLat : point.latitude;
-              maxLat = maxLat > point.latitude ? maxLat : point.latitude;
-              minLng = minLng < point.longitude ? minLng : point.longitude;
-              maxLng = maxLng > point.longitude ? maxLng : point.longitude;
-            }
-
-            final centerLat = (minLat + maxLat) / 2;
-            final centerLng = (minLng + maxLng) / 2;
-            mapController.move(LatLng(centerLat, centerLng), 12);
-          }
-        }
-      }
-    } catch (e) {
-      print('Error fetching boundary data: $e');
-    } finally {
       setState(() {
         isLoading = false;
       });
@@ -242,10 +214,12 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text('Mark a Location',
-            style: TextStyle(
-              color: Colors.white,
-            )),
+        title: const Text(
+          'Mark a Location',
+          style: TextStyle(
+            color: Colors.white,
+          ),
+        ),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
@@ -288,27 +262,16 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.app',
               ),
-              if (panchayatBoundary.isNotEmpty)
+              if (allPolygons.isNotEmpty)
                 PolygonLayer(
-                  polygons: [
-                    Polygon(
-                      points: panchayatBoundary,
+                  polygons: allPolygons.map((polygonPoints) {
+                    return Polygon(
+                      points: polygonPoints,
                       color: Colors.blue.withOpacity(0.2),
                       borderColor: Colors.blue,
                       borderStrokeWidth: 2,
-                    ),
-                  ],
-                ),
-              if (boundaryPoints.isNotEmpty)
-                PolygonLayer(
-                  polygons: [
-                    Polygon(
-                      points: boundaryPoints,
-                      color: Colors.red.withOpacity(0.2),
-                      borderColor: Colors.red,
-                      borderStrokeWidth: 2,
-                    ),
-                  ],
+                    );
+                  }).toList(),
                 ),
               if (selectedLocation != null)
                 MarkerLayer(

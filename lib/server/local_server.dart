@@ -1,8 +1,10 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:shelf/shelf.dart' as shelf;
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:path/path.dart' as path;
 import 'package:mime/mime.dart';
+import 'package:nrmflutter/db/plans_db.dart';
 
 class LocalServer {
   HttpServer? _server;
@@ -65,6 +67,24 @@ class LocalServer {
     },
   );
 
+  Future<shelf.Response> _handlePlansRequest(String blockId) async {
+    try {
+      final plans =
+          await PlansDatabase.instance.getPlansForBlock(int.parse(blockId));
+      return shelf.Response.ok(
+        json.encode({'plans': plans}),
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'max-age=3600',
+        },
+      );
+    } catch (e) {
+      print('Error serving plans: $e');
+      return shelf.Response.internalServerError(
+          body: 'Error serving plans: ${e.toString()}');
+    }
+  }
+
   Future<shelf.Response> _handleRequest(shelf.Request request) async {
     final requestPath = request.url.path;
     print('Handling request for: $requestPath');
@@ -90,6 +110,16 @@ class LocalServer {
       // Handle base map tile requests
       if (requestPath.startsWith('$BASE_MAP_TILES_PATH/')) {
         return await _serveBaseMapTile(requestPath);
+      }
+
+      print('Request URL for PLANS: ${request.url}');
+      // Handle plan requests
+      if (requestPath.startsWith('api/v1/get_plans')) {
+        final blockId = request.url.queryParameters['block_id'];
+        if (blockId != null) {
+          return await _handlePlansRequest(blockId);
+        }
+        return shelf.Response.badRequest(body: 'Missing block_id parameter');
       }
 
       // For all other requests, try to serve from the webapp directory

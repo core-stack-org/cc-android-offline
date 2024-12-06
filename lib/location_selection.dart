@@ -9,7 +9,11 @@ import 'dart:io';
 import 'webview.dart';
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
+
+import 'package:nrmflutter/db/plans_db.dart';
 import 'package:nrmflutter/db/location_db.dart';
+import 'package:nrmflutter/utils/layers_config.dart';
+
 import './server/local_server.dart';
 import './utils/offline_asset.dart';
 import './utils/use_info.dart';
@@ -59,17 +63,6 @@ class _LocationSelectionState extends State<LocationSelection> {
     );
   }
 
-  // Future<void> fetchLocationData() async {
-  //   final response = await http.get(
-  //       Uri.parse('https://geoserver.gramvaani.org/api/v1/proposed_blocks/'));
-  //   if (response.statusCode == 200) {
-  //     final data = json.decode(response.body);
-  //     setState(() {
-  //       states = List<Map<String, dynamic>>.from(data);
-  //     });
-  //   }
-  // }
-
   List<Map<String, dynamic>> sortLocationData(List<Map<String, dynamic>> data) {
     // Sort states
     data.sort((a, b) => (a['label'] as String).compareTo(b['label'] as String));
@@ -96,6 +89,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     return data;
   }
 
+  // MARK: Fetch and sync data
   Future<void> fetchLocationData() async {
     try {
       final connectivityResult = await Connectivity().checkConnectivity();
@@ -108,6 +102,10 @@ class _LocationSelectionState extends State<LocationSelection> {
           // Save to local database
           await LocationDatabase.instance
               .insertLocationData(List<Map<String, dynamic>>.from(data));
+
+          // Sync the plan data
+          await PlansDatabase.instance.syncPlans();
+
           setState(() {
             states = sortLocationData(List<Map<String, dynamic>>.from(data));
           });
@@ -171,6 +169,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     });
   }
 
+  // MARK: Navigate Online
   void submitLocation() {
     HapticFeedback.mediumImpact();
     String url =
@@ -184,35 +183,8 @@ class _LocationSelectionState extends State<LocationSelection> {
     );
   }
 
-  String formatName(String? assetName) {
-    if (assetName == null) return "";
-    return assetName.toLowerCase().replaceAll(' ', '_');
-  }
-
   List<Map<String, String>> getLayers(String? district, String? block) {
-    String formattedBlock = formatName(block);
-    String formattedDistrict = formatName(district);
-    return [
-      {
-        "name": "Admin Boundaries",
-        "geoserverPath":
-            "panchayat_boundaries:${formattedDistrict}_${formattedBlock}"
-      },
-      {
-        "name": "NREGA Assets",
-        "geoserverPath": "nrega_assets:${formattedDistrict}_$formattedBlock"
-      },
-      {
-        "name": "Well Depth Yearly",
-        "geoserverPath":
-            "mws_layers:deltaG_well_depth_${formattedDistrict}_${formattedBlock}"
-      },
-      {
-        "name": "Well Depth Fortnightly",
-        "geoserverPath":
-            "mws_layers:deltaG_fortnight_${formattedDistrict}_${formattedBlock}"
-      },
-    ];
+    return LayersConfig.getLayers(district, block);
   }
 
   Future<void> downloadVectorLayers() async {
@@ -349,6 +321,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     }
   }
 
+  // MARK: Copy layers to offline directory
   Future<void> copyLayersToOfflineDirectory() async {
     final directory = await getApplicationDocumentsDirectory();
     final sourceDir = Directory('${directory.path}/assets/offline_data');
@@ -375,6 +348,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     print("Layers copied to persistent offline directory: ${destDir.path}");
   }
 
+  // MARK: Cancel layer download
   void cancelLayerDownload(String layerName) {
     setState(() {
       if (layerName == 'Base Map') {
@@ -385,7 +359,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     });
   }
 
-  // checker
+  // MARK: Agreement sheet
   void showAgreementSheet(OfflineContainer container) {
     showModalBottomSheet(
       context: context,
@@ -482,6 +456,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     );
   }
 
+  // MARK: Navigate Offline
   Future<void> navigateToWebViewOffline(OfflineContainer container) async {
     print('Starting offline navigation process');
 
@@ -510,6 +485,7 @@ class _LocationSelectionState extends State<LocationSelection> {
         "&state_name=${container.state}" +
         "&dist_name=${container.district}" +
         "&block_name=${container.block}" +
+        "&block_id=${selectedBlockID}" +
         "&isOffline=true";
 
     print('Navigating to URL: $url');
@@ -825,7 +801,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SizedBox(
-                    width: 150,
+                    width: 320,
                     height: 60,
                     child: ElevatedButton(
                       onPressed: isSubmitEnabled ? submitLocation : null,
@@ -839,41 +815,37 @@ class _LocationSelectionState extends State<LocationSelection> {
                         ),
                       ),
                       child:
-                          const Text('Online', style: TextStyle(fontSize: 18)),
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  SizedBox(
-                    width: 150,
-                    height: 60,
-                    child: ElevatedButton(
-                      onPressed: isSubmitEnabled
-                          ? () {
-                              ContainerSheets.showContainerList(
-                                context: context,
-                                onContainerSelected: (container) {
-                                  navigateToWebViewOffline(
-                                      container); // Pass the container
-                                },
-                              );
-                            }
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isSubmitEnabled
-                            ? const Color(0xFFD6D5C9)
-                            : Colors.grey,
-                        foregroundColor: const Color(0xFF592941),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                      ),
-                      child: const Text('Offline*',
-                          style: TextStyle(fontSize: 18)),
+                          const Text('Submit', style: TextStyle(fontSize: 18)),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 32.0),
+
+              const Divider(
+                height: 32.0,
+                thickness: 1,
+                indent: 40,
+                endIndent: 40,
+                color: Color(0xFFD6D5C9),
+              ),
+
+              const SizedBox(height: 16.0),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Operate in offline mode',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF592941),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24.0),
 
               // Containers button
               SizedBox(
@@ -901,8 +873,38 @@ class _LocationSelectionState extends State<LocationSelection> {
                       borderRadius: BorderRadius.circular(25),
                     ),
                   ),
-                  child:
-                      const Text('Containers', style: TextStyle(fontSize: 18)),
+                  child: const Text('Create a container',
+                      style: TextStyle(fontSize: 18)),
+                ),
+              ),
+
+              const SizedBox(height: 16.0), // Added spacing between buttons
+
+              // Offline button
+              SizedBox(
+                width: 320,
+                height: 60,
+                child: ElevatedButton(
+                  onPressed: isSubmitEnabled
+                      ? () {
+                          ContainerSheets.showContainerList(
+                            context: context,
+                            onContainerSelected: (container) {
+                              navigateToWebViewOffline(container);
+                            },
+                          );
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        isSubmitEnabled ? const Color(0xFFD6D5C9) : Colors.grey,
+                    foregroundColor: const Color(0xFF592941),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                  ),
+                  child: const Text('Work offline*',
+                      style: TextStyle(fontSize: 18)),
                 ),
               ),
 

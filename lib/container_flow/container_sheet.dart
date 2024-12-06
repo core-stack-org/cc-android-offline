@@ -38,7 +38,7 @@ class ContainerSheets {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      "Create New Container",
+                      "Create a new container",
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -193,6 +193,8 @@ class ContainerSheets {
     required BuildContext context,
     required Function(OfflineContainer) onContainerSelected,
   }) {
+    String? selectedContainerId;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -200,179 +202,210 @@ class ContainerSheets {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.4,
-        minChildSize: 0.2,
-        maxChildSize: 0.75,
-        expand: false,
-        builder: (context, scrollController) => Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Text(
-                    'Select a container',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Container(
+          height: MediaQuery.of(context).size.height * 0.9,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Text(
+                      'Select a container',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                child: FutureBuilder<List<OfflineContainer>>(
-                  future: ContainerManager.getContainers(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    final containers = snapshot.data!;
-
-                    return ListView.separated(
-                      controller: scrollController,
-                      itemCount: containers.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final container = containers[index];
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.black, width: 1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            title: Text(
-                              container.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${container.state} > ${container.district} > ${container.block}',
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  container.isDownloaded
-                                      ? 'Ready for offline use'
-                                      : 'Not yet downloaded',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: container.isDownloaded
-                                        ? Colors.green
-                                        : Colors.orange,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    padding: const EdgeInsets.all(12),
-                                  ),
-                                  onPressed: () async {
-                                    bool confirm = await showDialog(
-                                          context: context,
-                                          builder: (context) => AlertDialog(
-                                            title:
-                                                const Text('Delete Container'),
-                                            content: Text(
-                                                'This will delete all offline data for ${container.name}. Continue?'),
-                                            actions: [
-                                              TextButton(
-                                                child: const Text('Cancel'),
-                                                onPressed: () => Navigator.pop(
-                                                    context, false),
-                                              ),
-                                              TextButton(
-                                                child: const Text('Delete'),
-                                                onPressed: () => Navigator.pop(
-                                                    context, true),
-                                              ),
-                                            ],
-                                          ),
-                                        ) ??
-                                        false;
-
-                                    if (confirm && context.mounted) {
-                                      await _deleteContainerAndData(
-                                          container.name);
-                                      Navigator.pop(context);
-                                      // Show confirmation snackbar
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                              'Container ${container.name} deleted'),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  child: Icon(
-                                    Icons.delete,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                if (container.isDownloaded)
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.green,
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: IconButton(
-                                      icon: const Icon(
-                                        Icons.play_arrow,
-                                        color: Colors.white,
-                                      ),
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                        onContainerSelected(container);
-                                      },
-                                    ),
-                                  )
-                                else
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    child: const Icon(
-                                      Icons.download_outlined,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
+                  ],
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  child: FutureBuilder<List<OfflineContainer>>(
+                    future: ContainerManager.getContainers(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      final containers = snapshot.data!;
+                      // Sort containers by creation date, newest first
+                      containers
+                          .sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+                      final selectedContainer = containers.firstWhere(
+                        (container) => container.name == selectedContainerId,
+                        orElse: () => containers.first,
+                      );
+
+                      return ListView.builder(
+                        itemCount: containers.length,
+                        itemBuilder: (context, index) {
+                          final container = containers[index];
+                          final isSelected =
+                              container.name == selectedContainerId;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? const Color(0xFFDBEFF2)
+                                  : Colors.white,
+                              border: Border.all(
+                                  color: const Color(0xFF8DCBD5), width: 1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ListTile(
+                              onTap: () {
+                                setState(() {
+                                  selectedContainerId = container.name;
+                                });
+                              },
+                              contentPadding: const EdgeInsets.all(16),
+                              title: Text(
+                                container.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '${container.state} > ${container.district} > ${container.block}',
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    container.isDownloaded
+                                        ? 'Ready for offline use'
+                                        : 'Not yet downloaded',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: container.isDownloaded
+                                          ? Colors.green
+                                          : Colors.orange,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: Colors.grey.shade300,
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          side: const BorderSide(color: Colors.black, width: 1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: selectedContainerId == null
+                            ? null
+                            : () async {
+                                bool confirm = await showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text('Delete Container'),
+                                        content: Text(
+                                            'This will delete all offline data for ${selectedContainerId}. Continue?'),
+                                        actions: [
+                                          TextButton(
+                                            child: const Text('Cancel'),
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                          ),
+                                          TextButton(
+                                            child: const Text('Delete'),
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                          ),
+                                        ],
+                                      ),
+                                    ) ??
+                                    false;
+
+                                if (confirm && context.mounted) {
+                                  await _deleteContainerAndData(
+                                      selectedContainerId!);
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Container $selectedContainerId deleted'),
+                                      backgroundColor: const Color(0xFFFF4D6D),
+                                    ),
+                                  );
+                                }
+                              },
+                        child: const Text(
+                          'Delete',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.black, width: 1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: selectedContainerId == null
+                            ? null
+                            : () async {
+                                final container =
+                                    await ContainerManager.getContainer(
+                                        selectedContainerId!);
+                                if (container != null && context.mounted) {
+                                  Navigator.pop(context);
+                                  onContainerSelected(container);
+                                }
+                              },
+                        child: const Text(
+                          'Navigate',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
