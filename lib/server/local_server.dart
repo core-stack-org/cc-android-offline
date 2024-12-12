@@ -68,31 +68,83 @@ class LocalServer {
   );
 
   Future<shelf.Response> _handlePlansRequest(String blockId) async {
+    print("ANkit ANkit Ankit ANkit ANkit ANkit ANkit ANkit ANkit ANkit ANkit");
+    print("Handling plans request for block ID: $blockId");
     try {
       final plans =
           await PlansDatabase.instance.getPlansForBlock(int.parse(blockId));
+      print("Found ${plans.length} plans for block $blockId");
+      if (plans.isEmpty) {
+        print("No plans found for block $blockId");
+      } else {
+        print("First plan: ${plans.first}");
+      }
+
+      final responseJson = json.encode({'plans': plans});
+      print("Sending response with length: ${responseJson.length}");
+
       return shelf.Response.ok(
-        json.encode({'plans': plans}),
+        responseJson,
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
           'Cache-Control': 'max-age=3600',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers':
+              'Origin, Content-Type, X-Auth-Token, ngrok-skip-browser-warning',
+          'X-Content-Type-Options': 'nosniff'
         },
       );
     } catch (e) {
       print('Error serving plans: $e');
       return shelf.Response.internalServerError(
-          body: 'Error serving plans: ${e.toString()}');
+          body: json.encode({'error': e.toString()}),
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*'
+          });
     }
   }
 
   Future<shelf.Response> _handleRequest(shelf.Request request) async {
     final requestPath = request.url.path;
-    print('Handling request for: $requestPath');
+    print('Handling request for path: $requestPath');
+    print('Full request URL: ${request.url}');
 
     try {
       // Handle OPTIONS requests for CORS
       if (request.method == 'OPTIONS') {
         return shelf.Response.ok('');
+      }
+
+      // Handle plans request first
+      print('Checking for plans request...');
+      print('Request path: "$requestPath"');
+      // Normalize the path by removing leading/trailing slashes
+      final normalizedPath = requestPath.trim().toLowerCase();
+      print('Normalized path: "$normalizedPath"');
+
+      if (normalizedPath == 'api/v1/get_plans' ||
+          normalizedPath == 'api/v1/get_plans/' ||
+          normalizedPath.startsWith('api/v1/get_plans')) {
+        print("Found plans request");
+        final blockId = request.url.queryParameters['block_id'];
+        print("Block ID from request: $blockId");
+        if (blockId != null) {
+          final response = await _handlePlansRequest(blockId);
+          print('Plans response status: ${response.statusCode}');
+          final responseBody = await response.readAsString();
+          print('Plans response body: $responseBody');
+          return shelf.Response.ok(
+            responseBody,
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Access-Control-Allow-Origin': '*',
+            },
+          );
+        }
+        print("Missing block_id parameter");
+        return shelf.Response.badRequest(body: 'Missing block_id parameter');
       }
 
       // Handle route requests (like /maps) by serving index.html
@@ -110,16 +162,6 @@ class LocalServer {
       // Handle base map tile requests
       if (requestPath.startsWith('$BASE_MAP_TILES_PATH/')) {
         return await _serveBaseMapTile(requestPath);
-      }
-
-      print('Request URL for PLANS: ${request.url}');
-      // Handle plan requests
-      if (requestPath.startsWith('api/v1/get_plans')) {
-        final blockId = request.url.queryParameters['block_id'];
-        if (blockId != null) {
-          return await _handlePlansRequest(blockId);
-        }
-        return shelf.Response.badRequest(body: 'Missing block_id parameter');
       }
 
       // For all other requests, try to serve from the webapp directory

@@ -162,11 +162,16 @@ class _LocationSelectionState extends State<LocationSelection> {
   }
 
   void updateSelectedBlock(String block) {
+    print("Updating selected block: $block");
     final selectedBlockData = blocks.firstWhere((b) => b["label"] == block);
+    print("Found block data: $selectedBlockData");
+
     setState(() {
       selectedBlock = block;
-      selectedBlockID = selectedBlockData["block_id"];
+      selectedBlockID = selectedBlockData["block_id"]
+          .toString(); // Convert to string since block_id might be an integer
     });
+    print("Updated selectedBlockID to: $selectedBlockID");
   }
 
   // MARK: Navigate Online
@@ -183,23 +188,44 @@ class _LocationSelectionState extends State<LocationSelection> {
     );
   }
 
-  List<Map<String, String>> getLayers(String? district, String? block) {
-    return LayersConfig.getLayers(district, block);
+  Future<List<Map<String, String>>> getLayers(
+      String? district, String? block) async {
+    print(
+        "LocationSelection.getLayers called with district: $district, block: $block, blockId: $selectedBlockID");
+    return await LayersConfig.getLayers(district, block,
+        blockId: selectedBlockID);
   }
 
   Future<void> downloadVectorLayers() async {
-    final layers = getLayers(selectedDistrict, selectedBlock);
-    print("Starting to download ${layers.length} vector layers");
+    print("Starting downloadVectorLayers");
+    print("Selected block ID: $selectedBlockID");
+
+    final layers = await getLayers(selectedDistrict, selectedBlock);
+    print("Retrieved ${layers.length} layers to download");
+
     for (var layer in layers) {
-      if (layerCancelled[layer['name']] == true) continue;
+      print(
+          "Processing layer: ${layer['name']} with path: ${layer['geoserverPath']}");
+      if (layerCancelled[layer['name']] == true) {
+        print("Layer ${layer['name']} is cancelled, skipping");
+        continue;
+      }
+
       setState(() {
         vectorLayerProgress[layer['name']!] = 0.0;
       });
-      await downloadVectorLayer(layer['name']!, layer['geoserverPath']!);
+
+      try {
+        await downloadVectorLayer(layer['name']!, layer['geoserverPath']!);
+        print("Successfully downloaded layer: ${layer['name']}");
+      } catch (e) {
+        print("Error downloading layer ${layer['name']}: $e");
+      }
     }
 
-    // After downloading all layers, use OfflineAssetsManager to copy to persistent storage
+    print("Copying assets to persistent storage");
     await OfflineAssetsManager.copyOfflineAssets(forceUpdate: true);
+    print("Finished downloadVectorLayers");
   }
 
   String formatLayerName(String layerName) {
@@ -209,32 +235,41 @@ class _LocationSelectionState extends State<LocationSelection> {
   Future<void> downloadVectorLayer(
       String layerName, String geoserverPath) async {
     try {
+      print("Starting download of vector layer: $layerName");
       if (layerCancelled[layerName] == true) {
         setState(() {
           vectorLayerProgress[layerName] = -1.0;
         });
-        sheetSetState?.call(() {}); // Update sheet state
+        sheetSetState?.call(() {});
         return;
       }
 
       final url =
           'https://geoserver.gramvaani.org:8443/geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=$geoserverPath&outputFormat=application/json';
+      print("Downloading from URL: $url");
+
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         print('Response code came fine for $layerName');
         final directory = await getApplicationDocumentsDirectory();
         final formattedLayerName = formatLayerName(layerName);
-        final file = File(
-            '${directory.path}/assets/offline_data/vector_layers/$formattedLayerName.geojson');
+        final filePath =
+            '${directory.path}/assets/offline_data/vector_layers/$formattedLayerName.geojson';
+        print("Saving layer to: $filePath");
+
+        final file = File(filePath);
         await file.create(recursive: true);
         await file.writeAsBytes(response.bodyBytes);
+        print("Successfully saved layer $layerName");
 
         setState(() {
           vectorLayerProgress[layerName] = 1.0;
         });
-        sheetSetState?.call(() {}); // Update sheet state
+        sheetSetState?.call(() {});
       } else {
+        print(
+            "Failed to download $layerName. Status code: ${response.statusCode}");
         throw Exception(
             'Failed to download $layerName. Status code: ${response.statusCode}');
       }
@@ -243,7 +278,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       setState(() {
         vectorLayerProgress[layerName] = -1.0;
       });
-      sheetSetState?.call(() {}); // Update sheet state
+      sheetSetState?.call(() {});
     }
   }
 
@@ -480,17 +515,33 @@ class _LocationSelectionState extends State<LocationSelection> {
     final serverUrl = await _localServer!.start();
     print('Local server started at: $serverUrl');
 
-    String url = "$serverUrl/maps?" +
-        "geoserver_url=$serverUrl" +
-        "&state_name=${container.state}" +
-        "&dist_name=${container.district}" +
-        "&block_name=${container.block}" +
-        "&block_id=${selectedBlockID}" +
-        "&isOffline=true";
-
-    print('Navigating to URL: $url');
-
     try {
+      // Fetch plans data first
+      final plansResponse = await http.get(
+        Uri.parse('$serverUrl/api/v1/get_plans/?block_id=$selectedBlockID'),
+      );
+
+      if (plansResponse.statusCode != 200) {
+        print('Failed to fetch plans: ${plansResponse.statusCode}');
+        return;
+      }
+
+      // Encode the plans data
+      final encodedPlans = Uri.encodeComponent(plansResponse.body);
+
+      print('Encoded plans data: $encodedPlans');
+
+      String url = "$serverUrl/maps?" +
+          "geoserver_url=$serverUrl" +
+          "&state_name=${container.state}" +
+          "&dist_name=${container.district}" +
+          "&block_name=${container.block}" +
+          "&block_id=${selectedBlockID}" +
+          "&isOffline=true" +
+          "&plans=$encodedPlans"; // Add the plans data here
+
+      print('Navigating to URL: $url');
+
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -559,14 +610,25 @@ class _LocationSelectionState extends State<LocationSelection> {
                         cancelLayerDownload("Base Map");
                         setSheetState(() {}); // Update sheet when cancelled
                       }),
-                      ...getLayers(selectedDistrict, selectedBlock)
-                          .map((layer) {
-                        return _buildLayerProgressItem(layer['name']!,
-                            vectorLayerProgress[layer['name']] ?? 0.0, () {
-                          cancelLayerDownload(layer['name']!);
-                          setSheetState(() {}); // Update sheet when cancelled
-                        });
-                      }),
+                      FutureBuilder<List<Map<String, String>>>(
+                        future: getLayers(selectedDistrict, selectedBlock),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData) {
+                            return Column(
+                              children: snapshot.data!.map((layer) {
+                                return _buildLayerProgressItem(layer['name']!,
+                                    vectorLayerProgress[layer['name']] ?? 0.0,
+                                    () {
+                                  cancelLayerDownload(layer['name']!);
+                                  setSheetState(
+                                      () {}); // Update sheet when cancelled
+                                });
+                              }).toList(),
+                            );
+                          }
+                          return const SizedBox(); // Return empty widget while loading
+                        },
+                      ),
                       const SizedBox(height: 20),
                       Center(
                         child: Text(
@@ -762,7 +824,7 @@ class _LocationSelectionState extends State<LocationSelection> {
             children: [
               _buildDropdown(
                 value: selectedState,
-                hint: 'Select State',
+                hint: 'Select a state',
                 items: states,
                 onChanged: (String? value) {
                   setState(() {
@@ -774,7 +836,7 @@ class _LocationSelectionState extends State<LocationSelection> {
               const SizedBox(height: 16.0),
               _buildDropdown(
                 value: selectedDistrict,
-                hint: 'Select District',
+                hint: 'Select a district',
                 items: districts,
                 onChanged: (String? value) {
                   setState(() {
@@ -786,12 +848,12 @@ class _LocationSelectionState extends State<LocationSelection> {
               const SizedBox(height: 16.0),
               _buildDropdown(
                 value: selectedBlock,
-                hint: 'Select Block',
+                hint: 'Select a block',
                 items: blocks,
                 onChanged: (String? value) {
-                  setState(() {
-                    selectedBlock = value;
-                  });
+                  if (value != null) {
+                    updateSelectedBlock(value);
+                  }
                 },
               ),
               const SizedBox(height: 34.0),

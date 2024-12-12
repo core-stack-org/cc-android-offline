@@ -26,6 +26,7 @@ class MapLocationSelector extends StatefulWidget {
 class _MapLocationSelectorState extends State<MapLocationSelector> {
   LatLng? selectedLocation;
   List<List<LatLng>> allPolygons = [];
+  List<({LatLng point, String name})> villageMarkers = [];
   bool isLoading = true;
   double _currentZoom = 11.0;
   final MapController mapController = MapController();
@@ -55,6 +56,8 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
             final geometry = feature['geometry'];
             final geomType = geometry['type'];
             final coords = geometry['coordinates'];
+            final properties = feature['properties'];
+            final villageName = properties['vill_name'] as String?;
 
             if (geomType == 'Polygon') {
               // coordinates = [[ [lon, lat], [lon, lat], ... ]]
@@ -76,6 +79,36 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                 }
                 polygonsFromAllFeatures.add(polygonPoints);
               }
+            }
+
+            // Calculate center point for the village name
+            double centerLat = 0;
+            double centerLon = 0;
+            int pointCount = 0;
+
+            if (geomType == 'Polygon') {
+              for (var coord in coords[0]) {
+                centerLat += coord[1];
+                centerLon += coord[0];
+                pointCount++;
+              }
+            } else if (geomType == 'MultiPolygon') {
+              for (var polygon in coords) {
+                for (var ring in polygon) {
+                  for (var coord in ring) {
+                    centerLat += coord[1];
+                    centerLon += coord[0];
+                    pointCount++;
+                  }
+                }
+              }
+            }
+
+            if (villageName != null && pointCount > 0) {
+              villageMarkers.add((
+                point: LatLng(centerLat / pointCount, centerLon / pointCount),
+                name: villageName
+              ));
             }
           }
 
@@ -215,7 +248,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
-          'Mark a Location',
+          'Mark a location',
           style: TextStyle(
             color: Colors.white,
           ),
@@ -267,11 +300,36 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                   polygons: allPolygons.map((polygonPoints) {
                     return Polygon(
                       points: polygonPoints,
-                      color: Colors.blue.withOpacity(0.2),
+                      color: Colors.blue.withOpacity(0.1),
                       borderColor: Colors.blue,
                       borderStrokeWidth: 2,
                     );
                   }).toList(),
+                ),
+              if (_currentZoom >= 13)
+                MarkerLayer(
+                  markers: villageMarkers
+                      .map((marker) => Marker(
+                            point: marker.point,
+                            width: 150,
+                            height: 30,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                marker.name,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ))
+                      .toList(),
                 ),
               if (selectedLocation != null)
                 MarkerLayer(
