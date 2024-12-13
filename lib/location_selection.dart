@@ -822,6 +822,22 @@ class _LocationSelectionState extends State<LocationSelection> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const SizedBox(height: 32.0),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Operate in online mode',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF592941),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16.0),
               _buildDropdown(
                 value: selectedState,
                 hint: 'Select a state',
@@ -981,6 +997,17 @@ class _LocationSelectionState extends State<LocationSelection> {
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
                     color: Color.fromARGB(255, 122, 122, 122),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16.0),
+                child: Text(
+                  'version: 2.0.0',
+                  style: TextStyle(
+                    color: Color(0xFF592941),
+                    fontSize: 14,
                   ),
                 ),
               ),
