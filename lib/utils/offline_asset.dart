@@ -90,30 +90,31 @@ class OfflineAssetsManager {
       final destDir = Directory(path.join(destination, dir));
 
       if (await sourceDir.exists()) {
+        print('Processing directory: ${sourceDir.path}');
         await destDir.create(recursive: true);
-        await for (final entity in sourceDir.list(recursive: true)) {
-          if (entity is File) {
+
+        try {
+          await for (final entity in sourceDir.list(recursive: true)) {
             final relativePath =
                 path.relative(entity.path, from: sourceDir.path);
             final destPath = path.join(destDir.path, relativePath);
-            final destFile = File(destPath);
-            if (!await destFile.exists()) {
+
+            if (entity is File) {
+              final destFile = File(destPath);
+              await destFile.parent.create(recursive: true);
               await entity.copy(destPath);
               print('Copied file: ${entity.path} to $destPath');
-            } else {
-              print('File already exists, skipping: $destPath');
+            } else if (entity is Directory) {
+              await Directory(destPath).create(recursive: true);
+              print('Created directory: $destPath');
             }
-          } else if (entity is Directory) {
-            final relativePath =
-                path.relative(entity.path, from: sourceDir.path);
-            final newDir = Directory(path.join(destDir.path, relativePath));
-            await newDir.create(recursive: true);
-            print('Created directory: ${newDir.path}');
           }
+          print('Successfully copied $dir and its contents');
+        } catch (e) {
+          print('Error copying directory $dir: $e');
         }
-        print('Copied $dir to persistent location');
       } else {
-        print('Source directory $dir does not exist');
+        print('Source directory not found: ${sourceDir.path}');
       }
     }
   }
@@ -154,45 +155,6 @@ class OfflineAssetsManager {
       print('Error listing directory contents: $e');
     }
   }
-
-  // static Future<bool> verifyOfflineData() async {
-  //   final directory = await getApplicationDocumentsDirectory();
-  //   final offlineDir = Directory('${directory.path}/assets/offline_data');
-  //   final persistentOfflineDir = Directory(await _persistentOfflinePath);
-
-  //   List<String> requiredFiles = [
-  //     // 'vector_layers/admin_boundaries.geojson',
-  //     // 'vector_layers/nrega_assets.geojson',
-  //     // 'webapp/index.html',
-  //     // 'webapp/static/js/main.js',
-  //     // 'webapp/static/css/main.css',
-  //     // Add other required files from your React build
-  //   ];
-
-  //   for (String file in requiredFiles) {
-  //     if (!await File(path.join(offlineDir.path, file)).exists() ||
-  //         !await File(path.join(persistentOfflineDir.path, file)).exists()) {
-  //       print('Missing required file: $file');
-  //       return false;
-  //     }
-  //   }
-
-  //   // Verify base map tiles in both locations
-  //   for (var dir in [offlineDir, persistentOfflineDir]) {
-  //     final baseMapTilesDir = Directory(path.join(dir.path, 'base_map_tiles'));
-  //     if (!await baseMapTilesDir.exists()) {
-  //       print('Base map tiles directory is missing in ${dir.path}');
-  //       return false;
-  //     }
-
-  //     if (!await File(path.join(baseMapTilesDir.path, '17/0/0.png')).exists()) {
-  //       print('Sample base map tile is missing in ${dir.path}');
-  //       return false;
-  //     }
-  //   }
-
-  //   return true;
-  // }
 
   static Future<bool> verifyOfflineData() async {
     final directory = await getApplicationDocumentsDirectory();

@@ -538,7 +538,7 @@ class _LocationSelectionState extends State<LocationSelection> {
           "&block_name=${container.block}" +
           "&block_id=${selectedBlockID}" +
           "&isOffline=true" +
-          "&plans=$encodedPlans"; // Add the plans data here
+          "&plans=$encodedPlans";
 
       print('Navigating to URL: $url');
 
