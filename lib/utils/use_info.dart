@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class UseInfo {
   static void showInstructionsSheet(BuildContext context) {
@@ -84,7 +85,40 @@ class UseInfo {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20), // Add bottom padding
+                  const SizedBox(height: 20),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        final Uri url =
+                            Uri.parse('https://forms.gle/vm86yuvNezwQC45a8');
+                        try {
+                          if (!await launchUrl(url,
+                              mode: LaunchMode.externalApplication)) {
+                            throw Exception('Could not launch $url');
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content:
+                                    Text('Could not open the bug report form'),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.bug_report,
+                          color: Color(0xFF592941)),
+                      label: const Text(
+                        'File a bug report',
+                        style: TextStyle(
+                          color: Color(0xFF592941),
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                 ],
               ),
             ),
