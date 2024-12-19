@@ -1,0 +1,24 @@
+Making it work
+==============
+
+Remove existing data
+====================
+1. adb shell
+2. run-as com.example.nrmflutter
+3. cd app_flutter/assets/offline_data 
+   rm -rf *
+4. cd app_flutter/persistent_offline_data
+   rm -rf *
+
+Add the web app build
+=====================
+1. npm run build at the web app 
+2. in the flutter app, assets/offline_data/webapp
+   rm -rf *
+3. copy the build folder contents to assets/offline_data/webapp
+
+Start the app
+=============
+1. flutter clean
+2. flutter pub get
+3. flutter run

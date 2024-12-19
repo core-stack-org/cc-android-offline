@@ -232,9 +232,34 @@ class ContainerSheets {
                       }
 
                       final containers = snapshot.data!;
+                      
+                      if (containers.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'No containers found',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Please create one to get started',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      
                       // Sort containers by creation date, newest first
-                      containers
-                          .sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                      containers.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
                       final selectedContainer = containers.firstWhere(
                         (container) => container.name == selectedContainerId,

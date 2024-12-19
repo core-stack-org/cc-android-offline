@@ -240,7 +240,11 @@ class _LocationSelectionState extends State<LocationSelection> {
         setState(() {
           vectorLayerProgress[layerName] = -1.0;
         });
-        sheetSetState?.call(() {});
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            sheetSetState?.call(() {});
+          });
+        }
         return;
       }
 
@@ -260,13 +264,43 @@ class _LocationSelectionState extends State<LocationSelection> {
 
         final file = File(filePath);
         await file.create(recursive: true);
-        await file.writeAsBytes(response.bodyBytes);
+        
+        // Update progress as the file is being written
+        final totalBytes = response.bodyBytes.length;
+        final chunkSize = 1024 * 1024; // 1MB chunks
+        var bytesWritten = 0;
+        
+        final sink = file.openWrite();
+        for (var i = 0; i < totalBytes; i += chunkSize) {
+          final end = (i + chunkSize < totalBytes) ? i + chunkSize : totalBytes;
+          final chunk = response.bodyBytes.sublist(i, end);
+          sink.add(chunk);
+          bytesWritten += chunk.length;
+          
+          final progress = bytesWritten / totalBytes;
+          setState(() {
+            vectorLayerProgress[layerName] = progress;
+          });
+          if (mounted) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              sheetSetState?.call(() {});
+            });
+          }
+          // Add a small delay to allow UI updates
+          await Future.delayed(const Duration(milliseconds: 50));
+        }
+        
+        await sink.close();
         print("Successfully saved layer $layerName");
 
         setState(() {
           vectorLayerProgress[layerName] = 1.0;
         });
-        sheetSetState?.call(() {});
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            sheetSetState?.call(() {});
+          });
+        }
       } else {
         print(
             "Failed to download $layerName. Status code: ${response.statusCode}");
@@ -278,7 +312,11 @@ class _LocationSelectionState extends State<LocationSelection> {
       setState(() {
         vectorLayerProgress[layerName] = -1.0;
       });
-      sheetSetState?.call(() {});
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          sheetSetState?.call(() {});
+        });
+      }
     }
   }
 
@@ -584,99 +622,141 @@ class _LocationSelectionState extends State<LocationSelection> {
               maxChildSize: 0.80,
               expand: false,
               builder: (_, controller) {
-                return Container(
-                  padding: const EdgeInsets.all(20),
-                  child: ListView(
-                    controller: controller,
-                    children: [
-                      const Text(
-                        "Downloading Layers",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF592941),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        "Container: ${container.name}",
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF592941),
-                        ),
-                      ),
-                      const SizedBox(height: 25),
-                      _buildLayerProgressItem("Base Map", baseMapProgress, () {
-                        cancelLayerDownload("Base Map");
-                        setSheetState(() {}); // Update sheet when cancelled
-                      }),
-                      FutureBuilder<List<Map<String, String>>>(
-                        future: getLayers(selectedDistrict, selectedBlock),
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData) {
-                            return Column(
-                              children: snapshot.data!.map((layer) {
-                                return _buildLayerProgressItem(layer['name']!,
-                                    vectorLayerProgress[layer['name']] ?? 0.0,
+                return Stack(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: ListView(
+                              controller: controller,
+                              children: [
+                                const Text(
+                                  "Downloading Layers",
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF592941),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  "Container: ${container.name}",
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Color(0xFF592941),
+                                  ),
+                                ),
+                                const SizedBox(height: 25),
+                                _buildLayerProgressItem("Base Map", baseMapProgress,
                                     () {
-                                  cancelLayerDownload(layer['name']!);
-                                  setSheetState(
-                                      () {}); // Update sheet when cancelled
-                                });
-                              }).toList(),
-                            );
-                          }
-                          return const SizedBox(); // Return empty widget while loading
-                        },
+                                  cancelLayerDownload("Base Map");
+                                  setSheetState(() {}); // Update sheet when cancelled
+                                }),
+                                FutureBuilder<List<Map<String, String>>>(
+                                  future: getLayers(selectedDistrict, selectedBlock),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.hasData) {
+                                      return Column(
+                                        children: snapshot.data!.map((layer) {
+                                          return _buildLayerProgressItem(
+                                              layer['name']!,
+                                              vectorLayerProgress[layer['name']] ??
+                                                  0.0, () {
+                                            cancelLayerDownload(layer['name']!);
+                                            setSheetState(
+                                                () {}); // Update sheet when cancelled
+                                          });
+                                        }).toList(),
+                                      );
+                                    }
+                                    return const SizedBox(); // Return empty widget while loading
+                                  },
+                                ),
+                                const SizedBox(height: 20),
+                                Center(
+                                  child: Text(
+                                    isDownloading
+                                        ? "Download in Progress"
+                                        : "Download Complete",
+                                    style: const TextStyle(
+                                      color: Color(0xFF592941),
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isDownloadComplete) ...[
+                            const SizedBox(height: 20),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                // Show completion popup
+                                showDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return AlertDialog(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(15),
+                                      ),
+                                      title: const Text(
+                                        'Download Complete',
+                                        style: TextStyle(
+                                          color: Color(0xFF592941),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      content: const Text(
+                                        'All layers have been downloaded successfully. You can now access this container offline.',
+                                        style: TextStyle(
+                                          color: Color(0xFF592941),
+                                        ),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                          },
+                                          child: const Text(
+                                            'OK',
+                                            style: TextStyle(
+                                              color: Color(0xFF592941),
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.black,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 15,
+                                  horizontal: 40,
+                                ),
+                              ),
+                              child: const Text(
+                                'Done',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                        ],
                       ),
-                      const SizedBox(height: 20),
-                      Center(
-                        child: Text(
-                          isDownloading
-                              ? "Download in Progress"
-                              : "Download Complete",
-                          style: const TextStyle(
-                            color: Color(0xFF592941),
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      if (isDownloadComplete) ...[
-                        const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 15,
-                              horizontal: 40,
-                            ),
-                          ),
-                          child: const Text(
-                            'Close',
-                            style: TextStyle(
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          "You can now access this container from the Offline button",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color(0xFF592941),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                    ),
+                  ],
                 );
               },
             );
@@ -724,16 +804,21 @@ class _LocationSelectionState extends State<LocationSelection> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
-                child: Text('Cancel'),
+                child: const Text('Cancel'),
               ),
           ],
         ),
         const SizedBox(height: 10),
-        LinearProgressIndicator(
-          value: progress >= 0 ? progress : 0,
-          backgroundColor: Colors.grey[200],
-          valueColor: AlwaysStoppedAnimation<Color>(progressColor),
-          minHeight: 10, // Make the progress bar more prominent
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox(
+            height: 10,
+            child: LinearProgressIndicator(
+              value: progress >= 0 ? progress : 0,
+              backgroundColor: Colors.grey[200],
+              valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+            ),
+          ),
         ),
         const SizedBox(height: 20),
       ],

@@ -1,6 +1,5 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'dart:convert';
 
 class LocationDatabase {
   static final LocationDatabase instance = LocationDatabase._init();
