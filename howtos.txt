@@ -22,3 +22,15 @@ Start the app
 1. flutter clean
 2. flutter pub get
 3. flutter run
+
+
+TODOs
+=====
+[ ] fix the issues with Android 10
+[ ] temp mapping of a feature
+[ ] sync layer data to the backend and then to the ODK server
+[ ] fetch new layer of the resources marked
+[ ] location access inside the webview
+[ ] exclusive containers
+[ ] raster layers
+[ ] download layer state fix
