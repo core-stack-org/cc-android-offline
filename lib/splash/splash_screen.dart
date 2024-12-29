@@ -38,25 +38,13 @@ class SplashScreenState extends State<SplashScreen> {
             const SizedBox(height: 32),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: ElevatedButton(
+              child: FloatingActionButton(
                 onPressed: () {
                   Navigator.pushReplacementNamed(context, '/location');
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD6D5C9),
-                  foregroundColor: const Color(0xFF592941),
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  'Continue',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                backgroundColor: const Color(0xFFD6D5C9),
+                foregroundColor: const Color(0xFF592941),
+                child: const Icon(Icons.arrow_forward, size: 24),
               ),
             ),
           ],
@@ -92,23 +80,15 @@ class ChangelogBottomSheet extends StatelessWidget {
             // Bottom sheet handle and close button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const SizedBox(width: 40),
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+              child: Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
+                ),
               ),
             ),
             // Title
