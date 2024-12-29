@@ -34,7 +34,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   String? selectedStateID;
   String? selectedDistrictID;
   String? selectedBlockID;
-  StateSetter? sheetSetState;
+  StateSetter? _sheetSetState; // Add this as a class field
   bool isDownloading = false;
   bool isDownloadComplete = false;
   double baseMapProgress = 0.0;
@@ -58,6 +58,7 @@ class _LocationSelectionState extends State<LocationSelection> {
         setState(() {
           baseMapProgress = progress;
         });
+        _sheetSetState?.call(() {}); // Update the sheet's state
       },
     );
   }
@@ -239,11 +240,7 @@ class _LocationSelectionState extends State<LocationSelection> {
         setState(() {
           vectorLayerProgress[layerName] = -1.0;
         });
-        if (mounted) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            sheetSetState?.call(() {});
-          });
-        }
+        _sheetSetState?.call(() {});  // Update sheet state
         return;
       }
 
@@ -280,13 +277,10 @@ class _LocationSelectionState extends State<LocationSelection> {
           setState(() {
             vectorLayerProgress[layerName] = progress;
           });
-          if (mounted) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              sheetSetState?.call(() {});
-            });
-          }
+          _sheetSetState?.call(() {});  // Update sheet state immediately
+          
           // Add a small delay to allow UI updates
-          await Future.delayed(const Duration(milliseconds: 50));
+          await Future.delayed(const Duration(milliseconds: 10));
         }
         
         await sink.close();
@@ -295,11 +289,7 @@ class _LocationSelectionState extends State<LocationSelection> {
         setState(() {
           vectorLayerProgress[layerName] = 1.0;
         });
-        if (mounted) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            sheetSetState?.call(() {});
-          });
-        }
+        _sheetSetState?.call(() {});  // Update sheet state
       } else {
         print(
             "Failed to download $layerName. Status code: ${response.statusCode}");
@@ -311,11 +301,8 @@ class _LocationSelectionState extends State<LocationSelection> {
       setState(() {
         vectorLayerProgress[layerName] = -1.0;
       });
-      if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          sheetSetState?.call(() {});
-        });
-      }
+      _sheetSetState?.call(() {});  // Update sheet state
+      rethrow;
     }
   }
 
@@ -593,15 +580,13 @@ class _LocationSelectionState extends State<LocationSelection> {
 
   // Progress sheet
   void showDownloadProgressSheet(OfflineContainer container) {
-    StateSetter? sheetSetState; // Keep track of the sheet's setState
-
     // Update the BaseMapDownloader to use both setState callbacks
     baseMapDownloader = BaseMapDownloader(
       onProgressUpdate: (progress) {
         setState(() {
           baseMapProgress = progress;
         });
-        sheetSetState?.call(() {}); // Update the sheet's state
+        _sheetSetState?.call(() {}); // Update the sheet's state
       },
     );
 
@@ -614,7 +599,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setSheetState) {
-            sheetSetState = setSheetState; // Store the sheet's setState
+            _sheetSetState = setSheetState; // Store the sheet's setState
             return DraggableScrollableSheet(
               initialChildSize: 0.7,
               minChildSize: 0.3,
@@ -641,37 +626,184 @@ class _LocationSelectionState extends State<LocationSelection> {
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  "Container: ${container.name}",
-                                  style: const TextStyle(
-                                    fontSize: 16,
+                                  "Current Container",
+                                  style: TextStyle(
+                                    fontSize: 18,
                                     color: Color(0xFF592941),
                                   ),
                                 ),
-                                const SizedBox(height: 25),
-                                _buildLayerProgressItem("Base Map", baseMapProgress,
-                                    () {
-                                  cancelLayerDownload("Base Map");
-                                  setSheetState(() {}); // Update sheet when cancelled
-                                }),
-                                FutureBuilder<List<Map<String, String>>>(
-                                  future: getLayers(selectedDistrict, selectedBlock),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.hasData) {
-                                      return Column(
-                                        children: snapshot.data!.map((layer) {
-                                          return _buildLayerProgressItem(
-                                              layer['name']!,
-                                              vectorLayerProgress[layer['name']] ??
-                                                  0.0, () {
-                                            cancelLayerDownload(layer['name']!);
-                                            setSheetState(
-                                                () {}); // Update sheet when cancelled
-                                          });
-                                        }).toList(),
-                                      );
-                                    }
-                                    return const SizedBox(); // Return empty widget while loading
-                                  },
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFD6D5C9),
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  child: Text(
+                                    container.name,
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF592941),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 30),
+                                Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFD6D5C9),
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        "Downloading Layers",
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          color: Color(0xFF592941),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 15),
+                                      // Overall progress bar
+                                      FutureBuilder<List<Map<String, String>>>(
+                                        future: getLayers(selectedDistrict, selectedBlock),
+                                        builder: (context, snapshot) {
+                                          if (snapshot.hasData) {
+                                            // Calculate overall progress
+                                            double totalProgress = 0;
+                                            int completedLayers = 0;
+                                            int totalLayers = snapshot.data!.length + 1; // +1 for base map
+                                            
+                                            // Add base map progress
+                                            if (baseMapProgress == 1.0) completedLayers++;
+                                            totalProgress += baseMapProgress;
+                                            
+                                            // Add vector layers progress
+                                            for (var layer in snapshot.data!) {
+                                              double layerProgress = vectorLayerProgress[layer['name']] ?? 0.0;
+                                              if (layerProgress == 1.0) completedLayers++;
+                                              totalProgress += layerProgress;
+                                            }
+                                            
+                                            // Calculate average progress
+                                            double overallProgress = totalProgress / totalLayers;
+                                            
+                                            return Column(
+                                              children: [
+                                                ClipRRect(
+                                                  borderRadius: BorderRadius.circular(10),
+                                                  child: LinearProgressIndicator(
+                                                    value: overallProgress,
+                                                    backgroundColor: Colors.white.withOpacity(0.3),
+                                                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF592941)),
+                                                    minHeight: 10,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 20),
+                                                Text(
+                                                  "${(overallProgress * 100).toStringAsFixed(1)}%",
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF592941),
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          }
+                                          return const SizedBox();
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 30),
+                                // Layer status list
+                                Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: Colors.black),
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        "Layer Status",
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          color: Color(0xFF592941),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 15),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              "Base Map",
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                color: Color(0xFF592941),
+                                              ),
+                                            ),
+                                          ),
+                                          if (baseMapProgress == 1.0)
+                                            const Icon(Icons.check_circle, color: Colors.green)
+                                          else if (baseMapProgress > 0 && baseMapProgress < 1)
+                                            const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            )
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      FutureBuilder<List<Map<String, String>>>(
+                                        future: getLayers(selectedDistrict, selectedBlock),
+                                        builder: (context, snapshot) {
+                                          if (snapshot.hasData) {
+                                            return Column(
+                                              children: snapshot.data!.map((layer) {
+                                                double layerProgress = vectorLayerProgress[layer['name']] ?? 0.0;
+                                                return Padding(
+                                                  padding: const EdgeInsets.only(bottom: 10),
+                                                  child: Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          layer['name']!,
+                                                          style: const TextStyle(
+                                                            fontSize: 16,
+                                                            color: Color(0xFF592941),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      if (layerProgress == 1.0)
+                                                        const Icon(Icons.check_circle, color: Colors.green)
+                                                      else if (layerProgress > 0 && layerProgress < 1)
+                                                        const SizedBox(
+                                                          width: 20,
+                                                          height: 20,
+                                                          child: CircularProgressIndicator(
+                                                            strokeWidth: 2,
+                                                          ),
+                                                        )
+                                                    ],
+                                                  ),
+                                                );
+                                              }).toList(),
+                                            );
+                                          }
+                                          return const SizedBox();
+                                        },
+                                      ),
+                                    ],
+                                  ),
                                 ),
                                 const SizedBox(height: 20),
                                 Center(
