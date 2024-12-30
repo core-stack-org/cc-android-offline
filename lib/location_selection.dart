@@ -232,55 +232,51 @@ class _LocationSelectionState extends State<LocationSelection> {
     return layerName.toLowerCase().replaceAll(' ', '_');
   }
 
-  Future<void> downloadVectorLayer(
-      String layerName, String geoserverPath) async {
+  Future<void> downloadVectorLayer(String layerName, String geoserverPath) async {
     try {
       print("Starting download of vector layer: $layerName");
       if (layerCancelled[layerName] == true) {
         setState(() {
           vectorLayerProgress[layerName] = -1.0;
         });
-        _sheetSetState?.call(() {});  // Update sheet state
+        _sheetSetState?.call(() {});
         return;
       }
 
-      final url =
-          'https://geoserver.gramvaani.org:8443/geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=$geoserverPath&outputFormat=application/json';
+      final url = 'https://geoserver.gramvaani.org:8443/geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=$geoserverPath&outputFormat=application/json';
       print("Downloading from URL: $url");
 
-      final response = await http.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        print('Response code came fine for $layerName');
+      final request = await http.Client().send(http.Request('GET', Uri.parse(url)));
+      
+      if (request.statusCode == 200) {
         final directory = await getApplicationDocumentsDirectory();
         final formattedLayerName = formatLayerName(layerName);
-        final filePath =
-            '${directory.path}/assets/offline_data/vector_layers/$formattedLayerName.geojson';
+        final filePath = '${directory.path}/assets/offline_data/vector_layers/$formattedLayerName.geojson';
         print("Saving layer to: $filePath");
 
         final file = File(filePath);
         await file.create(recursive: true);
         
-        // Update progress as the file is being written
-        final totalBytes = response.bodyBytes.length;
-        final chunkSize = 1024 * 1024; // 1MB chunks
+        final totalBytes = request.contentLength ?? 0;
         var bytesWritten = 0;
         
         final sink = file.openWrite();
-        for (var i = 0; i < totalBytes; i += chunkSize) {
-          final end = (i + chunkSize < totalBytes) ? i + chunkSize : totalBytes;
-          final chunk = response.bodyBytes.sublist(i, end);
+        
+        // Use stream to handle the download
+        await for (final chunk in request.stream) {
           sink.add(chunk);
           bytesWritten += chunk.length;
           
-          final progress = bytesWritten / totalBytes;
-          setState(() {
-            vectorLayerProgress[layerName] = progress;
-          });
-          _sheetSetState?.call(() {});  // Update sheet state immediately
-          
-          // Add a small delay to allow UI updates
-          await Future.delayed(const Duration(milliseconds: 10));
+          if (totalBytes > 0) {
+            final progress = bytesWritten / totalBytes;
+            // Update UI less frequently (every 5% progress)
+            if ((progress * 100).round() % 5 == 0) {
+              setState(() {
+                vectorLayerProgress[layerName] = progress;
+              });
+              _sheetSetState?.call(() {});
+            }
+          }
         }
         
         await sink.close();
@@ -289,19 +285,17 @@ class _LocationSelectionState extends State<LocationSelection> {
         setState(() {
           vectorLayerProgress[layerName] = 1.0;
         });
-        _sheetSetState?.call(() {});  // Update sheet state
+        _sheetSetState?.call(() {});
       } else {
-        print(
-            "Failed to download $layerName. Status code: ${response.statusCode}");
-        throw Exception(
-            'Failed to download $layerName. Status code: ${response.statusCode}');
+        print("Failed to download $layerName. Status code: ${request.statusCode}");
+        throw Exception('Failed to download $layerName. Status code: ${request.statusCode}');
       }
     } catch (e) {
       print('Error downloading $layerName: $e');
       setState(() {
         vectorLayerProgress[layerName] = -1.0;
       });
-      _sheetSetState?.call(() {});  // Update sheet state
+      _sheetSetState?.call(() {});
       rethrow;
     }
   }
@@ -652,7 +646,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                                 Container(
                                   padding: const EdgeInsets.all(20),
                                   decoration: BoxDecoration(
-                                    color: Color(0xFFD6D5C9),
+                                    color: const Color(0xFFD6D5C9),
                                     borderRadius: BorderRadius.circular(15),
                                   ),
                                   child: Column(
@@ -666,6 +660,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                                         ),
                                       ),
                                       const SizedBox(height: 15),
+                                      
                                       // Overall progress bar
                                       FutureBuilder<List<Map<String, String>>>(
                                         future: getLayers(selectedDistrict, selectedBlock),
@@ -674,7 +669,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                                             // Calculate overall progress
                                             double totalProgress = 0;
                                             int completedLayers = 0;
-                                            int totalLayers = snapshot.data!.length + 1; // +1 for base map
+                                            int totalLayers = snapshot.data!.length + 1; 
                                             
                                             // Add base map progress
                                             if (baseMapProgress == 1.0) completedLayers++;
@@ -696,7 +691,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                                                   borderRadius: BorderRadius.circular(10),
                                                   child: LinearProgressIndicator(
                                                     value: overallProgress,
-                                                    backgroundColor: Colors.white.withOpacity(0.3),
+                                                    backgroundColor: Colors.white.withAlpha(77),
                                                     valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF592941)),
                                                     minHeight: 10,
                                                   ),
@@ -724,7 +719,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                                 Container(
                                   padding: const EdgeInsets.all(20),
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.black),
+                                    border: Border.all(color:const Color(0xFFD6D5C9)),
                                     borderRadius: BorderRadius.circular(15),
                                   ),
                                   child: Column(
@@ -865,8 +860,8 @@ class _LocationSelectionState extends State<LocationSelection> {
                                 );
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.black,
-                                foregroundColor: Colors.white,
+                                backgroundColor: const Color(0xFFD6D5C9),
+                                foregroundColor: const Color(0xFF592941),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(20),
                                 ),
