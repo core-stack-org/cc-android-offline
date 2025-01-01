@@ -70,7 +70,7 @@ class ContainerSheets {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
+                        backgroundColor: const Color(0xFFD6D5C9),
                         minimumSize: const Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
@@ -85,7 +85,7 @@ class ContainerSheets {
                           locationSelected
                               ? 'Latitude: ${selectedLat?.toStringAsFixed(4)}, Longitude: ${selectedLon?.toStringAsFixed(4)}'
                               : 'Mark a location',
-                          style: const TextStyle(color: Colors.white),
+                          style: const TextStyle(color: Color(0xFF592941)),
                         ),
                       ),
                     ),
@@ -95,19 +95,19 @@ class ContainerSheets {
                     // Step 2: Container Name (disabled until location is selected)
                     Container(
                       decoration: BoxDecoration(
-                        color: locationSelected ? Colors.black : Colors.grey,
+                        color: locationSelected ? const Color(0xFFD6D5C9) : const Color.fromARGB(255, 104, 104, 104),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: TextField(
                         controller: containerNameController,
                         enabled: locationSelected,
                         style: TextStyle(
-                          color: Colors.white,
+                          color: const Color(0xFFD6D5C9),
                         ),
                         decoration: InputDecoration(
                           labelText: 'Name your container',
                           labelStyle: TextStyle(
-                            color: Color.fromARGB(179, 211, 211, 211),
+                            color: const Color(0xFF592941),
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
@@ -160,7 +160,7 @@ class ContainerSheets {
                               }
                             : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
+                          backgroundColor: const Color(0xFFD6D5C9),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                           ),
@@ -172,7 +172,7 @@ class ContainerSheets {
                         child: const Text(
                           "Create Container",
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Color(0xFF592941),
                             fontSize: 16,
                           ),
                         ),

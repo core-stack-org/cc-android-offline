@@ -30,6 +30,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
   bool isLoading = true;
   double _currentZoom = 11.0;
   final MapController mapController = MapController();
+  bool _isSatelliteView = false;
 
   @override
   void initState() {
@@ -248,7 +249,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
-          'Mark a location',
+          'Place your marker',
           style: TextStyle(
             color: Colors.white,
           ),
@@ -292,8 +293,9 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.app',
+                urlTemplate: _isSatelliteView 
+                  ? 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
+                  : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               ),
               if (allPolygons.isNotEmpty)
                 PolygonLayer(
@@ -356,8 +358,75 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: const Color(0xFFD6D5C9),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFFD6D5C9),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.layers, color: const Color(0xFF592941)),
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('Select Map Layer'),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ListTile(
+                                  title: const Text('Default'),
+                                  leading: Radio<bool>(
+                                    value: false,
+                                    groupValue: _isSatelliteView,
+                                    onChanged: (bool? value) {
+                                      setState(() {
+                                        _isSatelliteView = value!;
+                                      });
+                                      Navigator.pop(context);
+                                    },
+                                  ),
+                                ),
+                                ListTile(
+                                  title: const Text('Satellite'),
+                                  leading: Radio<bool>(
+                                    value: true,
+                                    groupValue: _isSatelliteView,
+                                    onChanged: (bool? value) {
+                                      setState(() {
+                                        _isSatelliteView = value!;
+                                      });
+                                      Navigator.pop(context);
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                    tooltip: 'Change map layer',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD6D5C9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFFD6D5C9),
+                      width: 2,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.2),
@@ -369,7 +438,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                   child: Column(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.add),
+                        icon: Icon(Icons.add, color: const Color(0xFF592941)),
                         onPressed: () {
                           final newZoom = _currentZoom + 1;
                           mapController.move(
@@ -384,10 +453,10 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                       ),
                       Container(
                         height: 1,
-                        color: Colors.grey[300],
+                        color: const Color(0xFF592941),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.remove),
+                        icon: Icon(Icons.remove, color: const Color(0xFF592941)),
                         onPressed: () {
                           final newZoom = _currentZoom - 1;
                           mapController.move(
@@ -427,10 +496,14 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          width: 2,
+                          color: const Color(0xFFD6D5C9),
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.1),
-                            spreadRadius: 1,
+                            spreadRadius: 0,
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -439,7 +512,10 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                       child: Text(
                         'Lat: ${selectedLocation!.latitude.toStringAsFixed(4)}, '
                         'Lon: ${selectedLocation!.longitude.toStringAsFixed(4)}',
-                        style: const TextStyle(fontSize: 16),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF592941),
+                        ),
                       ),
                     ),
                   ),
@@ -455,8 +531,8 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                         Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
+                        backgroundColor: const Color(0xFFD6D5C9),
+                        foregroundColor: const Color(0xFF592941),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),

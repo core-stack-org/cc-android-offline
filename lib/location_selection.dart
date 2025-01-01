@@ -719,7 +719,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                                 Container(
                                   padding: const EdgeInsets.all(20),
                                   decoration: BoxDecoration(
-                                    border: Border.all(color:const Color(0xFFD6D5C9)),
+                                    border: Border.all(color:const Color(0xFFD6D5C9), width: 2),
                                     borderRadius: BorderRadius.circular(15),
                                   ),
                                   child: Column(
