@@ -45,6 +45,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   LocalServer? _localServer;
   late BaseMapDownloader baseMapDownloader;
   Future<List<Map<String, String>>>? _cachedLayers;
+  bool _isLoadingLayers = false;
 
   List<Map<String, dynamic>> states = [];
   List<Map<String, dynamic>> districts = [];
@@ -169,14 +170,10 @@ class _LocationSelectionState extends State<LocationSelection> {
 
     setState(() {
       selectedBlock = block;
-      for (var b in blocks) {
-        if (b['name'] == block) {
-          selectedBlockID = b['id'].toString();
-          break;
-        }
-      }
+      selectedBlockID = selectedBlockData["block_id"].toString();
       // Clear cached layers when block changes
       _cachedLayers = null;
+      _isLoadingLayers = false;
     });
     print("Updated selectedBlockID to: $selectedBlockID");
   }
@@ -197,11 +194,14 @@ class _LocationSelectionState extends State<LocationSelection> {
 
   Future<List<Map<String, String>>> getLayers(
       String? district, String? block) async {
-    print(
-        "LocationSelection.getLayers called with district: $district, block: $block, blockId: $selectedBlockID");
-    if (_cachedLayers == null) {
+    if (_cachedLayers == null && !_isLoadingLayers) {
+      _isLoadingLayers = true;
+      print(
+          "LocationSelection.getLayers called with district: $district, block: $block, blockId: $selectedBlockID");
       _cachedLayers = LayersConfig.getLayers(district, block,
           blockId: selectedBlockID);
+      await _cachedLayers; // Wait for the future to complete
+      _isLoadingLayers = false;
     }
     return _cachedLayers!;
   }
