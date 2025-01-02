@@ -44,6 +44,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   bool cancelBaseMapDownload = false;
   LocalServer? _localServer;
   late BaseMapDownloader baseMapDownloader;
+  Future<List<Map<String, String>>>? _cachedLayers;
 
   List<Map<String, dynamic>> states = [];
   List<Map<String, dynamic>> districts = [];
@@ -168,8 +169,14 @@ class _LocationSelectionState extends State<LocationSelection> {
 
     setState(() {
       selectedBlock = block;
-      selectedBlockID = selectedBlockData["block_id"]
-          .toString(); // Convert to string since block_id might be an integer
+      for (var b in blocks) {
+        if (b['name'] == block) {
+          selectedBlockID = b['id'].toString();
+          break;
+        }
+      }
+      // Clear cached layers when block changes
+      _cachedLayers = null;
     });
     print("Updated selectedBlockID to: $selectedBlockID");
   }
@@ -192,8 +199,11 @@ class _LocationSelectionState extends State<LocationSelection> {
       String? district, String? block) async {
     print(
         "LocationSelection.getLayers called with district: $district, block: $block, blockId: $selectedBlockID");
-    return await LayersConfig.getLayers(district, block,
-        blockId: selectedBlockID);
+    if (_cachedLayers == null) {
+      _cachedLayers = LayersConfig.getLayers(district, block,
+          blockId: selectedBlockID);
+    }
+    return _cachedLayers!;
   }
 
   Future<void> downloadVectorLayers() async {
@@ -1030,199 +1040,201 @@ class _LocationSelectionState extends State<LocationSelection> {
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(height: 32.0),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.0),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Operate in online mode',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF592941),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16.0),
-              _buildDropdown(
-                value: selectedState,
-                hint: 'Select a state',
-                items: states,
-                onChanged: (String? value) {
-                  setState(() {
-                    selectedState = value;
-                    updateDistricts(value!);
-                  });
-                },
-              ),
-              const SizedBox(height: 16.0),
-              _buildDropdown(
-                value: selectedDistrict,
-                hint: 'Select a district',
-                items: districts,
-                onChanged: (String? value) {
-                  setState(() {
-                    selectedDistrict = value;
-                    updateBlocks(value!);
-                  });
-                },
-              ),
-              const SizedBox(height: 16.0),
-              _buildDropdown(
-                value: selectedBlock,
-                hint: 'Select a block',
-                items: blocks,
-                onChanged: (String? value) {
-                  if (value != null) {
-                    updateSelectedBlock(value);
-                  }
-                },
-              ),
-              const SizedBox(height: 34.0),
-
-              // checker
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 320,
-                    height: 60,
-                    child: ElevatedButton(
-                      onPressed: isSubmitEnabled ? submitLocation : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isSubmitEnabled
-                            ? const Color(0xFFD6D5C9)
-                            : Colors.grey,
-                        foregroundColor: const Color(0xFF592941),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 32.0),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20.0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Operate in online mode',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF592941),
                       ),
-                      child:
-                          const Text('Submit', style: TextStyle(fontSize: 18)),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 32.0),
+                ),
+                const SizedBox(height: 16.0),
+                _buildDropdown(
+                  value: selectedState,
+                  hint: 'Select a state',
+                  items: states,
+                  onChanged: (String? value) {
+                    setState(() {
+                      selectedState = value;
+                      updateDistricts(value!);
+                    });
+                  },
+                ),
+                const SizedBox(height: 16.0),
+                _buildDropdown(
+                  value: selectedDistrict,
+                  hint: 'Select a district',
+                  items: districts,
+                  onChanged: (String? value) {
+                    setState(() {
+                      selectedDistrict = value;
+                      updateBlocks(value!);
+                    });
+                  },
+                ),
+                const SizedBox(height: 16.0),
+                _buildDropdown(
+                  value: selectedBlock,
+                  hint: 'Select a block',
+                  items: blocks,
+                  onChanged: (String? value) {
+                    if (value != null) {
+                      updateSelectedBlock(value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 34.0),
 
-              const Divider(
-                height: 32.0,
-                thickness: 1,
-                indent: 40,
-                endIndent: 40,
-                color: Color(0xFFD6D5C9),
-              ),
+                // checker
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 320,
+                      height: 60,
+                      child: ElevatedButton(
+                        onPressed: isSubmitEnabled ? submitLocation : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isSubmitEnabled
+                              ? const Color(0xFFD6D5C9)
+                              : Colors.grey,
+                          foregroundColor: const Color(0xFF592941),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        child:
+                            const Text('Submit', style: TextStyle(fontSize: 18)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32.0),
 
-              const SizedBox(height: 16.0),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.0),
-                child: Align(
-                  alignment: Alignment.centerLeft,
+                const Divider(
+                  height: 32.0,
+                  thickness: 1,
+                  indent: 40,
+                  endIndent: 40,
+                  color: Color(0xFFD6D5C9),
+                ),
+
+                const SizedBox(height: 16.0),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20.0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Operate in offline mode',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF592941),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24.0),
+
+                // Containers button
+                SizedBox(
+                  width: 320,
+                  height: 60,
+                  child: ElevatedButton(
+                    onPressed: isSubmitEnabled
+                        ? () {
+                            ContainerSheets.showCreateContainer(
+                              context: context,
+                              selectedState: selectedState!,
+                              selectedDistrict: selectedDistrict!,
+                              selectedBlock: selectedBlock!,
+                              onContainerCreated: (container) {
+                                showAgreementSheet(container);
+                              },
+                            );
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          isSubmitEnabled ? const Color(0xFFD6D5C9) : Colors.grey,
+                      foregroundColor: const Color(0xFF592941),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                    ),
+                    child: const Text('Create a container',
+                        style: TextStyle(fontSize: 18)),
+                  ),
+                ),
+
+                const SizedBox(height: 16.0), // Added spacing between buttons
+
+                // Offline button
+                SizedBox(
+                  width: 320,
+                  height: 60,
+                  child: ElevatedButton(
+                    onPressed: isSubmitEnabled
+                        ? () {
+                            ContainerSheets.showContainerList(
+                              context: context,
+                              onContainerSelected: (container) {
+                                navigateToWebViewOffline(container);
+                              },
+                            );
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          isSubmitEnabled ? const Color(0xFFD6D5C9) : Colors.grey,
+                      foregroundColor: const Color(0xFF592941),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                    ),
+                    child: const Text('Work offline*',
+                        style: TextStyle(fontSize: 18)),
+                  ),
+                ),
+
+                // Header text for Collections button
+                const SizedBox(height: 20.0),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16.0),
                   child: Text(
-                    'Operate in offline mode',
+                    "*BETA Offline mode works in remote areas without internet with limited features.",
+                    textAlign: TextAlign.left,
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      color: Color.fromARGB(255, 122, 122, 122),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32.0),  // Replace Spacer with fixed height
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 16.0),
+                  child: Text(
+                    'version: 2.0.0',
+                    style: TextStyle(
                       color: Color(0xFF592941),
+                      fontSize: 14,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24.0),
-
-              // Containers button
-              SizedBox(
-                width: 320,
-                height: 60,
-                child: ElevatedButton(
-                  onPressed: isSubmitEnabled
-                      ? () {
-                          ContainerSheets.showCreateContainer(
-                            context: context,
-                            selectedState: selectedState!,
-                            selectedDistrict: selectedDistrict!,
-                            selectedBlock: selectedBlock!,
-                            onContainerCreated: (container) {
-                              showAgreementSheet(container);
-                            },
-                          );
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        isSubmitEnabled ? const Color(0xFFD6D5C9) : Colors.grey,
-                    foregroundColor: const Color(0xFF592941),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                  ),
-                  child: const Text('Create a container',
-                      style: TextStyle(fontSize: 18)),
-                ),
-              ),
-
-              const SizedBox(height: 16.0), // Added spacing between buttons
-
-              // Offline button
-              SizedBox(
-                width: 320,
-                height: 60,
-                child: ElevatedButton(
-                  onPressed: isSubmitEnabled
-                      ? () {
-                          ContainerSheets.showContainerList(
-                            context: context,
-                            onContainerSelected: (container) {
-                              navigateToWebViewOffline(container);
-                            },
-                          );
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        isSubmitEnabled ? const Color(0xFFD6D5C9) : Colors.grey,
-                    foregroundColor: const Color(0xFF592941),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                  ),
-                  child: const Text('Work offline*',
-                      style: TextStyle(fontSize: 18)),
-                ),
-              ),
-
-              // Header text for Collections button
-              const SizedBox(height: 20.0),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16.0),
-                child: Text(
-                  "*BETA Offline mode works in remote areas without internet with limited features.",
-                  textAlign: TextAlign.left,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                    color: Color.fromARGB(255, 122, 122, 122),
-                  ),
-                ),
-              ),
-              const Spacer(),
-              const Padding(
-                padding: EdgeInsets.only(bottom: 16.0),
-                child: Text(
-                  'version: 2.0.0',
-                  style: TextStyle(
-                    color: Color(0xFF592941),
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
