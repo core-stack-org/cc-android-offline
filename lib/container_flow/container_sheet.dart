@@ -40,7 +40,7 @@ class ContainerSheets {
                     const Text(
                       "Create a new container",
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF592941),
                       ),
@@ -85,7 +85,10 @@ class ContainerSheets {
                           locationSelected
                               ? 'Latitude: ${selectedLat?.toStringAsFixed(4)}, Longitude: ${selectedLon?.toStringAsFixed(4)}'
                               : 'Mark a location',
-                          style: const TextStyle(color: Color(0xFF592941)),
+                          style: const TextStyle(
+                            color: Color(0xFF592941),
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                     ),
@@ -95,19 +98,20 @@ class ContainerSheets {
                     // Step 2: Container Name (disabled until location is selected)
                     Container(
                       decoration: BoxDecoration(
-                        color: locationSelected ? const Color(0xFFD6D5C9) : const Color.fromARGB(255, 104, 104, 104),
+                        color: locationSelected ? const Color(0xFFD6D5C9) : const Color(0xFFddd8e0),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: TextField(
                         controller: containerNameController,
                         enabled: locationSelected,
                         style: TextStyle(
-                          color: const Color(0xFFD6D5C9),
+                          color: const Color(0xFF592941),
                         ),
                         decoration: InputDecoration(
-                          labelText: 'Name your container',
-                          labelStyle: TextStyle(
+                          hintText: 'Name your container',
+                          hintStyle: TextStyle(
                             color: const Color(0xFF592941),
+                            fontSize: 16,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
@@ -214,8 +218,9 @@ class ContainerSheets {
                     Text(
                       'Select a container',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
+                        color: const Color(0xFF592941),
                       ),
                     ),
                   ],
@@ -342,9 +347,9 @@ class ContainerSheets {
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                          side: const BorderSide(color: Colors.black, width: 1),
+                          backgroundColor: const Color(0xFFe63946),
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Color(0xFFe63946), width: 2),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(25),
                           ),
@@ -398,9 +403,9 @@ class ContainerSheets {
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.black, width: 1),
+                          backgroundColor: const Color(0xFFD6D5C9),
+                          foregroundColor: const Color(0xFF592941),
+                          side: const BorderSide(color: Color(0xFFD6D5C9), width: 2),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(25),
                           ),
@@ -421,7 +426,7 @@ class ContainerSheets {
                           'Navigate',
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.white,
+                            color: Color(0xFF592941),
                           ),
                         ),
                       ),
