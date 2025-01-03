@@ -485,7 +485,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                             }
                           : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
+                        backgroundColor: const Color(0xFFD6D5C9),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -495,7 +495,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                       child: const Text(
                         "Download Layers",
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFF592941),
                           fontSize: 16,
                         ),
                       ),
@@ -729,7 +729,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                                 Container(
                                   padding: const EdgeInsets.all(20),
                                   decoration: BoxDecoration(
-                                    border: Border.all(color:const Color(0xFFD6D5C9), width: 2),
+                                    border: Border.all(color:const Color(0xFFD6D5C9), width: 5),
                                     borderRadius: BorderRadius.circular(15),
                                   ),
                                   child: Column(
@@ -1226,7 +1226,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                 const Padding(
                   padding: EdgeInsets.only(bottom: 16.0),
                   child: Text(
-                    'version: 2.0.0',
+                    'version: 2.0.1',
                     style: TextStyle(
                       color: Color(0xFF592941),
                       fontSize: 14,

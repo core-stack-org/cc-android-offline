@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:geolocator/geolocator.dart';
 
 class WebViewApp extends StatefulWidget {
   final String? url;
@@ -17,6 +18,7 @@ class _WebViewState extends State<WebViewApp> {
   @override
   void initState() {
     super.initState();
+    
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
@@ -26,23 +28,49 @@ class _WebViewState extends State<WebViewApp> {
               loadingProgress = progress / 100;
             });
           },
-          onPageFinished: (url) {
+          onPageFinished: (url) async {
             setState(() {
               loadingProgress = 1.0;
             });
+            
+            await _initializeGeolocation();
           },
           onWebResourceError: (WebResourceError error) {
             print('Web Resource Error: ${error.description}');
           },
         ),
-      )
-      ..loadRequest(Uri.parse(widget.url.toString()));
+      );
 
-    // Enable loading of local content
-    if (WebViewPlatform.instance is AndroidWebViewController) {
-      AndroidWebViewController.enableDebugging(true);
-      (controller.platform as AndroidWebViewController)
-          .setMediaPlaybackRequiresUserGesture(false);
+    // Configure platform-specific settings
+    if (controller.platform is AndroidWebViewController) {
+      final androidController = controller.platform as AndroidWebViewController;
+      androidController.setMediaPlaybackRequiresUserGesture(false);
+    }
+
+    // Load the URL after configuration
+    controller.loadRequest(Uri.parse(widget.url.toString()));
+  }
+
+  Future<void> _initializeGeolocation() async {
+    try {
+      final position = await Geolocator.getCurrentPosition();
+      await controller.runJavaScript('''
+        window.navigator.geolocation.getCurrentPosition = (success, error) => {
+          success({
+            coords: {
+              latitude: ${position.latitude},
+              longitude: ${position.longitude},
+              accuracy: ${position.accuracy},
+              altitude: ${position.altitude},
+              heading: ${position.heading},
+              speed: ${position.speed}
+            },
+            timestamp: ${position.timestamp?.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch}
+          });
+        };
+      ''');
+    } catch (e) {
+      print('Error initializing geolocation: $e');
     }
   }
 
