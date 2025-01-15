@@ -444,21 +444,15 @@ class ContainerSheets {
   static Future<void> _deleteContainerAndData(String containerName) async {
     final directory = await getApplicationDocumentsDirectory();
 
-    // Paths to clean up
-    final paths = [
-      '${directory.path}/assets/offline_data/base_map_tiles',
-      '${directory.path}/assets/offline_data/vector_layers',
-      '${directory.path}/persistent_offline_data/base_map_tiles',
-      '${directory.path}/persistent_offline_data/vector_layers',
-    ];
+    // Container-specific path
+    final containerPath = '${directory.path}/persistent_offline_data/containers/$containerName';
+    final containerDir = Directory(containerPath);
 
-    // Delete the directories
-    for (String path in paths) {
-      final dir = Directory(path);
-      if (await dir.exists()) {
-        await dir.delete(recursive: true);
-      }
+    // Delete the container directory if it exists
+    if (await containerDir.exists()) {
+       await containerDir.delete(recursive: true);
     }
+
 
     // Delete container from storage
     await ContainerManager.deleteContainer(containerName);

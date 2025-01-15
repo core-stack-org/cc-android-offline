@@ -28,7 +28,7 @@ class BaseMapDownloader {
   }
 
   Future<void> downloadBaseMap(
-      double centerLat, double centerLon, double radiusKm) async {
+      double centerLat, double centerLon, double radiusKm, String containerName) async {
     try {
       cancelBaseMapDownload = false;
       int minZoom = 17, maxZoom = 17;
@@ -59,8 +59,9 @@ class BaseMapDownloader {
       print("Total base map tiles to download: $totalTiles");
 
       final directory = await getApplicationDocumentsDirectory();
-      final offlineDir =
-          Directory('${directory.path}/persistent_offline_data/base_map_tiles');
+      final containerDir = Directory('${directory.path}/persistent_offline_data/containers/$containerName');
+      final offlineDir = Directory('${containerDir.path}/base_map_tiles');
+
       await offlineDir.create(recursive: true);
 
       for (int z = minZoom; z <= maxZoom; z++) {

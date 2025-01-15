@@ -26,11 +26,30 @@ Start the app
 
 TODOs
 =====
-[ ] fix the issues with Android 10
-[ ] temp mapping of a feature
-[ ] sync layer data to the backend and then to the ODK server
-[ ] fetch new layer of the resources marked
-[ ] location access inside the webview
-[ ] exclusive containers
 [ ] raster layers
-[ ] download layer state fix
+[ ] exclusive containers
+[ ] fix the issues with Android 10
+[x] temp mapping of a feature
+[x] sync layer data to the backend and then to the ODK server
+[x] fetch new layer of the resources marked
+[x] location access inside the webview
+[x] download layer state fix
+
+TEST URL for WebView
+http://localhost:3000/maps?geoserver_url=https://geoserver.gramvaani.org:8443&state_name=Jharkhand&dist_name=Godda&block_name=Poreyahat&block_id=741&isOffline=false&plans=%7B%22plans%22%3A%5B%7B%22plan_id%22%3A73%2C%22facilitator_name%22%3A%22Default%22%2C%22plan%22%3A%22Default%20Plan%20Poreyahat%22%2C%22village_name%22%3A%22-%22%2C%22gram_panchayat%22%3A%22-%22%2C%22state%22%3A%2220%22%2C%22district%22%3A64%2C%22block%22%3A741%7D%2C%7B%22plan_id%22%3A86%2C%22facilitator_name%22%3A%22PRADAN%22%2C%22plan%22%3A%22Plan%20Daharlangi%22%2C%22village_name%22%3A%22Daharlangi%22%2C%22gram_panchayat%22%3A%22Sid
+
+
+PATH
+====
+persistent_offline_data/
+    containers/
+        containerName/
+            vector_layers/
+            base_map_tiles/
+
+         containerName2/
+            vector_layers/
+            base_map_tiles/
+    webapp/
+        index.html
+        static

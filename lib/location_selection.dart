@@ -121,7 +121,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       }
     } catch (e) {
       print('Error fetching location data: $e');
-      // Try to fetch from local database as fallback
+      // Try to fetch from local database as fallback for online mode
       try {
         final data = await LocationDatabase.instance.getLocationData();
         setState(() {
@@ -206,7 +206,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     return _cachedLayers!;
   }
 
-  Future<void> downloadVectorLayers() async {
+  Future<void> downloadVectorLayers(OfflineContainer container) async {
     print("Starting downloadVectorLayers");
     print("Selected block ID: $selectedBlockID");
 
@@ -226,7 +226,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       });
 
       try {
-        await downloadVectorLayer(layer['name']!, layer['geoserverPath']!);
+        await downloadVectorLayer(layer['name']!, layer['geoserverPath']!, container);
         print("Successfully downloaded layer: ${layer['name']}");
       } catch (e) {
         print("Error downloading layer ${layer['name']}: $e");
@@ -242,9 +242,9 @@ class _LocationSelectionState extends State<LocationSelection> {
     return layerName.toLowerCase().replaceAll(' ', '_');
   }
 
-  Future<void> downloadVectorLayer(String layerName, String geoserverPath) async {
+  Future<void> downloadVectorLayer(String layerName, String geoserverPath, OfflineContainer container) async {
     try {
-      print("Starting download of vector layer: $layerName");
+      print("Starting download of vector layer: $layerName for container: ${container.name}");
       if (layerCancelled[layerName] == true) {
         setState(() {
           vectorLayerProgress[layerName] = -1.0;
@@ -261,7 +261,10 @@ class _LocationSelectionState extends State<LocationSelection> {
       if (request.statusCode == 200) {
         final directory = await getApplicationDocumentsDirectory();
         final formattedLayerName = formatLayerName(layerName);
-        final filePath = '${directory.path}/assets/offline_data/vector_layers/$formattedLayerName.geojson';
+
+	final containerPath = '${directory.path}/persistent_offline_data/containers/${container.name}';
+	
+        final filePath = '$containerPath/vector_layers/$formattedLayerName.geojson';
         print("Saving layer to: $filePath");
 
         final file = File(filePath);
@@ -331,12 +334,18 @@ class _LocationSelectionState extends State<LocationSelection> {
 
       double radiusKm = 3.0; // 3 km radius
       await baseMapDownloader.downloadBaseMap(
-          container.latitude, container.longitude, radiusKm);
-      await downloadVectorLayers();
+          container.latitude, container.longitude, radiusKm, container.name);
+      await downloadVectorLayers(container);
 
       // Verify all required files exist
-      if (await OfflineAssetsManager.verifyOfflineData()) {
+      final directory = await getApplicationDocumentsDirectory();
+      final containerDir = Directory('${directory.path}/persistent_offline_data/containers/${container.name}');
+      final vectorLayersDir = Directory('${containerDir.path}/vector_layers');
+      final baseMapTilesDir = Directory('${containerDir.path}/base_map_tiles');
+
+      if (await vectorLayersDir.exists() && await baseMapTilesDir.exists()) {
         print("Offline data verified successfully");
+
 
         // Update container status
         await ContainerManager.updateContainerDownloadStatus(
@@ -358,7 +367,7 @@ class _LocationSelectionState extends State<LocationSelection> {
           );
         }
       } else {
-        throw Exception("Offline data verification failed");
+        throw Exception("Offline data verification failed - missing directories.");
       }
     } catch (e) {
       print("Error during layer download: $e");
@@ -521,66 +530,60 @@ class _LocationSelectionState extends State<LocationSelection> {
 
   // MARK: Navigate Offline
   Future<void> navigateToWebViewOffline(OfflineContainer container) async {
-    print('Starting offline navigation process');
-
-    final directory = await getApplicationDocumentsDirectory();
-    final offlineDataDirectory = '${directory.path}/persistent_offline_data';
-    print('Navigation offline data directory: $offlineDataDirectory');
-
-    // Check if offline data exists
-    if (!await Directory(offlineDataDirectory).exists()) {
-      print('Error: Offline data not found. Please download the data first.');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Offline data not found. Please download first.')),
-        );
-      }
-      return;
-    }
-
-    _localServer = LocalServer(offlineDataDirectory);
-    final serverUrl = await _localServer!.start();
-    print('Local server started at: $serverUrl');
-
     try {
-      // Fetch plans data first
+      final directory = await getApplicationDocumentsDirectory();
+      final persistentOfflinePath = path.join(directory.path, 'persistent_offline_data');
+
+      // Initialize local server with container-specific path
+      _localServer = LocalServer(persistentOfflinePath, container.name);
+      final serverUrl = await _localServer!.start();
+
+      // Fetch plans for the specific block
       final plansResponse = await http.get(
         Uri.parse('$serverUrl/api/v1/get_plans/?block_id=$selectedBlockID'),
       );
 
       if (plansResponse.statusCode != 200) {
-        print('Failed to fetch plans: ${plansResponse.statusCode}');
-        return;
+        throw Exception('Failed to fetch plans: ${plansResponse.statusCode}');
       }
 
       // Encode the plans data
       final encodedPlans = Uri.encodeComponent(plansResponse.body);
 
-      print('Encoded plans data: $encodedPlans');
-
+      // Construct URL with container-specific parameters
       String url = "$serverUrl/maps?" +
           "geoserver_url=$serverUrl" +
           "&state_name=${container.state}" +
           "&dist_name=${container.district}" +
           "&block_name=${container.block}" +
-          "&block_id=${selectedBlockID}" +
+          "&block_id=$selectedBlockID" +
           "&isOffline=true" +
+          "&container_name=${container.name}" +
           "&plans=$encodedPlans";
 
-      print('Navigating to URL: $url');
+      print('AYE BABU: $url');
 
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => WebViewApp(url: url),
-        ),
-      );
-    } finally {
-      _localServer?.stop();
-      print('Returned from WebView, local server stopped');
-    }
+      if (mounted) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WebViewApp(url: url),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error navigating to offline web view: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading offline view: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } 
   }
+
 
   // Progress sheet
   void showDownloadProgressSheet(OfflineContainer container) {
@@ -1226,7 +1229,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                 const Padding(
                   padding: EdgeInsets.only(bottom: 16.0),
                   child: Text(
-                    'version: 2.0.1',
+                    'version: 2.0.3',
                     style: TextStyle(
                       color: Color(0xFF592941),
                       fontSize: 14,
