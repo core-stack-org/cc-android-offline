@@ -12,6 +12,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:nrmflutter/db/plans_db.dart';
 import 'package:nrmflutter/db/location_db.dart';
 import 'package:nrmflutter/utils/layers_config.dart';
+import 'package:nrmflutter/utils/constants.dart';
 
 import './server/local_server.dart';
 import './utils/offline_asset.dart';
@@ -98,7 +99,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       if (connectivityResult != ConnectivityResult.none) {
         // Online mode
         final response = await http.get(Uri.parse(
-            'https://geoserver.gramvaani.org/api/v1/proposed_blocks/'));
+            '${API_URL}proposed_blocks/'));
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
           // Save to local database
@@ -182,7 +183,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   void submitLocation() {
     HapticFeedback.mediumImpact();
     String url =
-        "https://nrm.gramvaanidev.org/maps?geoserver_url=https://geoserver.gramvaani.org:8443&app_name=commonsconnect&state_name=$selectedState&dist_name=$selectedDistrict&block_name=$selectedBlock&block_id=$selectedBlockID&iOffline=false";
+        "https://nrm.gramvaanidev.org/maps?geoserver_url=https://geoserver.core-stack.org:8443&app_name=nrmApp&state_name=$selectedState&dist_name=$selectedDistrict&block_name=$selectedBlock&block_id=$selectedBlockID&iOffline=false";
 
     Navigator.push(
       context,
@@ -253,7 +254,7 @@ class _LocationSelectionState extends State<LocationSelection> {
         return;
       }
 
-      final url = 'https://geoserver.gramvaani.org:8443/geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=$geoserverPath&outputFormat=application/json';
+      final url = '${GEOSERVER_URL}geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=$geoserverPath&outputFormat=application/json';
       print("Downloading from URL: $url");
 
       final request = await http.Client().send(http.Request('GET', Uri.parse(url)));
