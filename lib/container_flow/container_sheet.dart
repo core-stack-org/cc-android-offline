@@ -57,7 +57,7 @@ class ContainerSheets {
                               blockName: selectedBlock,
                               districtName: selectedDistrict,
                               geoserverUrl:
-                                  "https://geoserver.gramvaani.org:8443",
+                                  "https://geoserver.core-stack.org:8443",
                               onLocationSelect: (lat, lon) {
                                 setState(() {
                                   selectedLat = lat;

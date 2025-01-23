@@ -76,7 +76,7 @@ class PlansDatabase {
   Future<void> syncPlans() async {
     try {
       final response = await http.get(
-        Uri.parse('https://geoserver.gramvaani.org/api/v1/get_plans/'),
+        Uri.parse('https://geoserver.core-stack.org/api/v1/get_plans/'),
       );
 
       if (response.statusCode == 200) {

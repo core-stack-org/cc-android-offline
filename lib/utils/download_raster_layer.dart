@@ -6,7 +6,7 @@ import 'package:path/path.dart' as path;
 class RasterLayerDownloader {
   bool cancelRasterDownload = false;
   final Function(double) onProgressUpdate;
-  final String geoserverUrl = 'https://geoserver.gramvaani.org:8443/geoserver';
+  final String geoserverUrl = 'https://geoserver.core-stack.org:8443/geoserver';
 
   RasterLayerDownloader({required this.onProgressUpdate});
 
