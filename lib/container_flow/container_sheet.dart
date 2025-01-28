@@ -195,6 +195,9 @@ class ContainerSheets {
   /// Shows bottom sheet for selecting an existing container
   static void showContainerList({
     required BuildContext context,
+    required String selectedState,
+    required String selectedDistrict,
+    required String selectedBlock,
     required Function(OfflineContainer) onContainerSelected,
   }) {
     String? selectedContainerId;
@@ -244,15 +247,16 @@ class ContainerSheets {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               const Text(
-                                'No containers found',
+                                'Looks like there are no containers',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
+                                  color: Color(0xFF592941),
                                 ),
                               ),
                               const SizedBox(height: 12),
                               const Text(
-                                'Please create one to get started',
+                                'please create one',
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey,
@@ -342,22 +346,24 @@ class ContainerSheets {
                     ),
                   ),
                 ),
-                child: Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFe63946),
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Color(0xFFe63946), width: 2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        onPressed: selectedContainerId == null
-                            ? null
-                            : () async {
+                    if (selectedContainerId != null)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFe63946),
+                                foregroundColor: Colors.white,
+                                side: const BorderSide(color: Color(0xFFe63946), width: 2),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(25),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              onPressed: () async {
                                 bool confirm = await showDialog(
                                       context: context,
                                       builder: (context) => AlertDialog(
@@ -393,14 +399,48 @@ class ContainerSheets {
                                   );
                                 }
                               },
-                        child: const Text(
-                          'Delete',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                              child: const Text(
+                                'Delete',
+                                style: TextStyle(fontSize: 16),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFD6D5C9),
+                                foregroundColor: const Color(0xFF592941),
+                                side: const BorderSide(color: Color(0xFFD6D5C9), width: 2),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(25),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              onPressed: () async {
+                                final container =
+                                    await ContainerManager.getContainer(
+                                        selectedContainerId!);
+                                if (container != null && context.mounted) {
+                                  Navigator.pop(context);
+                                  onContainerSelected(container);
+                                }
+                              },
+                              child: const Text(
+                                'Navigate',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFF592941),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
+                    if (selectedContainerId != null)
+                      const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFD6D5C9),
@@ -411,19 +451,20 @@ class ContainerSheets {
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        onPressed: selectedContainerId == null
-                            ? null
-                            : () async {
-                                final container =
-                                    await ContainerManager.getContainer(
-                                        selectedContainerId!);
-                                if (container != null && context.mounted) {
-                                  Navigator.pop(context);
-                                  onContainerSelected(container);
-                                }
-                              },
+                        onPressed: () {
+                          Navigator.pop(context);
+                          ContainerSheets.showCreateContainer(
+                            context: context,
+                            selectedState: selectedState!,
+                            selectedDistrict: selectedDistrict!,
+                            selectedBlock: selectedBlock!,
+                            onContainerCreated: (container) {
+                              onContainerSelected(container);
+                            },
+                          );
+                        },
                         child: const Text(
-                          'Navigate',
+                          'Create a container',
                           style: TextStyle(
                             fontSize: 16,
                             color: Color(0xFF592941),

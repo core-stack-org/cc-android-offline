@@ -112,12 +112,11 @@ class ChangelogBottomSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
                   _buildVersionSection(
-                    'Version 2.0.3',
+                    'Version 2.0.4',
                     [
                       'Bug fixes and stability improvements',
-                      'Offline map support',
                       'Data synchronization with ODK',
-                      'Improved user interface',
+                      'Improved user flows',
                       'Performance optimizations',
                       'Isolated Containers',
                     ],
