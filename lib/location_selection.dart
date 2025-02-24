@@ -637,7 +637,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  "Current Container",
+                                  "Please do not close this sheet while download is in progress.",
                                   style: TextStyle(
                                     fontSize: 18,
                                     color: Color(0xFF592941),
@@ -821,7 +821,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                                 Center(
                                   child: Text(
                                     isDownloading
-                                        ? "Download in Progress"
+                                        ? "---"
                                         : "Download Complete",
                                     style: const TextStyle(
                                       color: Color(0xFF592941),
@@ -1191,7 +1191,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                 const Padding(
                   padding: EdgeInsets.only(bottom: 16.0),
                   child: Text(
-                    'version: 2.0.4',
+                    'version: 2.0.5',
                     style: TextStyle(
                       color: Color(0xFF592941),
                       fontSize: 14,
