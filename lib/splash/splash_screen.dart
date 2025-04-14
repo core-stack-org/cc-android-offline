@@ -69,7 +69,8 @@ class ChangelogBottomSheet extends StatelessWidget {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(red: 0, green: 0, blue: 0, alpha: 51),
+              color:
+                  Colors.black.withValues(red: 0, green: 0, blue: 0, alpha: 51),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),
@@ -112,9 +113,9 @@ class ChangelogBottomSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
                   _buildVersionSection(
-                    'Version 2.0.5',
+                    'Version 2.0.6',
                     [
-                      'Bug fixes and stability improvements',           
+                      'Bug fixes and stability improvements',
                     ],
                   ),
                   const SizedBox(height: 20),

@@ -98,8 +98,8 @@ class _LocationSelectionState extends State<LocationSelection> {
       final connectivityResult = await Connectivity().checkConnectivity();
       if (connectivityResult != ConnectivityResult.none) {
         // Online mode
-        final response = await http.get(Uri.parse(
-            '${API_URL}proposed_blocks/'));
+        final response =
+            await http.get(Uri.parse('${API_URL}proposed_blocks/'));
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
           // Save to local database
@@ -183,7 +183,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   void submitLocation() {
     HapticFeedback.mediumImpact();
     String url =
-        "https://nrm.gramvaanidev.org/maps?geoserver_url=https://geoserver.core-stack.org:8443&app_name=nrmApp&state_name=$selectedState&dist_name=$selectedDistrict&block_name=$selectedBlock&block_id=$selectedBlockID&iOffline=false";
+        "https://nrm.core-stack.org/maps?geoserver_url=https://geoserver.core-stack.org:8443&app_name=nrmApp&state_name=$selectedState&dist_name=$selectedDistrict&block_name=$selectedBlock&block_id=$selectedBlockID&isOffline=false";
 
     Navigator.push(
       context,
@@ -199,8 +199,8 @@ class _LocationSelectionState extends State<LocationSelection> {
       _isLoadingLayers = true;
       print(
           "LocationSelection.getLayers called with district: $district, block: $block, blockId: $selectedBlockID");
-      _cachedLayers = LayersConfig.getLayers(district, block,
-          blockId: selectedBlockID);
+      _cachedLayers =
+          LayersConfig.getLayers(district, block, blockId: selectedBlockID);
       await _cachedLayers; // Wait for the future to complete
       _isLoadingLayers = false;
     }
@@ -227,7 +227,8 @@ class _LocationSelectionState extends State<LocationSelection> {
       });
 
       try {
-        await downloadVectorLayer(layer['name']!, layer['geoserverPath']!, container);
+        await downloadVectorLayer(
+            layer['name']!, layer['geoserverPath']!, container);
         print("Successfully downloaded layer: ${layer['name']}");
       } catch (e) {
         print("Error downloading layer ${layer['name']}: $e");
@@ -243,9 +244,11 @@ class _LocationSelectionState extends State<LocationSelection> {
     return layerName.toLowerCase().replaceAll(' ', '_');
   }
 
-  Future<void> downloadVectorLayer(String layerName, String geoserverPath, OfflineContainer container) async {
+  Future<void> downloadVectorLayer(String layerName, String geoserverPath,
+      OfflineContainer container) async {
     try {
-      print("Starting download of vector layer: $layerName for container: ${container.name}");
+      print(
+          "Starting download of vector layer: $layerName for container: ${container.name}");
       if (layerCancelled[layerName] == true) {
         setState(() {
           vectorLayerProgress[layerName] = -1.0;
@@ -254,33 +257,37 @@ class _LocationSelectionState extends State<LocationSelection> {
         return;
       }
 
-      final url = '${GEOSERVER_URL}geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=$geoserverPath&outputFormat=application/json';
+      final url =
+          '${GEOSERVER_URL}geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=$geoserverPath&outputFormat=application/json';
       print("Downloading from URL: $url");
 
-      final request = await http.Client().send(http.Request('GET', Uri.parse(url)));
-      
+      final request =
+          await http.Client().send(http.Request('GET', Uri.parse(url)));
+
       if (request.statusCode == 200) {
         final directory = await getApplicationDocumentsDirectory();
         final formattedLayerName = formatLayerName(layerName);
 
-	final containerPath = '${directory.path}/persistent_offline_data/containers/${container.name}';
-	
-        final filePath = '$containerPath/vector_layers/$formattedLayerName.geojson';
+        final containerPath =
+            '${directory.path}/persistent_offline_data/containers/${container.name}';
+
+        final filePath =
+            '$containerPath/vector_layers/$formattedLayerName.geojson';
         print("Saving layer to: $filePath");
 
         final file = File(filePath);
         await file.create(recursive: true);
-        
+
         final totalBytes = request.contentLength ?? 0;
         var bytesWritten = 0;
-        
+
         final sink = file.openWrite();
-        
+
         // Use stream to handle the download
         await for (final chunk in request.stream) {
           sink.add(chunk);
           bytesWritten += chunk.length;
-          
+
           if (totalBytes > 0) {
             final progress = bytesWritten / totalBytes;
             // Update UI less frequently (every 5% progress)
@@ -292,7 +299,7 @@ class _LocationSelectionState extends State<LocationSelection> {
             }
           }
         }
-        
+
         await sink.close();
         print("Successfully saved layer $layerName");
 
@@ -301,8 +308,10 @@ class _LocationSelectionState extends State<LocationSelection> {
         });
         _sheetSetState?.call(() {});
       } else {
-        print("Failed to download $layerName. Status code: ${request.statusCode}");
-        throw Exception('Failed to download $layerName. Status code: ${request.statusCode}');
+        print(
+            "Failed to download $layerName. Status code: ${request.statusCode}");
+        throw Exception(
+            'Failed to download $layerName. Status code: ${request.statusCode}');
       }
     } catch (e) {
       print('Error downloading $layerName: $e');
@@ -340,13 +349,13 @@ class _LocationSelectionState extends State<LocationSelection> {
 
       // Verify all required files exist
       final directory = await getApplicationDocumentsDirectory();
-      final containerDir = Directory('${directory.path}/persistent_offline_data/containers/${container.name}');
+      final containerDir = Directory(
+          '${directory.path}/persistent_offline_data/containers/${container.name}');
       final vectorLayersDir = Directory('${containerDir.path}/vector_layers');
       final baseMapTilesDir = Directory('${containerDir.path}/base_map_tiles');
 
       if (await vectorLayersDir.exists() && await baseMapTilesDir.exists()) {
         print("Offline data verified successfully");
-
 
         // Update container status
         await ContainerManager.updateContainerDownloadStatus(
@@ -368,7 +377,8 @@ class _LocationSelectionState extends State<LocationSelection> {
           );
         }
       } else {
-        throw Exception("Offline data verification failed - missing directories.");
+        throw Exception(
+            "Offline data verification failed - missing directories.");
       }
     } catch (e) {
       print("Error during layer download: $e");
@@ -536,7 +546,8 @@ class _LocationSelectionState extends State<LocationSelection> {
   Future<void> navigateToWebViewOffline(OfflineContainer container) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
-      final persistentOfflinePath = path.join(directory.path, 'persistent_offline_data');
+      final persistentOfflinePath =
+          path.join(directory.path, 'persistent_offline_data');
 
       // Initialize local server with container-specific path
       _localServer = LocalServer(persistentOfflinePath, container.name);
@@ -565,7 +576,7 @@ class _LocationSelectionState extends State<LocationSelection> {
           "&container_name=${container.name}" +
           "&plans=$encodedPlans";
 
-      print('AYE BABU: $url');
+      print('Offline URL: $url');
 
       if (mounted) {
         await Navigator.push(
@@ -585,9 +596,8 @@ class _LocationSelectionState extends State<LocationSelection> {
           ),
         );
       }
-    } 
+    }
   }
-
 
   // Progress sheet
   void showDownloadProgressSheet(OfflineContainer container) {
@@ -645,7 +655,8 @@ class _LocationSelectionState extends State<LocationSelection> {
                                 ),
                                 const SizedBox(height: 10),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 15, horizontal: 20),
                                   decoration: BoxDecoration(
                                     color: Color(0xFFD6D5C9),
                                     borderRadius: BorderRadius.circular(15),
@@ -667,7 +678,8 @@ class _LocationSelectionState extends State<LocationSelection> {
                                     borderRadius: BorderRadius.circular(15),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const Text(
                                         "Downloading Layers",
@@ -677,39 +689,54 @@ class _LocationSelectionState extends State<LocationSelection> {
                                         ),
                                       ),
                                       const SizedBox(height: 15),
-                                      
+
                                       // Overall progress bar
                                       FutureBuilder<List<Map<String, String>>>(
-                                        future: getLayers(selectedDistrict, selectedBlock),
+                                        future: getLayers(
+                                            selectedDistrict, selectedBlock),
                                         builder: (context, snapshot) {
                                           if (snapshot.hasData) {
                                             // Calculate overall progress
                                             double totalProgress = 0;
                                             int completedLayers = 0;
-                                            int totalLayers = snapshot.data!.length + 1; 
-                                            
+                                            int totalLayers =
+                                                snapshot.data!.length + 1;
+
                                             // Add base map progress
-                                            if (baseMapProgress == 1.0) completedLayers++;
+                                            if (baseMapProgress == 1.0)
+                                              completedLayers++;
                                             totalProgress += baseMapProgress;
-                                            
+
                                             // Add vector layers progress
                                             for (var layer in snapshot.data!) {
-                                              double layerProgress = vectorLayerProgress[layer['name']] ?? 0.0;
-                                              if (layerProgress == 1.0) completedLayers++;
+                                              double layerProgress =
+                                                  vectorLayerProgress[
+                                                          layer['name']] ??
+                                                      0.0;
+                                              if (layerProgress == 1.0)
+                                                completedLayers++;
                                               totalProgress += layerProgress;
                                             }
-                                            
+
                                             // Calculate average progress
-                                            double overallProgress = totalProgress / totalLayers;
-                                            
+                                            double overallProgress =
+                                                totalProgress / totalLayers;
+
                                             return Column(
                                               children: [
                                                 ClipRRect(
-                                                  borderRadius: BorderRadius.circular(10),
-                                                  child: LinearProgressIndicator(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  child:
+                                                      LinearProgressIndicator(
                                                     value: overallProgress,
-                                                    backgroundColor: Colors.white.withAlpha(77),
-                                                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF592941)),
+                                                    backgroundColor: Colors
+                                                        .white
+                                                        .withAlpha(77),
+                                                    valueColor:
+                                                        const AlwaysStoppedAnimation<
+                                                                Color>(
+                                                            Color(0xFF592941)),
                                                     minHeight: 10,
                                                   ),
                                                 ),
@@ -736,11 +763,14 @@ class _LocationSelectionState extends State<LocationSelection> {
                                 Container(
                                   padding: const EdgeInsets.all(20),
                                   decoration: BoxDecoration(
-                                    border: Border.all(color:const Color(0xFFD6D5C9), width: 5),
+                                    border: Border.all(
+                                        color: const Color(0xFFD6D5C9),
+                                        width: 5),
                                     borderRadius: BorderRadius.circular(15),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       const Text(
                                         "Layer Status",
@@ -763,8 +793,10 @@ class _LocationSelectionState extends State<LocationSelection> {
                                             ),
                                           ),
                                           if (baseMapProgress == 1.0)
-                                            const Icon(Icons.check_circle, color: Colors.green)
-                                          else if (baseMapProgress > 0 && baseMapProgress < 1)
+                                            const Icon(Icons.check_circle,
+                                                color: Colors.green)
+                                          else if (baseMapProgress > 0 &&
+                                              baseMapProgress < 1)
                                             const SizedBox(
                                               width: 20,
                                               height: 20,
@@ -776,32 +808,46 @@ class _LocationSelectionState extends State<LocationSelection> {
                                       ),
                                       const SizedBox(height: 10),
                                       FutureBuilder<List<Map<String, String>>>(
-                                        future: getLayers(selectedDistrict, selectedBlock),
+                                        future: getLayers(
+                                            selectedDistrict, selectedBlock),
                                         builder: (context, snapshot) {
                                           if (snapshot.hasData) {
                                             return Column(
-                                              children: snapshot.data!.map((layer) {
-                                                double layerProgress = vectorLayerProgress[layer['name']] ?? 0.0;
+                                              children:
+                                                  snapshot.data!.map((layer) {
+                                                double layerProgress =
+                                                    vectorLayerProgress[
+                                                            layer['name']] ??
+                                                        0.0;
                                                 return Padding(
-                                                  padding: const EdgeInsets.only(bottom: 10),
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          bottom: 10),
                                                   child: Row(
                                                     children: [
                                                       Expanded(
                                                         child: Text(
                                                           layer['name']!,
-                                                          style: const TextStyle(
+                                                          style:
+                                                              const TextStyle(
                                                             fontSize: 16,
-                                                            color: Color(0xFF592941),
+                                                            color: Color(
+                                                                0xFF592941),
                                                           ),
                                                         ),
                                                       ),
                                                       if (layerProgress == 1.0)
-                                                        const Icon(Icons.check_circle, color: Colors.green)
-                                                      else if (layerProgress > 0 && layerProgress < 1)
+                                                        const Icon(
+                                                            Icons.check_circle,
+                                                            color: Colors.green)
+                                                      else if (layerProgress >
+                                                              0 &&
+                                                          layerProgress < 1)
                                                         const SizedBox(
                                                           width: 20,
                                                           height: 20,
-                                                          child: CircularProgressIndicator(
+                                                          child:
+                                                              CircularProgressIndicator(
                                                             strokeWidth: 2,
                                                           ),
                                                         )
@@ -820,9 +866,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                                 const SizedBox(height: 20),
                                 Center(
                                   child: Text(
-                                    isDownloading
-                                        ? "---"
-                                        : "Download Complete",
+                                    isDownloading ? "---" : "Download Complete",
                                     style: const TextStyle(
                                       color: Color(0xFF592941),
                                       fontSize: 16,
@@ -1101,16 +1145,16 @@ class _LocationSelectionState extends State<LocationSelection> {
                     }
                   },
                 ),
-                const SizedBox(height: 35.0),  // Increased padding above
+                const SizedBox(height: 35.0), // Increased padding above
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40.0),  
+                  padding: const EdgeInsets.symmetric(horizontal: 40.0),
                   child: const Divider(
                     height: 1,
                     thickness: 1,
                     color: Color(0xFFE0E0E0),
                   ),
                 ),
-                const SizedBox(height: 35.0),  // Increased padding below
+                const SizedBox(height: 35.0), // Increased padding below
                 // Online and Offline buttons side by side
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1129,7 +1173,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                             borderRadius: BorderRadius.circular(25),
                           ),
                         ),
-                        child: const Text('Work Online', 
+                        child: const Text('Work Online',
                             style: TextStyle(fontSize: 16),
                             textAlign: TextAlign.center),
                       ),
@@ -1191,7 +1235,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                 const Padding(
                   padding: EdgeInsets.only(bottom: 16.0),
                   child: Text(
-                    'version: 2.0.5',
+                    'version: 2.0.6',
                     style: TextStyle(
                       color: Color(0xFF592941),
                       fontSize: 14,
