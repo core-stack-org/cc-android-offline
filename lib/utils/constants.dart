@@ -1,2 +1,3 @@
-const GEOSERVER_URL = "https://geoserver.core-stack.org:8443/";
-const API_URL = "https://geoserver.core-stack.org/api/v1/";
+const geoserverUrl = "https://geoserver.core-stack.org:8443/";
+const apiUrl = "https://geoserver.core-stack.org/api/v1/";
+const ccUrl = "https://nrm.core-stack.org/maps";

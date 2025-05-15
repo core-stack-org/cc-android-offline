@@ -13,6 +13,7 @@ import 'package:nrmflutter/db/plans_db.dart';
 import 'package:nrmflutter/db/location_db.dart';
 import 'package:nrmflutter/utils/layers_config.dart';
 import 'package:nrmflutter/utils/constants.dart';
+import 'package:nrmflutter/utils/change_log.dart';
 
 import './server/local_server.dart';
 import './utils/offline_asset.dart';
@@ -99,7 +100,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       if (connectivityResult != ConnectivityResult.none) {
         // Online mode
         final response =
-            await http.get(Uri.parse('${API_URL}proposed_blocks/'));
+            await http.get(Uri.parse('${apiUrl}proposed_blocks/'));
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
           // Save to local database
@@ -183,7 +184,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   void submitLocation() {
     HapticFeedback.mediumImpact();
     String url =
-        "https://nrm.core-stack.org/maps?geoserver_url=https://geoserver.core-stack.org:8443&app_name=nrmApp&state_name=$selectedState&dist_name=$selectedDistrict&block_name=$selectedBlock&block_id=$selectedBlockID&isOffline=false";
+        "${ccUrl}?geoserver_url=${geoserverUrl.substring(0, geoserverUrl.length - 1)}&app_name=nrmApp&state_name=$selectedState&dist_name=$selectedDistrict&block_name=$selectedBlock&block_id=$selectedBlockID&isOffline=false";
 
     Navigator.push(
       context,
@@ -258,7 +259,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       }
 
       final url =
-          '${GEOSERVER_URL}geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=$geoserverPath&outputFormat=application/json';
+          '${geoserverUrl}geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=$geoserverPath&outputFormat=application/json';
       print("Downloading from URL: $url");
 
       final request =
@@ -1018,12 +1019,21 @@ class _LocationSelectionState extends State<LocationSelection> {
     required List<Map<String, dynamic>> items,
     required Function(String?) onChanged,
   }) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20.0),
         border: Border.all(color: const Color(0xFFD6D5C9), width: 3.0),
+        boxShadow: value != null ? [
+          BoxShadow(
+            color: const Color(0xFF592941).withOpacity(0.1),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          )
+        ] : null,
       ),
       child: Theme(
         data: Theme.of(context).copyWith(
@@ -1044,19 +1054,39 @@ class _LocationSelectionState extends State<LocationSelection> {
             ),
             onChanged: (String? newValue) {
               HapticFeedback.selectionClick();
+              // Add a stronger haptic feedback
+              HapticFeedback.mediumImpact();
+              
+              // Animate the selection change
               onChanged(newValue);
             },
+            menuMaxHeight: 300,
+            icon: AnimatedRotation(
+              duration: const Duration(milliseconds: 300),
+              turns: value != null ? 0.5 : 0,
+              child: const Icon(Icons.arrow_drop_down, color: Color(0xFF592941)),
+            ),
             items: items.map((Map<String, dynamic> map) {
               return DropdownMenuItem<String>(
                 value: map["label"],
-                child: Text(
-                  map["label"],
-                  style: const TextStyle(color: Color(0xFF592941)),
+                child: TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 300),
+                  tween: Tween<double>(begin: 0.8, end: 1.0),
+                  curve: Curves.easeOut,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: value,
+                      child: child,
+                    );
+                  },
+                  child: Text(
+                    map["label"],
+                    style: const TextStyle(color: Color(0xFF592941)),
+                  ),
                 ),
               );
             }).toList(),
             isExpanded: true,
-            icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF592941)),
             // Customize the dropdown button
             dropdownColor: Colors.white,
             borderRadius: BorderRadius.circular(20.0),
@@ -1080,6 +1110,11 @@ class _LocationSelectionState extends State<LocationSelection> {
         centerTitle: true,
         foregroundColor: Colors.white,
         title: const Text('Select a location'),
+        leading: IconButton(
+          icon: const Icon(Icons.history),
+          onPressed: () => ChangeLog.showChangelogBottomSheet(context),
+          tooltip: "What's New",
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline_rounded),
@@ -1097,11 +1132,11 @@ class _LocationSelectionState extends State<LocationSelection> {
               children: [
                 const SizedBox(height: 32.0),
                 const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20.0),
+                  padding: EdgeInsets.symmetric(horizontal: 10.0),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Select State, District and Block',
+                      'Select State, District and Tehsil from the dropdown',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -1113,7 +1148,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                 const SizedBox(height: 16.0),
                 _buildDropdown(
                   value: selectedState,
-                  hint: 'Select a state',
+                  hint: 'Select a State',
                   items: states,
                   onChanged: (String? value) {
                     setState(() {
@@ -1125,7 +1160,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                 const SizedBox(height: 16.0),
                 _buildDropdown(
                   value: selectedDistrict,
-                  hint: 'Select a district',
+                  hint: 'Select a District',
                   items: districts,
                   onChanged: (String? value) {
                     setState(() {
@@ -1137,7 +1172,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                 const SizedBox(height: 16.0),
                 _buildDropdown(
                   value: selectedBlock,
-                  hint: 'Select a block',
+                  hint: 'Select a Tehsil',
                   items: blocks,
                   onChanged: (String? value) {
                     if (value != null) {

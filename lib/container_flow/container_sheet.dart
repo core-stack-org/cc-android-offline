@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:nrmflutter/utils/constants.dart';
+
 import 'dart:io';
 import 'container_manager.dart';
 import './../utils/mark_location.dart';
@@ -56,8 +58,7 @@ class ContainerSheets {
                             builder: (context) => MapLocationSelector(
                               blockName: selectedBlock,
                               districtName: selectedDistrict,
-                              geoserverUrl:
-                                  "https://geoserver.core-stack.org:8443",
+                              geoserverUrl: geoserverUrl,
                               onLocationSelect: (lat, lon) {
                                 setState(() {
                                   selectedLat = lat;
