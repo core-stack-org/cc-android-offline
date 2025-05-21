@@ -4,6 +4,7 @@ import 'package:path/path.dart' as path;
 import 'package:geolocator/geolocator.dart';
 
 import './splash/splash_screen.dart';
+import './login/login_screen.dart';
 import 'location_selection.dart';
 import './utils/offline_asset.dart';
 import './server/local_server.dart';
@@ -36,7 +37,7 @@ Future<void> checkLocationPermission(BuildContext context) async {
   }
 }
 
-
+// MARK: Initial App Setup
 Future<void> initializeApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   await OfflineAssetsManager.copyOfflineAssets();
@@ -71,6 +72,7 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const LocationAwareApp(),
+        '/login': (context) => const LoginScreen(),
         '/location': (context) => const LocationSelection(),
       },
     );
@@ -98,4 +100,3 @@ class _LocationAwareAppState extends State<LocationAwareApp> {
     return const SplashScreen();
   }
 }
-
