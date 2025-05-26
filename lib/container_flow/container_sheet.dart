@@ -252,7 +252,7 @@ class ContainerSheets {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF592941),
+                                  color: Color.fromARGB(255, 129, 129, 129),
                                 ),
                               ),
                               SizedBox(height: 12),

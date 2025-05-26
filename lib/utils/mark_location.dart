@@ -104,13 +104,6 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                 }
               }
             }
-
-            if (villageName != null && pointCount > 0) {
-              villageMarkers.add((
-                point: LatLng(centerLat / pointCount, centerLon / pointCount),
-                name: villageName
-              ));
-            }
           }
 
           // Calculate bounding box for all polygons
@@ -294,8 +287,8 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
             children: [
               TileLayer(
                 urlTemplate: _isSatelliteView 
-                  ? 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
-                  : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+                  : 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
               ),
               if (allPolygons.isNotEmpty)
                 PolygonLayer(
@@ -397,7 +390,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                                   ),
                                 ),
                                 ListTile(
-                                  title: const Text('Satellite'),
+                                  title: const Text('OpenStreetMap'),
                                   leading: Radio<bool>(
                                     value: true,
                                     groupValue: _isSatelliteView,
