@@ -40,9 +40,9 @@ class ContainerSheets {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      "Create a new container",
+                      "Create a new region",
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF592941),
                       ),
@@ -85,7 +85,7 @@ class ContainerSheets {
                         child: Text(
                           locationSelected
                               ? 'Latitude: ${selectedLat?.toStringAsFixed(4)}, Longitude: ${selectedLon?.toStringAsFixed(4)}'
-                              : 'Mark a location',
+                              : 'Mark a location on the map',
                           style: const TextStyle(
                             color: Color(0xFF592941),
                             fontSize: 16,
@@ -109,7 +109,7 @@ class ContainerSheets {
                           color: const Color(0xFF592941),
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Name your container',
+                          hintText: 'Name your region',
                           hintStyle: TextStyle(
                             color: const Color(0xFF592941),
                             fontSize: 16,
@@ -137,7 +137,7 @@ class ContainerSheets {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                         content: Text(
-                                            'Please enter a container name')),
+                                            'Please enter a region name')),
                                   );
                                   return;
                                 }
@@ -175,7 +175,7 @@ class ContainerSheets {
                           ),
                         ),
                         child: const Text(
-                          "Create Container",
+                          "Create Region",
                           style: TextStyle(
                             color: Color(0xFF592941),
                             fontSize: 16,
@@ -215,16 +215,16 @@ class ContainerSheets {
           height: MediaQuery.of(context).size.height * 0.9,
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
+              const Padding(
+                padding: EdgeInsets.all(16),
                 child: Row(
                   children: [
                     Text(
-                      'Select a container',
+                      'Select a region',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF592941),
+                        color: Color(0xFF592941),
                       ),
                     ),
                   ],
@@ -243,21 +243,21 @@ class ContainerSheets {
                       final containers = snapshot.data!;
                       
                       if (containers.isEmpty) {
-                        return Center(
+                        return const Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text(
-                                'Looks like there are no containers',
+                              Text(
+                                'Looks like there are no regions created yet',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF592941),
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'please create one',
+                              SizedBox(height: 12),
+                              Text(
+                                'Please create one region',
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey,
@@ -394,7 +394,7 @@ class ContainerSheets {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                          'Container $selectedContainerId deleted'),
+                                          'Region $selectedContainerId deleted'),
                                       backgroundColor: const Color(0xFFFF4D6D),
                                     ),
                                   );
@@ -465,7 +465,7 @@ class ContainerSheets {
                           );
                         },
                         child: const Text(
-                          'Create a container',
+                          'Create a region',
                           style: TextStyle(
                             fontSize: 16,
                             color: Color(0xFF592941),

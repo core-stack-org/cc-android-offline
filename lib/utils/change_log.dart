@@ -97,7 +97,7 @@ class ChangelogBottomSheet extends StatelessWidget {
       children: [
         Text(
           version,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Color(0xFF592941),
@@ -123,7 +123,7 @@ class ChangelogBottomSheet extends StatelessWidget {
                       Expanded(
                         child: Text(
                           change,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 16,
                             color: Color(0xFF592941),
                           ),
@@ -132,7 +132,6 @@ class ChangelogBottomSheet extends StatelessWidget {
                     ],
                   ),
                 ))
-            .toList(),
       ],
     );
   }

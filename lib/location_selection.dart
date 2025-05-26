@@ -5,6 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'dart:ui' as ui;
 
 import 'webview.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -48,6 +52,11 @@ class _LocationSelectionState extends State<LocationSelection> {
   late BaseMapDownloader baseMapDownloader;
   Future<List<Map<String, String>>>? _cachedLayers;
   bool _isLoadingLayers = false;
+  List<bool> _isSelected = [true, false]; 
+  bool _isSubmitEnabled = false; 
+  String _appVersion = '2.0.7'; 
+  String _deviceInfo = 'Unknown'; 
+  String _modeSelectionMessage = "You have selected ONLINE mode"; 
 
   List<Map<String, dynamic>> states = [];
   List<Map<String, dynamic>> districts = [];
@@ -56,6 +65,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   @override
   void initState() {
     super.initState();
+    _loadInfo(); // ADDED: Call to load app and device info
     fetchLocationData();
     baseMapDownloader = BaseMapDownloader(
       onProgressUpdate: (progress) {
@@ -139,7 +149,6 @@ class _LocationSelectionState extends State<LocationSelection> {
     final selectedStateData = states.firstWhere((s) => s["label"] == state);
     setState(() {
       selectedState = state;
-      print("You have selected state: ${selectedState}");
       selectedStateID = selectedStateData["state_id"];
       selectedDistrict = null;
       selectedDistrictID = null;
@@ -147,9 +156,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       selectedBlockID = null;
       districts =
           List<Map<String, dynamic>>.from(selectedStateData["district"]);
-      // districts = List<Map<String, dynamic>>.from(
-      //     states.firstWhere((s) => s["label"] == state)["district"]);
-      print("UU ${districts}");
+      _isSubmitEnabled = selectedState != null && selectedDistrict != null && selectedBlock != null; // UPDATED
     });
   }
 
@@ -162,22 +169,19 @@ class _LocationSelectionState extends State<LocationSelection> {
       selectedBlock = null;
       selectedBlockID = null;
       blocks = List<Map<String, dynamic>>.from(selectedDistrictData["blocks"]);
+      _isSubmitEnabled = selectedState != null && selectedDistrict != null && selectedBlock != null; // UPDATED
     });
   }
 
   void updateSelectedBlock(String block) {
-    print("Updating selected block: $block");
     final selectedBlockData = blocks.firstWhere((b) => b["label"] == block);
-    print("Found block data: $selectedBlockData");
-
     setState(() {
       selectedBlock = block;
       selectedBlockID = selectedBlockData["block_id"].toString();
-      // Clear cached layers when block changes
       _cachedLayers = null;
       _isLoadingLayers = false;
+      _isSubmitEnabled = selectedState != null && selectedDistrict != null && selectedBlock != null; // UPDATED
     });
-    print("Updated selectedBlockID to: $selectedBlockID");
   }
 
   // MARK: Navigate Online
@@ -1096,15 +1100,114 @@ class _LocationSelectionState extends State<LocationSelection> {
     );
   }
 
+  void _handleSubmit() {
+    HapticFeedback.mediumImpact();
+    bool isOnlineMode = _isSelected[0]; // true if 'Work Online' is selected
+
+    // The check for null selections is implicitly handled by _isSubmitEnabled, 
+    // but keeping it here doesn't hurt as a safeguard if _handleSubmit is called directly.
+    if (selectedState == null || selectedDistrict == null || selectedBlock == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select State, District, and Block.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+          margin: EdgeInsets.all(16),
+        ),
+      );
+      return;
+    }
+
+    if (isOnlineMode) {
+      submitLocation();
+    } else { // Offline mode
+      ContainerSheets.showContainerList(
+        context: context,
+        selectedState: selectedState!,
+        selectedDistrict: selectedDistrict!,
+        selectedBlock: selectedBlock!,
+        onContainerSelected: (container) {
+          if (container.isDownloaded) {
+            navigateToWebViewOffline(container);
+          } else {
+            showAgreementSheet(container);
+          }
+        },
+      );
+    }
+  }
+
+  Future<void> _loadInfo() async {
+    try {
+      // App version
+      final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      _appVersion = packageInfo.version;
+
+      // Device info (Android specific for this example)
+      if (Platform.isAndroid) {
+        final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
+        final AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
+        _deviceInfo = 'Android ${androidInfo.version.release} (SDK ${androidInfo.version.sdkInt}), Model: ${androidInfo.model}, Manufacturer: ${androidInfo.manufacturer}';
+      } else if (Platform.isIOS) {
+        // TODO: Add iOS specific device info if needed
+        _deviceInfo = 'iOS Device (Details TBD)';
+      }
+    } catch (e) {
+      print('Failed to load info: $e');
+      _appVersion = 'Error';
+      _deviceInfo = 'Error loading details';
+    }
+    if (mounted) {
+      setState(() {}); // Update UI if info loaded after build
+    }
+  }
+
+  Future<void> _launchEmail() async {
+    final Uri emailLaunchUri = Uri(
+      scheme: 'mailto',
+      path: 'support@core-stack.org',
+      queryParameters: {
+        'subject': 'Bug Report - App v$_appVersion',
+        'body': '''
+        Please describe the bug in detail below:
+        ------------------------------------------
+        [Your bug description here]
+        ------------------------------------------
+
+        Device Information (auto-filled):
+        App Version: $_appVersion
+        Device Details: $_deviceInfo
+        State: ${selectedState ?? 'Not selected'}
+        District: ${selectedDistrict ?? 'Not selected'}
+        Block: ${selectedBlock ?? 'Not selected'}
+        Mode: ${_isSelected[0] ? 'Online' : 'Offline'}
+        '''.trim().replaceAll('        ', ''), // Basic trim for body formatting
+      },
+    );
+
+    if (await canLaunchUrl(emailLaunchUri)) {
+      await launchUrl(emailLaunchUri);
+    } else {
+      // Fallback or error message if mail client can't be opened
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open email client. Please send your report to support@core-stack.org'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      print('Could not launch $emailLaunchUri');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    bool isSubmitEnabled = selectedState != null &&
-        selectedDistrict != null &&
-        selectedBlock != null;
+    const Color customGrey = Color(0xFFD6D4C8);
+    const Color darkTextColor = Colors.black87;
 
     return Scaffold(
       backgroundColor:
-          const Color.fromARGB(255, 255, 255, 255).withOpacity(1.0),
+          const Color.fromARGB(255, 255, 255, 255).withValues(alpha: 1.0),
       appBar: AppBar(
         backgroundColor: Colors.black,
         centerTitle: true,
@@ -1123,164 +1226,284 @@ class _LocationSelectionState extends State<LocationSelection> {
           const SizedBox(width: 8),
         ],
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 32.0),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10.0),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Select State, District and Tehsil from the dropdown',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF592941),
-                      ),
-                    ),
+      body: Stack(
+        children: <Widget>[
+          // Background Image with Opacity
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.7,
+              child: Image.asset(
+                'assets/farm.jpg',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          // Blurred Bottom Half
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: FractionallySizedBox(
+                heightFactor: 0.5,
+                widthFactor: 1.0, // Ensure it covers full width
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+                  child: Container(
+                    color: Colors.transparent, // Necessary for BackdropFilter to apply
                   ),
                 ),
-                const SizedBox(height: 16.0),
-                _buildDropdown(
-                  value: selectedState,
-                  hint: 'Select a State',
-                  items: states,
-                  onChanged: (String? value) {
-                    setState(() {
-                      selectedState = value;
-                      updateDistricts(value!);
-                    });
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                _buildDropdown(
-                  value: selectedDistrict,
-                  hint: 'Select a District',
-                  items: districts,
-                  onChanged: (String? value) {
-                    setState(() {
-                      selectedDistrict = value;
-                      updateBlocks(value!);
-                    });
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                _buildDropdown(
-                  value: selectedBlock,
-                  hint: 'Select a Tehsil',
-                  items: blocks,
-                  onChanged: (String? value) {
-                    if (value != null) {
-                      updateSelectedBlock(value);
-                    }
-                  },
-                ),
-                const SizedBox(height: 35.0), // Increased padding above
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                  child: const Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: Color(0xFFE0E0E0),
-                  ),
-                ),
-                const SizedBox(height: 35.0), // Increased padding below
-                // Online and Offline buttons side by side
-                Row(
+              ),
+            ),
+          ),
+          // Original Content
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              child: SingleChildScrollView(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(
-                      width: 150,
-                      height: 60,
-                      child: ElevatedButton(
-                        onPressed: isSubmitEnabled ? submitLocation : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isSubmitEnabled
-                              ? const Color(0xFFD6D5C9)
-                              : Colors.grey,
-                          foregroundColor: const Color(0xFF592941),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
+                    const SizedBox(height: 32.0),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 10.0),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Select State, District and Tehsil from the dropdown',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF592941),
                           ),
                         ),
-                        child: const Text('Work Online',
-                            style: TextStyle(fontSize: 16),
-                            textAlign: TextAlign.center),
                       ),
                     ),
-                    const SizedBox(width: 20), // Space between buttons
-                    SizedBox(
-                      width: 150,
-                      height: 60,
+                    const SizedBox(height: 16.0),
+                    _buildDropdown(
+                      value: selectedState,
+                      hint: 'Select a State',
+                      items: states,
+                      onChanged: (String? value) {
+                        setState(() {
+                          selectedState = value;
+                          updateDistricts(value!);
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16.0),
+                    _buildDropdown(
+                      value: selectedDistrict,
+                      hint: 'Select a District',
+                      items: districts,
+                      onChanged: (String? value) {
+                        setState(() {
+                          selectedDistrict = value;
+                          updateBlocks(value!);
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16.0),
+                    _buildDropdown(
+                      value: selectedBlock,
+                      hint: 'Select a Tehsil',
+                      items: blocks,
+                      onChanged: (String? value) {
+                        if (value != null) {
+                          updateSelectedBlock(value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 35.0), // Increased padding above
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                      child: const Divider(
+                        height: 1,
+                        thickness: 1.5,
+                        color: Color.fromARGB(255, 211, 211, 211),
+                      ),
+                    ),
+                    const SizedBox(height: 15.0), // Adjusted spacing
+                    Text(
+                      _modeSelectionMessage,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF592941)
+                      ),
+                    ),
+                    const SizedBox(height: 15.0), // Adjusted spacing
+                    // SizedBox(height: 24), // Removed redundant spacing, adjusted above
+
+                    // MARK: Work Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        // Work Online Button
+                        _isSelected[0]
+                            ? ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: customGrey, 
+                                  foregroundColor: Color(0xFF592941),
+                                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                  textStyle: TextStyle(fontSize: 15),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20.0), // Pill shape
+                                  ),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    HapticFeedback.lightImpact();
+                                    _isSelected = [true, false];
+                                    _modeSelectionMessage = "You have selected ONLINE mode";
+                                  });
+                                },
+                                child: const Text('Online mode'),
+                              )
+                            : OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: customGrey, // UPDATED
+                                  side: BorderSide(color: customGrey, width: 1.5), // UPDATED
+                                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                  textStyle: TextStyle(fontSize: 15),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20.0), // Pill shape
+                                  ),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    HapticFeedback.lightImpact();
+                                    _isSelected = [true, false];
+                                    _modeSelectionMessage = "You have selected ONLINE mode";
+                                  });
+                                },
+                                child: const Text('Online mode'),
+                              ),
+
+                        SizedBox(width: 16), // Spacing between the pills
+
+                        // Work Offline Button
+                        _isSelected[1]
+                            ? ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: customGrey, // UPDATED
+                                  foregroundColor: Color(0xFF592941), // UPDATED
+                                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                  textStyle: TextStyle(fontSize: 15),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20.0), // Pill shape
+                                  ),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    HapticFeedback.lightImpact();
+                                    _isSelected = [false, true];
+                                    _modeSelectionMessage = "You have selected OFFLINE mode";
+                                  });
+                                },
+                                child: const Text('Offline mode*'),
+                              )
+                            : OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: customGrey, // UPDATED
+                                  side: BorderSide(color: customGrey, width: 1.5), // UPDATED
+                                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                  textStyle: TextStyle(fontSize: 15),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20.0), // Pill shape
+                                  ),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    HapticFeedback.lightImpact();
+                                    _isSelected = [false, true];
+                                    _modeSelectionMessage = "You have selected OFFLINE mode";
+                                  });
+                                },
+                                child: const Text('Offline mode*'),
+                              ),
+                      ],
+                    ),
+
+                    SizedBox(height: 20), // Spacing between pills and submit button
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: ElevatedButton(
-                        onPressed: isSubmitEnabled
-                            ? () {
-                                ContainerSheets.showContainerList(
-                                  context: context,
-                                  selectedState: selectedState!,
-                                  selectedDistrict: selectedDistrict!,
-                                  selectedBlock: selectedBlock!,
-                                  onContainerSelected: (container) {
-                                    if (container.isDownloaded) {
-                                      navigateToWebViewOffline(container);
-                                    } else {
-                                      showAgreementSheet(container);
-                                    }
-                                  },
-                                );
-                              }
-                            : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isSubmitEnabled
-                              ? const Color(0xFFD6D5C9)
-                              : Colors.grey,
-                          foregroundColor: const Color(0xFF592941),
+                          backgroundColor: _isSubmitEnabled 
+                              ? customGrey // UPDATED for enabled state
+                              : Colors.grey.shade400, // Disabled color remains a darker grey
+                          foregroundColor: _isSubmitEnabled 
+                              ? const Color(0xFF592941) // UPDATED for enabled state
+                              : Colors.white, // Text color for disabled state
+                          minimumSize: const Size(200.0, 24),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
+                            borderRadius: BorderRadius.circular(20.0), // Ensure this matches pills
                           ),
                         ),
-                        child: const Text('Work Offline*',
-                            style: TextStyle(fontSize: 16),
-                            textAlign: TextAlign.center),
+                        onPressed: _isSubmitEnabled ? _handleSubmit : null,
+                        child: const Text('SUBMIT'),
+                      ),
+                    ),
+                    const SizedBox(height: 20.0),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16.0),
+                      child: Text(
+                        "*BETA Offline mode works in remote areas without internet with limited features.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                          color: Color.fromARGB(255, 77, 77, 77),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 32.0),
+                    Padding(
+                      padding: EdgeInsets.only(bottom: 16.0),
+                      child: Text(
+                        'version: $_appVersion',
+                        style: TextStyle(
+                          color: Color(0xFF592941),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0, top: 4.0), // Padding for the link
+                      child: InkWell(
+                        onTap: _launchEmail, // Call the new method
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center, // Center the Row
+                          mainAxisSize: MainAxisSize.min, // Row takes minimum space
+                          children: <Widget>[
+                            Icon(
+                              Icons.bug_report,
+                              color: Color(0xFF592941),
+                              size: 16, // Adjust size as needed
+                            ),
+                            const SizedBox(width: 8), // Spacing between icon and text
+                            Text(
+                              'File a bug report',
+                              // textAlign: TextAlign.center, // No longer needed as Row handles alignment
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF592941), // Make it look like a link
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 20.0),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16.0),
-                  child: Text(
-                    "*BETA Offline mode works in remote areas without internet with limited features.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                      color: Color.fromARGB(255, 122, 122, 122),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 32.0),
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 16.0),
-                  child: Text(
-                    'version: 2.0.6',
-                    style: TextStyle(
-                      color: Color(0xFF592941),
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
