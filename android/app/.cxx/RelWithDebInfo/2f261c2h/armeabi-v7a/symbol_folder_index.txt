@@ -1,0 +1,1 @@
+/home/ankit/cfpt/repos/cc-android-offline/build/app/intermediates/cxx/RelWithDebInfo/2f261c2h/obj/armeabi-v7a

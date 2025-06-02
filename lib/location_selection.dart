@@ -40,7 +40,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   String? selectedStateID;
   String? selectedDistrictID;
   String? selectedBlockID;
-  StateSetter? _sheetSetState; // Add this as a class field
+  StateSetter? _sheetSetState; 
   bool isDownloading = false;
   bool isDownloadComplete = false;
   double baseMapProgress = 0.0;
@@ -65,30 +65,27 @@ class _LocationSelectionState extends State<LocationSelection> {
   @override
   void initState() {
     super.initState();
-    _loadInfo(); // ADDED: Call to load app and device info
+    _loadInfo(); 
     fetchLocationData();
     baseMapDownloader = BaseMapDownloader(
       onProgressUpdate: (progress) {
         setState(() {
           baseMapProgress = progress;
         });
-        _sheetSetState?.call(() {}); // Update the sheet's state
+        _sheetSetState?.call(() {}); 
       },
     );
   }
 
   List<Map<String, dynamic>> sortLocationData(List<Map<String, dynamic>> data) {
-    // Sort states
     data.sort((a, b) => (a['label'] as String).compareTo(b['label'] as String));
 
-    // Sort districts within each state
     for (var state in data) {
       List<Map<String, dynamic>> districts =
           List<Map<String, dynamic>>.from(state['district']);
       districts.sort(
           (a, b) => (a['label'] as String).compareTo(b['label'] as String));
 
-      // Sort blocks within each district
       for (var district in districts) {
         List<Map<String, dynamic>> blocks =
             List<Map<String, dynamic>>.from(district['blocks']);
@@ -103,21 +100,17 @@ class _LocationSelectionState extends State<LocationSelection> {
     return data;
   }
 
-  // MARK: Fetch and sync data
   Future<void> fetchLocationData() async {
     try {
       final connectivityResult = await Connectivity().checkConnectivity();
       if (connectivityResult != ConnectivityResult.none) {
-        // Online mode
         final response =
             await http.get(Uri.parse('${apiUrl}proposed_blocks/'));
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
-          // Save to local database
           await LocationDatabase.instance
               .insertLocationData(List<Map<String, dynamic>>.from(data));
 
-          // Sync the plan data
           await PlansDatabase.instance.syncPlans();
 
           setState(() {
@@ -125,7 +118,6 @@ class _LocationSelectionState extends State<LocationSelection> {
           });
         }
       } else {
-        // Offline mode - fetch from local database
         final data = await LocationDatabase.instance.getLocationData();
         setState(() {
           states = sortLocationData(data);
@@ -133,7 +125,6 @@ class _LocationSelectionState extends State<LocationSelection> {
       }
     } catch (e) {
       print('Error fetching location data: $e');
-      // Try to fetch from local database as fallback for online mode
       try {
         final data = await LocationDatabase.instance.getLocationData();
         setState(() {
@@ -156,7 +147,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       selectedBlockID = null;
       districts =
           List<Map<String, dynamic>>.from(selectedStateData["district"]);
-      _isSubmitEnabled = selectedState != null && selectedDistrict != null && selectedBlock != null; // UPDATED
+      _isSubmitEnabled = selectedState != null && selectedDistrict != null && selectedBlock != null; 
     });
   }
 
@@ -169,7 +160,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       selectedBlock = null;
       selectedBlockID = null;
       blocks = List<Map<String, dynamic>>.from(selectedDistrictData["blocks"]);
-      _isSubmitEnabled = selectedState != null && selectedDistrict != null && selectedBlock != null; // UPDATED
+      _isSubmitEnabled = selectedState != null && selectedDistrict != null && selectedBlock != null; 
     });
   }
 
@@ -180,11 +171,10 @@ class _LocationSelectionState extends State<LocationSelection> {
       selectedBlockID = selectedBlockData["block_id"].toString();
       _cachedLayers = null;
       _isLoadingLayers = false;
-      _isSubmitEnabled = selectedState != null && selectedDistrict != null && selectedBlock != null; // UPDATED
+      _isSubmitEnabled = selectedState != null && selectedDistrict != null && selectedBlock != null; 
     });
   }
 
-  // MARK: Navigate Online
   void submitLocation() {
     HapticFeedback.mediumImpact();
     String url =
@@ -206,7 +196,7 @@ class _LocationSelectionState extends State<LocationSelection> {
           "LocationSelection.getLayers called with district: $district, block: $block, blockId: $selectedBlockID");
       _cachedLayers =
           LayersConfig.getLayers(district, block, blockId: selectedBlockID);
-      await _cachedLayers; // Wait for the future to complete
+      await _cachedLayers; 
       _isLoadingLayers = false;
     }
     return _cachedLayers!;
@@ -288,14 +278,12 @@ class _LocationSelectionState extends State<LocationSelection> {
 
         final sink = file.openWrite();
 
-        // Use stream to handle the download
         await for (final chunk in request.stream) {
           sink.add(chunk);
           bytesWritten += chunk.length;
 
           if (totalBytes > 0) {
             final progress = bytesWritten / totalBytes;
-            // Update UI less frequently (every 5% progress)
             if ((progress * 100).round() % 5 == 0) {
               setState(() {
                 vectorLayerProgress[layerName] = progress;
@@ -339,20 +327,17 @@ class _LocationSelectionState extends State<LocationSelection> {
     });
 
     try {
-      // Download base maps and vector layers...
-
-      // double centerLat = 24.1542;
-      // double centerLon = 87.1204;
+      double centerLat = 24.1542;
+      double centerLon = 87.1204;
       print("-----------------------------cha cha-------------------------");
       print("Latitude: ${container.latitude}");
       print("Longitude: ${container.longitude}");
 
-      double radiusKm = 3.0; // 3 km radius
+      double radiusKm = 3.0; 
       await baseMapDownloader.downloadBaseMap(
           container.latitude, container.longitude, radiusKm, container.name);
       await downloadVectorLayers(container);
 
-      // Verify all required files exist
       final directory = await getApplicationDocumentsDirectory();
       final containerDir = Directory(
           '${directory.path}/persistent_offline_data/containers/${container.name}');
@@ -362,7 +347,6 @@ class _LocationSelectionState extends State<LocationSelection> {
       if (await vectorLayersDir.exists() && await baseMapTilesDir.exists()) {
         print("Offline data verified successfully");
 
-        // Update container status
         await ContainerManager.updateContainerDownloadStatus(
             container.name, true);
         print("Container ${container.name} marked as downloaded");
@@ -388,7 +372,6 @@ class _LocationSelectionState extends State<LocationSelection> {
     } catch (e) {
       print("Error during layer download: $e");
 
-      // Update container status to indicate failure
       await ContainerManager.updateContainerDownloadStatus(
           container.name, false);
 
@@ -409,7 +392,6 @@ class _LocationSelectionState extends State<LocationSelection> {
     }
   }
 
-  // MARK: Copy layers to offline directory
   Future<void> copyLayersToOfflineDirectory() async {
     final directory = await getApplicationDocumentsDirectory();
     final sourceDir = Directory('${directory.path}/assets/offline_data');
@@ -417,10 +399,8 @@ class _LocationSelectionState extends State<LocationSelection> {
         path.join(directory.path, 'persistent_offline_data');
     final destDir = Directory(persistentOfflinePath);
 
-    // Ensure the destination directory exists
     await destDir.create(recursive: true);
 
-    // Copy all files and subdirectories
     await for (var entity in sourceDir.list(recursive: true)) {
       final relativePath = path.relative(entity.path, from: sourceDir.path);
       final newPath = path.join(destDir.path, relativePath);
@@ -436,7 +416,6 @@ class _LocationSelectionState extends State<LocationSelection> {
     print("Layers copied to persistent offline directory: ${destDir.path}");
   }
 
-  // MARK: Cancel layer download
   void cancelLayerDownload(String layerName) {
     setState(() {
       if (layerName == 'Base Map') {
@@ -447,7 +426,6 @@ class _LocationSelectionState extends State<LocationSelection> {
     });
   }
 
-  // MARK: Agreement sheet
   void showAgreementSheet(OfflineContainer container) {
     showModalBottomSheet(
       context: context,
@@ -542,23 +520,20 @@ class _LocationSelectionState extends State<LocationSelection> {
       selectedDistrict: selectedDistrict ?? '',
       selectedBlock: selectedBlock ?? '',
       onContainerSelected: (container) {
-        navigateToWebViewOffline(container); // Pass the container
+        navigateToWebViewOffline(container); 
       },
     );
   }
 
-  // MARK: Navigate Offline
   Future<void> navigateToWebViewOffline(OfflineContainer container) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
       final persistentOfflinePath =
           path.join(directory.path, 'persistent_offline_data');
 
-      // Initialize local server with container-specific path
       _localServer = LocalServer(persistentOfflinePath, container.name);
       final serverUrl = await _localServer!.start();
 
-      // Fetch plans for the specific block
       final plansResponse = await http.get(
         Uri.parse('$serverUrl/api/v1/get_plans/?block_id=$selectedBlockID'),
       );
@@ -567,10 +542,8 @@ class _LocationSelectionState extends State<LocationSelection> {
         throw Exception('Failed to fetch plans: ${plansResponse.statusCode}');
       }
 
-      // Encode the plans data
       final encodedPlans = Uri.encodeComponent(plansResponse.body);
 
-      // Construct URL with container-specific parameters
       String url = "$serverUrl/maps?" +
           "geoserver_url=$serverUrl" +
           "&state_name=${container.state}" +
@@ -604,15 +577,13 @@ class _LocationSelectionState extends State<LocationSelection> {
     }
   }
 
-  // Progress sheet
   void showDownloadProgressSheet(OfflineContainer container) {
-    // Update the BaseMapDownloader to use both setState callbacks
     baseMapDownloader = BaseMapDownloader(
       onProgressUpdate: (progress) {
         setState(() {
           baseMapProgress = progress;
         });
-        _sheetSetState?.call(() {}); // Update the sheet's state
+        _sheetSetState?.call(() {}); 
       },
     );
 
@@ -625,7 +596,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setSheetState) {
-            _sheetSetState = setSheetState; // Store the sheet's setState
+            _sheetSetState = setSheetState; 
             return DraggableScrollableSheet(
               initialChildSize: 0.7,
               minChildSize: 0.3,
@@ -695,37 +666,42 @@ class _LocationSelectionState extends State<LocationSelection> {
                                       ),
                                       const SizedBox(height: 15),
 
-                                      // Overall progress bar
                                       FutureBuilder<List<Map<String, String>>>(
                                         future: getLayers(
                                             selectedDistrict, selectedBlock),
                                         builder: (context, snapshot) {
                                           if (snapshot.hasData) {
-                                            // Calculate overall progress
                                             double totalProgress = 0;
                                             int completedLayers = 0;
-                                            int totalLayers =
-                                                snapshot.data!.length + 1;
-
-                                            // Add base map progress
-                                            if (baseMapProgress == 1.0)
-                                              completedLayers++;
+                                            int totalLayers = 0;
+                                            
                                             totalProgress += baseMapProgress;
-
-                                            // Add vector layers progress
-                                            for (var layer in snapshot.data!) {
-                                              double layerProgress =
-                                                  vectorLayerProgress[
-                                                          layer['name']] ??
-                                                      0.0;
+                                            if (baseMapProgress == 1.0) 
+                                              completedLayers++;
+                                            totalLayers++;  
+                                            
+                                            List<Map<String, String>> nonPlanLayers = 
+                                                snapshot.data!.where((layer) => !_isPlanLayer(layer['name']!)).toList();
+                                            
+                                            for (var layer in nonPlanLayers) {
+                                              double layerProgress = vectorLayerProgress[layer['name']] ?? 0.0;
                                               if (layerProgress == 1.0)
                                                 completedLayers++;
                                               totalProgress += layerProgress;
+                                              totalLayers++;
                                             }
-
-                                            // Calculate average progress
-                                            double overallProgress =
-                                                totalProgress / totalLayers;
+                                            
+                                            if (_getTotalPlanLayersCount(snapshot.data!) > 0) {
+                                              double planLayersProgress = _calculatePlanLayersProgress(snapshot.data!);
+                                              totalProgress += planLayersProgress;
+                                              if (planLayersProgress == 1.0)
+                                                completedLayers++;
+                                              totalLayers++; 
+                                            }
+                                            
+                                            double overallProgress = totalLayers > 0 
+                                                ? totalProgress / totalLayers 
+                                                : 0.0;
 
                                             return Column(
                                               children: [
@@ -764,7 +740,6 @@ class _LocationSelectionState extends State<LocationSelection> {
                                   ),
                                 ),
                                 const SizedBox(height: 30),
-                                // Layer status list
                                 Container(
                                   padding: const EdgeInsets.all(20),
                                   decoration: BoxDecoration(
@@ -817,50 +792,99 @@ class _LocationSelectionState extends State<LocationSelection> {
                                             selectedDistrict, selectedBlock),
                                         builder: (context, snapshot) {
                                           if (snapshot.hasData) {
-                                            return Column(
-                                              children:
-                                                  snapshot.data!.map((layer) {
-                                                double layerProgress =
-                                                    vectorLayerProgress[
-                                                            layer['name']] ??
-                                                        0.0;
-                                                return Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                          bottom: 10),
+                                            List<Map<String, String>> nonPlanLayers = 
+                                                snapshot.data!.where((layer) => !_isPlanLayer(layer['name']!)).toList();
+                                            
+                                            List<Widget> items = [];
+                                            
+                                            for (var layer in nonPlanLayers) {
+                                              double layerProgress = vectorLayerProgress[layer['name']] ?? 0.0;
+                                              items.add(
+                                                Padding(
+                                                  padding: const EdgeInsets.only(bottom: 10),
                                                   child: Row(
                                                     children: [
                                                       Expanded(
                                                         child: Text(
                                                           layer['name']!,
-                                                          style:
-                                                              const TextStyle(
+                                                          style: const TextStyle(
                                                             fontSize: 16,
-                                                            color: Color(
-                                                                0xFF592941),
+                                                            color: Color(0xFF592941),
                                                           ),
                                                         ),
                                                       ),
                                                       if (layerProgress == 1.0)
-                                                        const Icon(
-                                                            Icons.check_circle,
-                                                            color: Colors.green)
-                                                      else if (layerProgress >
-                                                              0 &&
-                                                          layerProgress < 1)
+                                                        const Icon(Icons.check_circle, color: Colors.green)
+                                                      else if (layerProgress > 0 && layerProgress < 1)
                                                         const SizedBox(
                                                           width: 20,
                                                           height: 20,
-                                                          child:
-                                                              CircularProgressIndicator(
+                                                          child: CircularProgressIndicator(
                                                             strokeWidth: 2,
                                                           ),
                                                         )
                                                     ],
                                                   ),
-                                                );
-                                              }).toList(),
-                                            );
+                                                ),
+                                              );
+                                            }
+                                            
+                                            if (_getTotalPlanLayersCount(snapshot.data!) > 0) {
+                                              final planLayersProgress = _calculatePlanLayersProgress(snapshot.data!);
+                                              final completedCount = _getCompletedPlanLayersCount(snapshot.data!);
+                                              
+                                              items.add(
+                                                Container(
+                                                  margin: const EdgeInsets.only(bottom: 10),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFECEBE0),
+                                                    borderRadius: BorderRadius.circular(12),
+                                                  ),
+                                                  padding: const EdgeInsets.symmetric(
+                                                    horizontal: 12, 
+                                                    vertical: 8
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            const Text(
+                                                              "Plan Layers",
+                                                              style: TextStyle(
+                                                                fontSize: 16,
+                                                                fontWeight: FontWeight.bold,
+                                                                color: Color(0xFF592941),
+                                                              ),
+                                                            ),
+                                                            Text(
+                                                              "$completedCount of ${_getTotalPlanLayersCount(snapshot.data!)} completed",
+                                                              style: const TextStyle(
+                                                                fontSize: 13,
+                                                                color: Color(0xFF592941),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      if (planLayersProgress == 1.0)
+                                                        const Icon(Icons.check_circle, color: Colors.green)
+                                                      else if (planLayersProgress > 0 && planLayersProgress < 1)
+                                                        const SizedBox(
+                                                          width: 20,
+                                                          height: 20,
+                                                          child: CircularProgressIndicator(
+                                                            strokeWidth: 2,
+                                                          ),
+                                                        )
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                            
+                                            return Column(children: items);
                                           }
                                           return const SizedBox();
                                         },
@@ -886,7 +910,6 @@ class _LocationSelectionState extends State<LocationSelection> {
                             ElevatedButton(
                               onPressed: () {
                                 Navigator.pop(context);
-                                // Show completion popup
                                 showDialog(
                                   context: context,
                                   builder: (BuildContext context) {
@@ -902,7 +925,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                                         ),
                                       ),
                                       content: const Text(
-                                        'All layers have been downloaded successfully. You can now access this container offline.',
+                                        'All layers have been downloaded successfully. You can now access this region offline.',
                                         style: TextStyle(
                                           color: Color(0xFF592941),
                                         ),
@@ -957,8 +980,53 @@ class _LocationSelectionState extends State<LocationSelection> {
       },
     );
 
-    // Start the download process after showing the sheet
     downloadAllLayers(container);
+  }
+
+  bool _isPlanLayer(String layerName) {
+    final planLayerPrefixes = [
+      'settlement_', 
+      'well_', 
+      'waterbody_', 
+      'main_swb_', 
+      'plan_agri_', 
+      'plan_gw_', 
+      'livelihood_'
+    ];
+    
+    return planLayerPrefixes.any((prefix) => layerName.startsWith(prefix));
+  }
+
+  double _calculatePlanLayersProgress(List<Map<String, String>> allLayers) {
+    final planLayers = allLayers.where((layer) => _isPlanLayer(layer['name']!));
+    if (planLayers.isEmpty) return 0.0;
+    
+    double totalProgress = 0.0;
+    int count = 0;
+    
+    for (var layer in planLayers) {
+      double progress = vectorLayerProgress[layer['name']] ?? 0.0;
+      if (progress >= 0) {
+        totalProgress += progress;
+        count++;
+      }
+    }
+    
+    return count > 0 ? totalProgress / count : 0.0;
+  }
+
+  int _getCompletedPlanLayersCount(List<Map<String, String>> allLayers) {
+    return allLayers
+        .where((layer) => 
+            _isPlanLayer(layer['name']!) && 
+            (vectorLayerProgress[layer['name']] ?? 0.0) == 1.0)
+        .length;
+  }
+
+  int _getTotalPlanLayersCount(List<Map<String, String>> allLayers) {
+    return allLayers
+        .where((layer) => _isPlanLayer(layer['name']!))
+        .length;
   }
 
   Widget _buildLayerProgressItem(
@@ -1042,7 +1110,6 @@ class _LocationSelectionState extends State<LocationSelection> {
       child: Theme(
         data: Theme.of(context).copyWith(
           canvasColor: Colors.white,
-          // Customize the dropdown menu theme
           popupMenuTheme: PopupMenuThemeData(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20.0),
@@ -1058,10 +1125,8 @@ class _LocationSelectionState extends State<LocationSelection> {
             ),
             onChanged: (String? newValue) {
               HapticFeedback.selectionClick();
-              // Add a stronger haptic feedback
               HapticFeedback.mediumImpact();
               
-              // Animate the selection change
               onChanged(newValue);
             },
             menuMaxHeight: 300,
@@ -1091,7 +1156,6 @@ class _LocationSelectionState extends State<LocationSelection> {
               );
             }).toList(),
             isExpanded: true,
-            // Customize the dropdown button
             dropdownColor: Colors.white,
             borderRadius: BorderRadius.circular(20.0),
           ),
@@ -1102,10 +1166,8 @@ class _LocationSelectionState extends State<LocationSelection> {
 
   void _handleSubmit() {
     HapticFeedback.mediumImpact();
-    bool isOnlineMode = _isSelected[0]; // true if 'Work Online' is selected
+    bool isOnlineMode = _isSelected[0]; 
 
-    // The check for null selections is implicitly handled by _isSubmitEnabled, 
-    // but keeping it here doesn't hurt as a safeguard if _handleSubmit is called directly.
     if (selectedState == null || selectedDistrict == null || selectedBlock == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1121,7 +1183,7 @@ class _LocationSelectionState extends State<LocationSelection> {
 
     if (isOnlineMode) {
       submitLocation();
-    } else { // Offline mode
+    } else { 
       ContainerSheets.showContainerList(
         context: context,
         selectedState: selectedState!,
@@ -1140,17 +1202,14 @@ class _LocationSelectionState extends State<LocationSelection> {
 
   Future<void> _loadInfo() async {
     try {
-      // App version
       final PackageInfo packageInfo = await PackageInfo.fromPlatform();
       _appVersion = packageInfo.version;
 
-      // Device info (Android specific for this example)
       if (Platform.isAndroid) {
         final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
         final AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
         _deviceInfo = 'Android ${androidInfo.version.release} (SDK ${androidInfo.version.sdkInt}), Model: ${androidInfo.model}, Manufacturer: ${androidInfo.manufacturer}';
       } else if (Platform.isIOS) {
-        // TODO: Add iOS specific device info if needed
         _deviceInfo = 'iOS Device (Details TBD)';
       }
     } catch (e) {
@@ -1159,7 +1218,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       _deviceInfo = 'Error loading details';
     }
     if (mounted) {
-      setState(() {}); // Update UI if info loaded after build
+      setState(() {}); 
     }
   }
 
@@ -1182,14 +1241,13 @@ class _LocationSelectionState extends State<LocationSelection> {
         District: ${selectedDistrict ?? 'Not selected'}
         Block: ${selectedBlock ?? 'Not selected'}
         Mode: ${_isSelected[0] ? 'Online' : 'Offline'}
-        '''.trim().replaceAll('        ', ''), // Basic trim for body formatting
+        '''.trim().replaceAll('        ', ''), 
       },
     );
 
     if (await canLaunchUrl(emailLaunchUri)) {
       await launchUrl(emailLaunchUri);
     } else {
-      // Fallback or error message if mail client can't be opened
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Could not open email client. Please send your report to support@core-stack.org'),
@@ -1228,7 +1286,6 @@ class _LocationSelectionState extends State<LocationSelection> {
       ),
       body: Stack(
         children: <Widget>[
-          // Background Image with Opacity
           Positioned.fill(
             child: Opacity(
               opacity: 0.7,
@@ -1238,23 +1295,21 @@ class _LocationSelectionState extends State<LocationSelection> {
               ),
             ),
           ),
-          // Blurred Bottom Half
           Positioned.fill(
             child: Align(
               alignment: Alignment.bottomCenter,
               child: FractionallySizedBox(
                 heightFactor: 0.5,
-                widthFactor: 1.0, // Ensure it covers full width
+                widthFactor: 1.0, 
                 child: BackdropFilter(
                   filter: ui.ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
                   child: Container(
-                    color: Colors.transparent, // Necessary for BackdropFilter to apply
+                    color: Colors.transparent, 
                   ),
                 ),
               ),
             ),
           ),
-          // Original Content
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
@@ -1312,7 +1367,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                         }
                       },
                     ),
-                    const SizedBox(height: 35.0), // Increased padding above
+                    const SizedBox(height: 35.0), 
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 40.0),
                       child: const Divider(
@@ -1321,7 +1376,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                         color: Color.fromARGB(255, 211, 211, 211),
                       ),
                     ),
-                    const SizedBox(height: 15.0), // Adjusted spacing
+                    const SizedBox(height: 15.0), 
                     Text(
                       _modeSelectionMessage,
                       textAlign: TextAlign.center,
@@ -1331,14 +1386,10 @@ class _LocationSelectionState extends State<LocationSelection> {
                         color: const Color(0xFF592941)
                       ),
                     ),
-                    const SizedBox(height: 15.0), // Adjusted spacing
-                    // SizedBox(height: 24), // Removed redundant spacing, adjusted above
-
-                    // MARK: Work Buttons
+                    const SizedBox(height: 15.0), 
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
-                        // Work Online Button
                         _isSelected[0]
                             ? ElevatedButton(
                                 style: ElevatedButton.styleFrom(
@@ -1347,7 +1398,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                                   padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                   textStyle: TextStyle(fontSize: 15),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20.0), // Pill shape
+                                    borderRadius: BorderRadius.circular(20.0), 
                                   ),
                                 ),
                                 onPressed: () {
@@ -1361,12 +1412,12 @@ class _LocationSelectionState extends State<LocationSelection> {
                               )
                             : OutlinedButton(
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: customGrey, // UPDATED
-                                  side: BorderSide(color: customGrey, width: 1.5), // UPDATED
+                                  foregroundColor: customGrey, 
+                                  side: BorderSide(color: customGrey, width: 1.5), 
                                   padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                   textStyle: TextStyle(fontSize: 15),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20.0), // Pill shape
+                                    borderRadius: BorderRadius.circular(20.0), 
                                   ),
                                 ),
                                 onPressed: () {
@@ -1379,18 +1430,17 @@ class _LocationSelectionState extends State<LocationSelection> {
                                 child: const Text('Online mode'),
                               ),
 
-                        SizedBox(width: 16), // Spacing between the pills
+                        SizedBox(width: 16), 
 
-                        // Work Offline Button
                         _isSelected[1]
                             ? ElevatedButton(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: customGrey, // UPDATED
-                                  foregroundColor: Color(0xFF592941), // UPDATED
+                                  backgroundColor: customGrey, 
+                                  foregroundColor: Color(0xFF592941), 
                                   padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                   textStyle: TextStyle(fontSize: 15),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20.0), // Pill shape
+                                    borderRadius: BorderRadius.circular(20.0), 
                                   ),
                                 ),
                                 onPressed: () {
@@ -1404,12 +1454,12 @@ class _LocationSelectionState extends State<LocationSelection> {
                               )
                             : OutlinedButton(
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: customGrey, // UPDATED
-                                  side: BorderSide(color: customGrey, width: 1.5), // UPDATED
+                                  foregroundColor: customGrey, 
+                                  side: BorderSide(color: customGrey, width: 1.5), 
                                   padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                   textStyle: TextStyle(fontSize: 15),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20.0), // Pill shape
+                                    borderRadius: BorderRadius.circular(20.0), 
                                   ),
                                 ),
                                 onPressed: () {
@@ -1424,23 +1474,23 @@ class _LocationSelectionState extends State<LocationSelection> {
                       ],
                     ),
 
-                    SizedBox(height: 20), // Spacing between pills and submit button
+                    SizedBox(height: 20), 
 
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _isSubmitEnabled 
-                              ? customGrey // UPDATED for enabled state
-                              : Colors.grey.shade400, // Disabled color remains a darker grey
+                              ? customGrey 
+                              : Colors.grey.shade400, 
                           foregroundColor: _isSubmitEnabled 
-                              ? const Color(0xFF592941) // UPDATED for enabled state
-                              : Colors.white, // Text color for disabled state
+                              ? const Color(0xFF592941) 
+                              : Colors.white, 
                           minimumSize: const Size(200.0, 24),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20.0), // Ensure this matches pills
+                            borderRadius: BorderRadius.circular(20.0), 
                           ),
                         ),
                         onPressed: _isSubmitEnabled ? _handleSubmit : null,
@@ -1473,25 +1523,24 @@ class _LocationSelectionState extends State<LocationSelection> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0, top: 4.0), // Padding for the link
+                      padding: const EdgeInsets.only(bottom: 16.0, top: 4.0), 
                       child: InkWell(
-                        onTap: _launchEmail, // Call the new method
+                        onTap: _launchEmail, 
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center, // Center the Row
-                          mainAxisSize: MainAxisSize.min, // Row takes minimum space
+                          mainAxisAlignment: MainAxisAlignment.center, 
+                          mainAxisSize: MainAxisSize.min, 
                           children: <Widget>[
                             Icon(
                               Icons.bug_report,
                               color: Color(0xFF592941),
-                              size: 16, // Adjust size as needed
+                              size: 16, 
                             ),
-                            const SizedBox(width: 8), // Spacing between icon and text
+                            const SizedBox(width: 8), 
                             Text(
                               'File a bug report',
-                              // textAlign: TextAlign.center, // No longer needed as Row handles alignment
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Color(0xFF592941), // Make it look like a link
+                                color: Color(0xFF592941), 
                               ),
                             ),
                           ],

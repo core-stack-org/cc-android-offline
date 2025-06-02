@@ -1,0 +1,2 @@
+/home/ankit/cfpt/repos/cc-android-offline/android/app/.cxx/RelWithDebInfo/2f261c2h/x86_64/CMakeFiles/edit_cache.dir
+/home/ankit/cfpt/repos/cc-android-offline/android/app/.cxx/RelWithDebInfo/2f261c2h/x86_64/CMakeFiles/rebuild_cache.dir

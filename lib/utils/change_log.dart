@@ -70,16 +70,26 @@ class ChangelogBottomSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
                   _buildVersionSection(
-                    'Version 2.0.6',
+                    'Version 2.0.7',
                     [
-                      'Bug fixes and stability improvements',
+                      'New flow for downloading the region for offline use',
+                      "Revamped UI for better user experience",
+                      "Translation fixes across the analysis screens",
+                      "NREGA asset fixes across Home Screen and Surface Waterbodies",
+                      "Asset info across Planning section",
+                      "New screen while downloading the layers for a region -- offline use",
+                      "New logo for the app",
+                      "Fixed issues with the offline data and sync",
                     ],
                   ),
                   const SizedBox(height: 20),
                   _buildVersionSection(
                     'Coming Soon',
                     [
-                      'Planning and Maintenance Forms',
+                      "Version 2.1.0",
+                      "UI and UX improvements",
+                      "Minimum latency while loading layers",
+                      "Login"
                     ],
                   ),
                 ],
