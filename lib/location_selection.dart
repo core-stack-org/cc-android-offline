@@ -25,6 +25,8 @@ import './utils/use_info.dart';
 import './utils/download_base_map.dart';
 import './container_flow/container_manager.dart';
 import './container_flow/container_sheet.dart';
+import './services/login_service.dart';
+import 'ui/profile_screen.dart';
 
 class LocationSelection extends StatefulWidget {
   const LocationSelection({super.key});
@@ -57,6 +59,8 @@ class _LocationSelectionState extends State<LocationSelection> {
   String _appVersion = '2.0.7'; 
   String _deviceInfo = 'Unknown'; 
   String _modeSelectionMessage = "You have selected ONLINE mode"; 
+  String _userGreeting = '';
+  final LoginService _loginService = LoginService();
 
   List<Map<String, dynamic>> states = [];
   List<Map<String, dynamic>> districts = [];
@@ -66,6 +70,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   void initState() {
     super.initState();
     _loadInfo(); 
+    _loadUserGreeting();
     fetchLocationData();
     baseMapDownloader = BaseMapDownloader(
       onProgressUpdate: (progress) {
@@ -175,10 +180,11 @@ class _LocationSelectionState extends State<LocationSelection> {
     });
   }
 
+  // MARK: Online
   void submitLocation() {
     HapticFeedback.mediumImpact();
     String url =
-        "${ccUrl}?geoserver_url=${geoserverUrl.substring(0, geoserverUrl.length - 1)}&app_name=nrmApp&state_name=$selectedState&dist_name=$selectedDistrict&block_name=$selectedBlock&block_id=$selectedBlockID&isOffline=false";
+        "$ccUrl?geoserver_url=${geoserverUrl.substring(0, geoserverUrl.length - 1)}&app_name=nrmApp&state_name=$selectedState&dist_name=$selectedDistrict&block_name=$selectedBlock&block_id=$selectedBlockID&isOffline=false";
 
     Navigator.push(
       context,
@@ -451,7 +457,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                   ),
                   const SizedBox(height: 20),
                   const Text(
-                    "To download the layers for offline connectivity, please tick off agree and press on download button. The layers will take around 300 MB of your phone storage.",
+                    "To download the layers for offline connectivity, please tick off agree and press on the download button. The layers will take around 250-300 MB of your phone storage.",
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -525,6 +531,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     );
   }
 
+  // MARK: WebView Offline
   Future<void> navigateToWebViewOffline(OfflineContainer container) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
@@ -1171,7 +1178,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     if (selectedState == null || selectedDistrict == null || selectedBlock == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please select State, District, and Block.'),
+          content: Text('Please select State, District, and Tehsil.'),
           backgroundColor: Theme.of(context).colorScheme.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
@@ -1232,6 +1239,8 @@ class _LocationSelectionState extends State<LocationSelection> {
         Please describe the bug in detail below:
         ------------------------------------------
         [Your bug description here]
+
+        
         ------------------------------------------
 
         Device Information (auto-filled):
@@ -1258,10 +1267,109 @@ class _LocationSelectionState extends State<LocationSelection> {
     }
   }
 
+  // MARK: Settings Menu
+  void _showSettingsMenu(BuildContext context) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final RenderBox overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+    final RelativeRect position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset.zero, ancestor: overlay),
+        button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    HapticFeedback.mediumImpact();
+    
+    showMenu(
+      context: context,
+      position: position,
+      elevation: 8,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: Colors.black.withValues(alpha: 0.85),
+      items: [
+        PopupMenuItem(
+          child: const ListTile(
+            leading: Icon(Icons.person_outline_rounded, color: Colors.white),
+            title: Text('Profile', style: TextStyle(color: Colors.white)),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+          ),
+          onTap: () {
+            // Navigate to Profile Stats screen
+            Future.delayed(const Duration(milliseconds: 10), () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ProfileStatsScreen(),
+                ),
+              );
+            });
+          },
+        ),
+        PopupMenuItem(
+          child: const ListTile(
+            leading: Icon(Icons.history, color: Colors.white),
+            title: Text('Change Logs', style: TextStyle(color: Colors.white)),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+          ),
+          onTap: () {
+            // We need to add a small delay to allow the menu to close before showing the bottom sheet
+            Future.delayed(const Duration(milliseconds: 10), () {
+              ChangeLog.showChangelogBottomSheet(context);
+            });
+          },
+        ),
+        PopupMenuItem(
+          child: const ListTile(
+            leading: Icon(Icons.logout, color: Color.fromARGB(255, 255, 86, 86)),
+            title: Text('Logout', style: TextStyle(color: Color.fromARGB(255, 255, 86, 86))),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+          ),
+          onTap: () {
+            // TODO: Logout functionality 
+          },
+        ),
+      ],
+    );
+  }
+
+  Future<void> _loadUserGreeting() async {
+    try {
+      final userData = await _loginService.getUserData();
+      if (userData != null) {
+        final firstName = userData['first_name'] as String?;
+        final username = userData['username'] as String?;
+        
+        String greeting;
+        if (firstName != null && firstName.isNotEmpty) {
+          greeting = 'Hi $firstName,';
+        } else if (username != null && username.isNotEmpty) {
+          greeting = 'Hi $username,';
+        } else {
+          greeting = 'Hi there,';
+        }
+        
+        setState(() {
+          _userGreeting = greeting;
+        });
+        
+        print('User greeting set to: $greeting');
+      } else {
+        print('No user data found for greeting');
+      }
+    } catch (e) {
+      print('Error loading user greeting: $e');
+      setState(() {
+        _userGreeting = 'Hi there,';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color customGrey = Color(0xFFD6D4C8);
-    const Color darkTextColor = Colors.black87;
 
     return Scaffold(
       backgroundColor:
@@ -1272,9 +1380,9 @@ class _LocationSelectionState extends State<LocationSelection> {
         foregroundColor: Colors.white,
         title: const Text('Select a location'),
         leading: IconButton(
-          icon: const Icon(Icons.history),
-          onPressed: () => ChangeLog.showChangelogBottomSheet(context),
-          tooltip: "What's New",
+          icon: const Icon(Icons.settings),
+          onPressed: () => _showSettingsMenu(context),
+          tooltip: "Settings",
         ),
         actions: [
           IconButton(
@@ -1318,21 +1426,38 @@ class _LocationSelectionState extends State<LocationSelection> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 32.0),
+                    if (_userGreeting.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            _userGreeting,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF592941),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8.0),
+                    ],
                     const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 10.0),
+                      padding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 10.0),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
                           'Select State, District and Tehsil from the dropdown',
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF592941),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16.0),
+                    const SizedBox(height: 24.0),
                     _buildDropdown(
                       value: selectedState,
                       hint: 'Select a State',
@@ -1494,7 +1619,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                           ),
                         ),
                         onPressed: _isSubmitEnabled ? _handleSubmit : null,
-                        child: const Text('SUBMIT'),
+                        child: const Text('Submit'),
                       ),
                     ),
                     const SizedBox(height: 20.0),
