@@ -243,9 +243,9 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildNameCard(),
+                      Center(child: _buildNameCard()),
                       
                       _buildSectionTitle('Personal Information'),
                       Card(
@@ -376,7 +376,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(top: 8.0, bottom: 12.0),
+      padding: const EdgeInsets.only(top: 8.0, bottom: 12.0, left: 4.0, right: 4.0),
       child: Text(
         title,
         style: const TextStyle(

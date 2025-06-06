@@ -70,7 +70,7 @@ class ChangelogBottomSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
                   _buildVersionSection(
-                    'Version 2.0.7',
+                    'App Version 2.0.7',
                     [
                       'New flow for downloading the region for offline use',
                       "Revamped UI for better user experience",
