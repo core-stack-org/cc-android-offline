@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:geolocator/geolocator.dart';
 
 class MapLocationSelector extends StatefulWidget {
   final String blockName;
@@ -31,6 +32,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
   double _currentZoom = 11.0;
   final MapController mapController = MapController();
   bool _isSatelliteView = false;
+  bool _isGettingLocation = false;
 
   @override
   void initState() {
@@ -242,6 +244,81 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
     );
   }
 
+  /// Gets the user's current location and moves the map to that position
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isGettingLocation = true;
+    });
+
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Location services are disabled. Please enable them.')),
+        );
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location permissions are denied')),
+          );
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Location permissions are permanently denied, we cannot request permissions.')),
+        );
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      final currentLocation = LatLng(position.latitude, position.longitude);
+      const newZoom = 15.0;
+
+      // Animate map movement and update state afterward
+      await mapController.move(currentLocation, newZoom);
+
+      if (mounted) {
+        setState(() {
+          selectedLocation = currentLocation;
+          _currentZoom = newZoom;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Moved to current location')),
+        );
+      }
+    } catch (e) {
+      print('Error getting current location: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error getting location: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGettingLocation = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -350,7 +427,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                 ),
             ],
           ),
-          // Zoom controls
+          // Zoom controls and layer button
           Positioned(
             right: 16,
             top: 16,
@@ -416,6 +493,40 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                       );
                     },
                     tooltip: 'Change map layer',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD6D5C9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFFD6D5C9),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: _isGettingLocation
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                const Color(0xFF592941),
+                              ),
+                            ),
+                          )
+                        : Icon(Icons.my_location, color: const Color(0xFF592941)),
+                    onPressed: _isGettingLocation ? null : _getCurrentLocation,
+                    tooltip: 'Go to current location',
                   ),
                 ),
                 const SizedBox(height: 16),
