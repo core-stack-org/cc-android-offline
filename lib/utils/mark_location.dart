@@ -38,11 +38,25 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
     fetchPanchayatBoundary();
   }
 
+  /// Formats district/block names for GeoServer layer naming convention
+  String _formatNameForGeoServer(String name) {
+    return name
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s*\([^)]*\)'), '')
+        .replaceAll(RegExp(r'[-\s]+'), '_')
+        .trim();
+  }
+
   Future<void> fetchPanchayatBoundary() async {
+    final formattedDistrict = _formatNameForGeoServer(widget.districtName);
+    final formattedBlock = _formatNameForGeoServer(widget.blockName);
+    
     final url = Uri.parse(
-        '${widget.geoserverUrl}/geoserver/panchayat_boundaries/ows?'
-        'service=WFS&version=1.0.0&request=GetFeature&typeName=panchayat_boundaries:${widget.districtName.toLowerCase()}_${widget.blockName.toLowerCase()}'
+        '${widget.geoserverUrl}geoserver/panchayat_boundaries/ows?'
+        'service=WFS&version=1.0.0&request=GetFeature&typeName=panchayat_boundaries:${formattedDistrict}_${formattedBlock}'
         '&outputFormat=application/json');
+
+    print("geoserver url: $url");
 
     try {
       final response = await http.get(url);
@@ -52,30 +66,23 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
         if (geojson['features'] != null && geojson['features'].isNotEmpty) {
           List<List<LatLng>> polygonsFromAllFeatures = [];
 
-          // Parse all features
           for (var feature in geojson['features']) {
             final geometry = feature['geometry'];
             final geomType = geometry['type'];
             final coords = geometry['coordinates'];
-            final properties = feature['properties'];
-            final villageName = properties['vill_name'] as String?;
 
             if (geomType == 'Polygon') {
-              // coordinates = [[ [lon, lat], [lon, lat], ... ]]
-              // Take the outer ring (coords[0])
               List<LatLng> polygonPoints = [];
               for (var coord in coords[0]) {
-                polygonPoints.add(LatLng(coord[1], coord[0]));
+                polygonPoints.add(LatLng(coord[1].toDouble(), coord[0].toDouble()));
               }
               polygonsFromAllFeatures.add(polygonPoints);
             } else if (geomType == 'MultiPolygon') {
-              // coordinates = [ [ [ [lon, lat], ... ] ], ... ]
               for (var polygon in coords) {
-                // polygon[0] is the outer ring
                 List<LatLng> polygonPoints = [];
                 for (var ring in polygon) {
                   for (var coord in ring) {
-                    polygonPoints.add(LatLng(coord[1], coord[0]));
+                    polygonPoints.add(LatLng(coord[1].toDouble(), coord[0].toDouble()));
                   }
                 }
                 polygonsFromAllFeatures.add(polygonPoints);
@@ -89,16 +96,16 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
 
             if (geomType == 'Polygon') {
               for (var coord in coords[0]) {
-                centerLat += coord[1];
-                centerLon += coord[0];
+                centerLat += coord[1].toDouble();
+                centerLon += coord[0].toDouble();
                 pointCount++;
               }
             } else if (geomType == 'MultiPolygon') {
               for (var polygon in coords) {
                 for (var ring in polygon) {
                   for (var coord in ring) {
-                    centerLat += coord[1];
-                    centerLon += coord[0];
+                    centerLat += coord[1].toDouble();
+                    centerLon += coord[0].toDouble();
                     pointCount++;
                   }
                 }
@@ -295,7 +302,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                   polygons: allPolygons.map((polygonPoints) {
                     return Polygon(
                       points: polygonPoints,
-                      color: Colors.blue.withOpacity(0.1),
+                      color: Colors.blue.withValues(alpha: 0.1),
                       borderColor: Colors.blue,
                       borderStrokeWidth: 2,
                     );
