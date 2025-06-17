@@ -25,6 +25,8 @@ assets/offline_data/
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
+**/android/app/build/
+**/android/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies

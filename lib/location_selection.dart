@@ -1138,20 +1138,9 @@ class _LocationSelectionState extends State<LocationSelection> {
             items: items.map((Map<String, dynamic> map) {
               return DropdownMenuItem<String>(
                 value: map["label"],
-                child: TweenAnimationBuilder<double>(
-                  duration: const Duration(milliseconds: 300),
-                  tween: Tween<double>(begin: 0.8, end: 1.0),
-                  curve: Curves.easeOut,
-                  builder: (context, value, child) {
-                    return Transform.scale(
-                      scale: value,
-                      child: child,
-                    );
-                  },
-                  child: Text(
-                    map["label"],
-                    style: const TextStyle(color: Color(0xFF592941)),
-                  ),
+                child: Text(
+                  map["label"],
+                  style: const TextStyle(color: Color(0xFF592941)),
                 ),
               );
             }).toList(),

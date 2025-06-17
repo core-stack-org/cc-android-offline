@@ -14,6 +14,7 @@ class WebViewApp extends StatefulWidget {
 class _WebViewState extends State<WebViewApp> {
   late final WebViewController controller;
   double loadingProgress = 0.0;
+  String webviewTitle = 'Commons Connect';
 
   @override
   void initState() {
@@ -21,6 +22,14 @@ class _WebViewState extends State<WebViewApp> {
     
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..addJavaScriptChannel(
+        'TitleChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          setState(() {
+            webviewTitle = message.message.isNotEmpty ? message.message : 'Commons Connect';
+          });
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (progress) {
@@ -34,6 +43,7 @@ class _WebViewState extends State<WebViewApp> {
             });
             
             await _initializeGeolocation();
+            await _initializeTitleTracking();
           },
           onWebResourceError: (WebResourceError error) {
             print('Web Resource Error: ${error.description}');
@@ -74,6 +84,70 @@ class _WebViewState extends State<WebViewApp> {
     }
   }
 
+  Future<void> _initializeTitleTracking() async {
+    try {
+      await controller.runJavaScript('''
+        function sendTitleToFlutter() {
+          var title = document.title;
+          
+          if (!title || title.trim() === '' || title === 'Commons Connect') {
+            var h1Elements = document.getElementsByTagName('h1');
+            if (h1Elements.length > 0) {
+              title = h1Elements[0].textContent || h1Elements[0].innerText;
+            }
+          }
+          
+          if (!title || title.trim() === '') {
+            var headings = document.querySelectorAll('h1, h2, .title, .page-title, .header-title');
+            for (var i = 0; i < headings.length; i++) {
+              var headingText = headings[i].textContent || headings[i].innerText;
+              if (headingText && headingText.trim() !== '') {
+                title = headingText;
+                break;
+              }
+            }
+          }
+          
+          if (title) {
+            title = title.trim().substring(0, 50);
+          }
+          
+          if (typeof TitleChannel !== 'undefined') {
+            TitleChannel.postMessage(title || 'Commons Connect');
+          }
+        }
+        
+        sendTitleToFlutter();
+        
+        var titleObserver = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList' || mutation.type === 'characterData') {
+              sendTitleToFlutter();
+            }
+          });
+        });
+        
+        var titleElement = document.querySelector('title');
+        if (titleElement) {
+          titleObserver.observe(titleElement, { childList: true, characterData: true });
+        }
+        
+        titleObserver.observe(document.body, { 
+          childList: true, 
+          subtree: true,
+          characterData: true 
+        });
+        
+        window.addEventListener('load', sendTitleToFlutter);
+        window.addEventListener('popstate', sendTitleToFlutter);
+        
+        setInterval(sendTitleToFlutter, 2000);
+      ''');
+    } catch (e) {
+      print('Error initializing title tracking: $e');
+    }
+  }
+
   Future<bool> _handlePopScope() async {
     if (await controller.canGoBack()) {
       await controller.goBack();
@@ -101,12 +175,13 @@ class _WebViewState extends State<WebViewApp> {
           foregroundColor: Colors.white,
           centerTitle: true,
           elevation: 0,
-          title: const Text(
-            'Commons Connect',
-            style: TextStyle(
+          title: Text(
+            webviewTitle,
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
           leading: IconButton(
             icon: const Icon(Icons.home),
