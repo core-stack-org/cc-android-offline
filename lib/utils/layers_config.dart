@@ -38,19 +38,23 @@ class LayersConfig {
       },
       {
         "name": "Surface Waterbodies",
-        "geoserverPath": "water_bodies:surface_waterbodies_${formattedDistrict}_${formattedBlock}"
+        "geoserverPath":
+            "swb:surface_waterbodies_${formattedDistrict}_${formattedBlock}"
       },
       {
         "name": "Cropping Drought",
-        "geoserverPath": "cropping_drought:${formattedDistrict}_${formattedBlock}_drought"
+        "geoserverPath":
+            "cropping_drought:${formattedDistrict}_${formattedBlock}_drought"
       },
       {
         "name": "Cropping Intensity",
-        "geoserverPath": "cropping_intensity:${formattedDistrict}_${formattedBlock}_intensity"
+        "geoserverPath":
+            "cropping_intensity:${formattedDistrict}_${formattedBlock}_intensity"
       },
       {
         "name": "Crop Grid",
-        "geoserverPath": "crop_grid_layers:${formattedDistrict}_${formattedBlock}_grid"
+        "geoserverPath":
+            "crop_grid_layers:${formattedDistrict}_${formattedBlock}_grid"
       }
     ];
 
