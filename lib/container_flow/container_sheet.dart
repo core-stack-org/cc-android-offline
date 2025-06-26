@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:nrmflutter/utils/constants.dart';
+import 'package:nrmflutter/db/location_db.dart';
+import 'package:nrmflutter/utils/layers_config.dart';
+import 'package:http/http.dart' as http;
 
 import 'dart:io';
 import 'container_manager.dart';
 import './../utils/mark_location.dart';
+import './../download_progress.dart';
 
 class ContainerSheets {
   /// Shows bottom sheet for creating a new container
@@ -99,7 +103,9 @@ class ContainerSheets {
                     // Step 2: Container Name (disabled until location is selected)
                     Container(
                       decoration: BoxDecoration(
-                        color: locationSelected ? const Color(0xFFD6D5C9) : const Color(0xFFddd8e0),
+                        color: locationSelected
+                            ? const Color(0xFFD6D5C9)
+                            : const Color(0xFFddd8e0),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: TextField(
@@ -136,8 +142,8 @@ class ContainerSheets {
                                 if (containerNameController.text.isEmpty) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                        content: Text(
-                                            'Please enter a region name')),
+                                        content:
+                                            Text('Please enter a region name')),
                                   );
                                   return;
                                 }
@@ -202,6 +208,7 @@ class ContainerSheets {
     required Function(OfflineContainer) onContainerSelected,
   }) {
     String? selectedContainerId;
+    String? _refreshingContainerName;
 
     showModalBottomSheet(
       context: context,
@@ -230,6 +237,14 @@ class ContainerSheets {
                   ],
                 ),
               ),
+              if (_refreshingContainerName != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: LinearProgressIndicator(
+                    color: Colors.blue,
+                    backgroundColor: Colors.blue.withOpacity(0.2),
+                  ),
+                ),
               Expanded(
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -241,7 +256,7 @@ class ContainerSheets {
                       }
 
                       final containers = snapshot.data!;
-                      
+
                       if (containers.isEmpty) {
                         return const Center(
                           child: Column(
@@ -267,9 +282,10 @@ class ContainerSheets {
                           ),
                         );
                       }
-                      
+
                       // Sort containers by creation date, newest first
-                      containers.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                      containers
+                          .sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
                       final selectedContainer = containers.firstWhere(
                         (container) => container.name == selectedContainerId,
@@ -299,6 +315,45 @@ class ContainerSheets {
                                   selectedContainerId = container.name;
                                 });
                               },
+                              trailing: PopupMenuButton<String>(
+                                color: Colors.black.withAlpha(215),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15.0),
+                                ),
+                                onSelected: (value) async {
+                                  if (value == 'redownload') {
+                                    _handleRedownload(context, container);
+                                  } else if (value == 'refresh') {
+                                    setState(() {
+                                      _refreshingContainerName = container.name;
+                                    });
+                                    await _refreshPlanLayers(
+                                        context, container);
+                                    if (context.mounted) {
+                                      setState(() {
+                                        _refreshingContainerName = null;
+                                      });
+                                    }
+                                  }
+                                },
+                                itemBuilder: (BuildContext context) =>
+                                    <PopupMenuEntry<String>>[
+                                  const PopupMenuItem<String>(
+                                    value: 'redownload',
+                                    child: Text(
+                                      'Redownload all the layers',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  ),
+                                  const PopupMenuItem<String>(
+                                    value: 'refresh',
+                                    child: Text(
+                                      'Refresh mapping/plan layers',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  ),
+                                ],
+                              ),
                               contentPadding: const EdgeInsets.all(16),
                               title: Text(
                                 container.name,
@@ -358,11 +413,13 @@ class ContainerSheets {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFe63946),
                                 foregroundColor: Colors.white,
-                                side: const BorderSide(color: Color(0xFFe63946), width: 2),
+                                side: const BorderSide(
+                                    color: Color(0xFFe63946), width: 2),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(25),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                               ),
                               onPressed: () async {
                                 bool confirm = await showDialog(
@@ -412,11 +469,13 @@ class ContainerSheets {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFD6D5C9),
                                 foregroundColor: const Color(0xFF592941),
-                                side: const BorderSide(color: Color(0xFFD6D5C9), width: 2),
+                                side: const BorderSide(
+                                    color: Color(0xFFD6D5C9), width: 2),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(25),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                               ),
                               onPressed: () async {
                                 final container =
@@ -438,15 +497,15 @@ class ContainerSheets {
                           ),
                         ],
                       ),
-                    if (selectedContainerId != null)
-                      const SizedBox(height: 16),
+                    if (selectedContainerId != null) const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFD6D5C9),
                           foregroundColor: const Color(0xFF592941),
-                          side: const BorderSide(color: Color(0xFFD6D5C9), width: 2),
+                          side: const BorderSide(
+                              color: Color(0xFFD6D5C9), width: 2),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(25),
                           ),
@@ -483,18 +542,188 @@ class ContainerSheets {
     );
   }
 
+  static Future<void> _handleRedownload(
+      BuildContext context, OfflineContainer container) async {
+    final blockId =
+        await _getBlockId(container.state, container.district, container.block);
+    if (blockId == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Could not find block information to re-download.')));
+      }
+      return;
+    }
+
+    if (context.mounted) {
+      Navigator.pop(context); // close sheet
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DownloadProgressPage(
+            container: container,
+            selectedDistrict: container.district,
+            selectedBlock: container.block,
+            selectedBlockID: blockId,
+          ),
+        ),
+      );
+    }
+  }
+
+  static Future<void> _handleRefresh(
+      BuildContext context, OfflineContainer container) async {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Refreshing plan data for ${container.name}...')));
+    await _refreshPlanLayers(context, container);
+  }
+
+  static Future<void> _refreshPlanLayers(
+      BuildContext context, OfflineContainer container) async {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Refreshing plan data for ${container.name}...')));
+    final blockId =
+        await _getBlockId(container.state, container.district, container.block);
+    if (blockId == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Could not find block information to refresh.')));
+      }
+      return;
+    }
+
+    try {
+      final allLayers = await LayersConfig.getLayers(
+          container.district, container.block,
+          blockId: blockId);
+
+      const planLayerPrefixes = [
+        'settlement_',
+        'well_',
+        'waterbody_',
+        'main_swb_',
+        'plan_agri_',
+        'plan_gw_',
+        'livelihood_'
+      ];
+      final planLayers = allLayers
+          .where((layer) => planLayerPrefixes
+              .any((prefix) => layer['name']!.startsWith(prefix)))
+          .toList();
+
+      if (planLayers.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No plan layers to refresh.')));
+        }
+        return;
+      }
+
+      for (var layer in planLayers) {
+        await _downloadVectorLayer(
+            layer['name']!, layer['geoserverPath']!, container);
+      }
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content:
+                Text('Successfully refreshed plan data for ${container.name}'),
+            backgroundColor: Colors.green));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Error refreshing data: $e'),
+            backgroundColor: Colors.red));
+      }
+    }
+  }
+
+  static Future<String?> _getBlockId(
+      String stateName, String districtName, String blockName) async {
+    final List<Map<String, dynamic>> states =
+        await LocationDatabase.instance.getLocationData();
+    for (var state in states) {
+      if (state['label'] == stateName) {
+        final List<Map<String, dynamic>> districts =
+            List<Map<String, dynamic>>.from(state['district']);
+        for (var district in districts) {
+          if (district['label'] == districtName) {
+            final List<Map<String, dynamic>> blocks =
+                List<Map<String, dynamic>>.from(district['blocks']);
+            for (var block in blocks) {
+              if (block['label'] == blockName) {
+                return block['block_id'].toString();
+              }
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  static String _formatLayerName(String layerName) {
+    return layerName.toLowerCase().replaceAll(' ', '_');
+  }
+
+  static Future<void> _downloadVectorLayer(String layerName,
+      String geoserverPath, OfflineContainer container) async {
+    try {
+      print(
+          "Starting download of vector layer: $layerName for container: ${container.name}");
+
+      final url =
+          '${geoserverUrl}geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=$geoserverPath&outputFormat=application/json';
+      print("Downloading from URL: $url");
+
+      final request =
+          await http.Client().send(http.Request('GET', Uri.parse(url)));
+
+      if (request.statusCode == 200) {
+        final directory = await getApplicationDocumentsDirectory();
+        final formattedLayerName = _formatLayerName(layerName);
+
+        final containerPath =
+            '${directory.path}/persistent_offline_data/containers/${container.name}';
+
+        final filePath =
+            '$containerPath/vector_layers/$formattedLayerName.geojson';
+        print("Saving layer to: $filePath");
+
+        final file = File(filePath);
+        await file.create(recursive: true);
+
+        final sink = file.openWrite();
+
+        await for (final chunk in request.stream) {
+          sink.add(chunk);
+        }
+
+        await sink.close();
+        print("Successfully saved layer $layerName");
+      } else {
+        print(
+            "Failed to download $layerName. Status code: ${request.statusCode}");
+        throw Exception(
+            'Failed to download $layerName. Status code: ${request.statusCode}');
+      }
+    } catch (e) {
+      print('Error downloading $layerName: $e');
+      rethrow;
+    }
+  }
+
   static Future<void> _deleteContainerAndData(String containerName) async {
     final directory = await getApplicationDocumentsDirectory();
 
     // Container-specific path
-    final containerPath = '${directory.path}/persistent_offline_data/containers/$containerName';
+    final containerPath =
+        '${directory.path}/persistent_offline_data/containers/$containerName';
     final containerDir = Directory(containerPath);
 
     // Delete the container directory if it exists
     if (await containerDir.exists()) {
-       await containerDir.delete(recursive: true);
+      await containerDir.delete(recursive: true);
     }
-
 
     // Delete container from storage
     await ContainerManager.deleteContainer(containerName);

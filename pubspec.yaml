@@ -81,9 +81,10 @@ flutter:
     - assets/farm.jpg
     - assets/offline_data/
     - assets/offline_data/webapp/
-    - assets/offline_data/webapp/static/js/
-    - assets/offline_data/webapp/static/css/  
-    - assets/offline_data/webapp/static/media/
+    - assets/offline_data/webapp/assets/
+    # - assets/offline_data/webapp/static/js/
+    # - assets/offline_data/webapp/static/css/  
+    # - assets/offline_data/webapp/static/media/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
