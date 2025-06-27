@@ -15,14 +15,11 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 
 import 'package:nrmflutter/db/plans_db.dart';
 import 'package:nrmflutter/db/location_db.dart';
-import 'package:nrmflutter/utils/layers_config.dart';
 import 'package:nrmflutter/utils/constants.dart';
 import 'package:nrmflutter/utils/change_log.dart';
 
 import './server/local_server.dart';
-import './utils/offline_asset.dart';
 import './utils/use_info.dart';
-import './utils/download_base_map.dart';
 import './container_flow/container_manager.dart';
 import './container_flow/container_sheet.dart';
 import './download_progress.dart';

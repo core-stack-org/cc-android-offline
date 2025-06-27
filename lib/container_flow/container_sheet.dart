@@ -209,6 +209,8 @@ class ContainerSheets {
   }) {
     String? selectedContainerId;
     String? _refreshingContainerName;
+    Future<List<OfflineContainer>> containersFuture =
+        ContainerManager.getContainers();
 
     showModalBottomSheet(
       context: context,
@@ -249,7 +251,7 @@ class ContainerSheets {
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   child: FutureBuilder<List<OfflineContainer>>(
-                    future: ContainerManager.getContainers(),
+                    future: containersFuture,
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
                         return const Center(child: CircularProgressIndicator());
@@ -272,7 +274,7 @@ class ContainerSheets {
                               ),
                               SizedBox(height: 12),
                               Text(
-                                'Please create one region',
+                                'Please create a region to start using the app',
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey,
@@ -445,16 +447,22 @@ class ContainerSheets {
                                     false;
 
                                 if (confirm && context.mounted) {
+                                  final deletedContainerName =
+                                      selectedContainerId!;
                                   await _deleteContainerAndData(
-                                      selectedContainerId!);
-                                  Navigator.pop(context);
+                                      deletedContainerName);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                          'Region $selectedContainerId deleted'),
+                                          'Region $deletedContainerName deleted'),
                                       backgroundColor: const Color(0xFFFF4D6D),
                                     ),
                                   );
+                                  setState(() {
+                                    containersFuture =
+                                        ContainerManager.getContainers();
+                                    selectedContainerId = null;
+                                  });
                                 }
                               },
                               child: const Text(

@@ -27,8 +27,8 @@ class BaseMapDownloader {
     print('Saved tileInfo.json for zoom level $zoom');
   }
 
-  Future<void> downloadBaseMap(
-      double centerLat, double centerLon, double radiusKm, String containerName) async {
+  Future<void> downloadBaseMap(double centerLat, double centerLon,
+      double radiusKm, String containerName) async {
     try {
       cancelBaseMapDownload = false;
       int minZoom = 17, maxZoom = 17;
@@ -59,7 +59,8 @@ class BaseMapDownloader {
       print("Total base map tiles to download: $totalTiles");
 
       final directory = await getApplicationDocumentsDirectory();
-      final containerDir = Directory('${directory.path}/persistent_offline_data/containers/$containerName');
+      final containerDir = Directory(
+          '${directory.path}/persistent_offline_data/containers/$containerName');
       final offlineDir = Directory('${containerDir.path}/base_map_tiles');
 
       await offlineDir.create(recursive: true);
@@ -98,6 +99,7 @@ class BaseMapDownloader {
 
   Future<void> downloadTile(int x, int y, int z, String basePath) async {
     String url = 'https://mt1.google.com/vt/lyrs=s&x=$x&y=$y&z=$z';
+
     var response = await http.get(Uri.parse(url));
     if (response.statusCode == 200) {
       final file = File('$basePath/$z/$x/$y.png');

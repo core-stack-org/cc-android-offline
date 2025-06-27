@@ -33,6 +33,7 @@ assets/offline_data/
 .pub-cache/
 .pub/
 /build/
+/android/
 
 
 # Symbolication related
