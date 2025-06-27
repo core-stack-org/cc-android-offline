@@ -227,7 +227,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                  'Successfully downloaded data for container: ${container.name}'),
+                  'Successfully downloaded data for the region: ${container.name}'),
               backgroundColor: Colors.green,
             ),
           );
@@ -268,6 +268,40 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           layerCancelled[layerName] = true;
         }
       });
+    }
+  }
+
+  Future<void> _cancelAllDownloads() async {
+    if (!isDownloading || isDownloadComplete) return;
+
+    if (mounted) {
+      setState(() {
+        isDownloading = false;
+        baseMapDownloader.cancelBaseMapDownload = true;
+      });
+
+      try {
+        final layers =
+            await getLayers(widget.selectedDistrict, widget.selectedBlock);
+        for (var layer in layers) {
+          if (mounted) {
+            setState(() {
+              layerCancelled[layer['name']!] = true;
+            });
+          }
+        }
+      } catch (e) {
+        print("Error getting layers for cancellation: $e");
+      }
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Download cancelled.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     }
   }
 
@@ -319,10 +353,29 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Downloading Layers'),
+        title:
+            const Text('Downloading Layers', style: TextStyle(fontSize: 18.0)),
+        centerTitle: true,
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
+        leadingWidth: 100,
+        leading: (isDownloading && !isDownloadComplete)
+            ? Center(
+                child: TextButton(
+                  onPressed: _cancelAllDownloads,
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.red, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+              )
+            : null,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8.0),

@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   connectivity_plus
+  flutter_inappwebview_windows
   geolocator_windows
   objectbox_flutter_libs
   url_launcher_windows

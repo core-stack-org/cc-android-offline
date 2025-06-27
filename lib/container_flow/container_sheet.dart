@@ -343,14 +343,14 @@ class ContainerSheets {
                                   const PopupMenuItem<String>(
                                     value: 'redownload',
                                     child: Text(
-                                      'Redownload all the layers',
+                                      'Refresh all layers',
                                       style: TextStyle(color: Colors.white),
                                     ),
                                   ),
                                   const PopupMenuItem<String>(
                                     value: 'refresh',
                                     child: Text(
-                                      'Refresh mapping/plan layers',
+                                      'Refresh plan layers only',
                                       style: TextStyle(color: Colors.white),
                                     ),
                                   ),

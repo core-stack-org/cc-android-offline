@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.nrmflutter"
-    compileSdkVersion = 34
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -20,8 +20,8 @@ android {
 
     defaultConfig {
         applicationId = "com.example.nrmflutter"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        minSdk = 29
+        targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

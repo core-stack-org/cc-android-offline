@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart'
+    hide WebResourceError;
 
 class WebViewApp extends StatefulWidget {
   final String? url;
@@ -19,14 +22,16 @@ class _WebViewState extends State<WebViewApp> {
   @override
   void initState() {
     super.initState();
-    
+
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..addJavaScriptChannel(
         'TitleChannel',
         onMessageReceived: (JavaScriptMessage message) {
           setState(() {
-            webviewTitle = message.message.isNotEmpty ? message.message : 'Commons Connect';
+            webviewTitle = message.message.isNotEmpty
+                ? message.message
+                : 'Commons Connect';
           });
         },
       )
@@ -41,7 +46,7 @@ class _WebViewState extends State<WebViewApp> {
             setState(() {
               loadingProgress = 1.0;
             });
-            
+
             await _initializeGeolocation();
             await _initializeTitleTracking();
           },
@@ -58,7 +63,7 @@ class _WebViewState extends State<WebViewApp> {
     }
 
     // Load the URL after configuration
-    controller.loadRequest(Uri.parse(widget.url.toString()));
+    controller.loadRequest(WebUri(widget.url.toString()));
   }
 
   Future<void> _initializeGeolocation() async {
@@ -186,7 +191,7 @@ class _WebViewState extends State<WebViewApp> {
           leading: IconButton(
             icon: const Icon(Icons.home),
             onPressed: () {
-              controller.loadRequest(Uri.parse(widget.url.toString()));
+              controller.loadRequest(WebUri(widget.url.toString()));
             },
           ),
           actions: [
@@ -200,8 +205,16 @@ class _WebViewState extends State<WebViewApp> {
         ),
         body: Stack(
           children: [
-            WebViewWidget(
-              controller: controller,
+            InAppWebView(
+              initialUrlRequest: URLRequest(
+                url: WebUri(widget.url.toString()),
+              ),
+              androidOnPermissionRequest:
+                  (controller, origin, resources) async {
+                return PermissionRequestResponse(
+                    resources: resources,
+                    action: PermissionRequestResponseAction.GRANT);
+              },
             ),
             if (loadingProgress < 1.0)
               LinearProgressIndicator(
