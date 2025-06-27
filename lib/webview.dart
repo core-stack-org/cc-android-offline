@@ -196,7 +196,7 @@ class _WebViewState extends State<WebViewApp> {
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.location_on),
+              icon: const Icon(Icons.menu),
               onPressed: () {
                 Navigator.pop(context);
               },

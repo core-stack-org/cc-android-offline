@@ -70,26 +70,23 @@ class ChangelogBottomSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
                   _buildVersionSection(
-                    'Version 2.0.7',
+                    'Version 2.0.8',
                     [
-                      'New flow for downloading the region for offline use',
-                      "Revamped UI for better user experience",
-                      "Translation fixes across the analysis screens",
-                      "NREGA asset fixes across Home Screen and Surface Waterbodies",
-                      "Asset info across Planning section",
-                      "New screen while downloading the layers for a region -- offline use",
-                      "New logo for the app",
-                      "Fixed issues with the offline data and sync",
+                      "In offline usage, we added the planning forms.",
+                      "Added a feature that lets you see your filled data for each form. You can also edit or update any details that were filled incorrectly.",
+                      "You can either sync a single form data or select multiple forms at a time and sync them.",
+                      "The submitted data creates a temporary layer which now persists.",
+                      "Added a feature where you can refresh all the layers or just the plan layers for a region.",
+                      "The download sheet is now non-collapsible until the Download is complete.",
+                      "You can add a Lat/Lon while marking a location for download.",
+                      "Few users were not able to submit images through the ODK forms. That has been fixed now.",
                     ],
                   ),
                   const SizedBox(height: 20),
                   _buildVersionSection(
                     'Coming Soon',
                     [
-                      "Version 2.1.0",
-                      "UI and UX improvements",
-                      "Minimum latency while loading layers",
-                      "Login"
+                      "Login functionality",
                     ],
                   ),
                 ],
@@ -114,34 +111,33 @@ class ChangelogBottomSheet extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        ...changes
-            .map((change) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(top: 8),
-                        width: 4,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[600],
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          change,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF592941),
-                          ),
-                        ),
-                      ),
-                    ],
+        ...changes.map((change) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    width: 4,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[600],
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                ))
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      change,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFF592941),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ))
       ],
     );
   }

@@ -42,7 +42,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   LocalServer? _localServer;
   List<bool> _isSelected = [true, false];
   bool _isSubmitEnabled = false;
-  String _appVersion = '2.0.7';
+  String _appVersion = '2.0.8';
   String _deviceInfo = 'Unknown';
   String _modeSelectionMessage = "You have selected ONLINE mode";
 
