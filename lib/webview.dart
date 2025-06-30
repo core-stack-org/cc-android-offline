@@ -183,7 +183,7 @@ class _WebViewState extends State<WebViewApp> {
           title: Text(
             webviewTitle,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
             overflow: TextOverflow.ellipsis,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class ChangeLog {
   static void showChangelogBottomSheet(BuildContext context) {
@@ -11,8 +12,30 @@ class ChangeLog {
   }
 }
 
-class ChangelogBottomSheet extends StatelessWidget {
+class ChangelogBottomSheet extends StatefulWidget {
   const ChangelogBottomSheet({super.key});
+
+  @override
+  State<ChangelogBottomSheet> createState() => _ChangelogBottomSheetState();
+}
+
+class _ChangelogBottomSheetState extends State<ChangelogBottomSheet> {
+  String _appVersion = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = '${packageInfo.version}+${packageInfo.buildNumber}';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +93,7 @@ class ChangelogBottomSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
                   _buildVersionSection(
-                    'Version 2.0.8',
+                    'Version $_appVersion',
                     [
                       "In offline usage, we added the planning forms.",
                       "Added a feature that lets you see your filled data for each form. You can also edit or update any details that were filled incorrectly.",

@@ -42,7 +42,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   LocalServer? _localServer;
   List<bool> _isSelected = [true, false];
   bool _isSubmitEnabled = false;
-  String _appVersion = '2.0.8';
+  String _appVersion = '';
   String _deviceInfo = 'Unknown';
   String _modeSelectionMessage = "You have selected ONLINE mode";
 
@@ -445,7 +445,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   Future<void> _loadInfo() async {
     try {
       final PackageInfo packageInfo = await PackageInfo.fromPlatform();
-      _appVersion = packageInfo.version;
+      _appVersion = '${packageInfo.version}+${packageInfo.buildNumber}';
 
       if (Platform.isAndroid) {
         final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
@@ -517,7 +517,10 @@ class _LocationSelectionState extends State<LocationSelection> {
         backgroundColor: Colors.black,
         centerTitle: true,
         foregroundColor: Colors.white,
-        title: const Text('Select a location'),
+        title: const Text(
+          'Select a location',
+          style: TextStyle(fontSize: 18),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.history),
           onPressed: () => ChangeLog.showChangelogBottomSheet(context),

@@ -97,6 +97,10 @@ class LayersConfig {
 
   static String formatName(String? name) {
     if (name == null) return '';
-    return name.toLowerCase().replaceAll(' ', '_');
+    return name
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s*\([^)]*\)'), '')
+        .replaceAll(RegExp(r'[-\s]+'), '_')
+        .trim();
   }
 }

@@ -336,6 +336,50 @@ class ContainerSheets {
                                         _refreshingContainerName = null;
                                       });
                                     }
+                                  } else if (value == 'delete') {
+                                    bool confirm = await showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Delete Region'),
+                                            content: Text(
+                                                'This will delete all offline data for ${container.name}. Continue?'),
+                                            actions: [
+                                              TextButton(
+                                                child: const Text('Cancel'),
+                                                onPressed: () => Navigator.pop(
+                                                    context, false),
+                                              ),
+                                              TextButton(
+                                                child: const Text('Delete'),
+                                                onPressed: () => Navigator.pop(
+                                                    context, true),
+                                              ),
+                                            ],
+                                          ),
+                                        ) ??
+                                        false;
+
+                                    if (confirm && context.mounted) {
+                                      await _deleteContainerAndData(
+                                          container.name);
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              'Region ${container.name} deleted'),
+                                          backgroundColor:
+                                              const Color(0xFFFF4D6D),
+                                        ),
+                                      );
+                                      setState(() {
+                                        containersFuture =
+                                            ContainerManager.getContainers();
+                                        if (selectedContainerId ==
+                                            container.name) {
+                                          selectedContainerId = null;
+                                        }
+                                      });
+                                    }
                                   }
                                 },
                                 itemBuilder: (BuildContext context) =>
@@ -352,6 +396,13 @@ class ContainerSheets {
                                     child: Text(
                                       'Refresh plan layers only',
                                       style: TextStyle(color: Colors.white),
+                                    ),
+                                  ),
+                                  const PopupMenuItem<String>(
+                                    value: 'delete',
+                                    child: Text(
+                                      'Delete region',
+                                      style: TextStyle(color: Colors.red),
                                     ),
                                   ),
                                 ],
@@ -404,111 +455,12 @@ class ContainerSheets {
                     ),
                   ),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                child: Row(
                   children: [
-                    if (selectedContainerId != null)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFe63946),
-                                foregroundColor: Colors.white,
-                                side: const BorderSide(
-                                    color: Color(0xFFe63946), width: 2),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(25),
-                                ),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                              onPressed: () async {
-                                bool confirm = await showDialog(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        title: const Text('Delete Container'),
-                                        content: Text(
-                                            'This will delete all offline data for ${selectedContainerId}. Continue?'),
-                                        actions: [
-                                          TextButton(
-                                            child: const Text('Cancel'),
-                                            onPressed: () =>
-                                                Navigator.pop(context, false),
-                                          ),
-                                          TextButton(
-                                            child: const Text('Delete'),
-                                            onPressed: () =>
-                                                Navigator.pop(context, true),
-                                          ),
-                                        ],
-                                      ),
-                                    ) ??
-                                    false;
-
-                                if (confirm && context.mounted) {
-                                  final deletedContainerName =
-                                      selectedContainerId!;
-                                  await _deleteContainerAndData(
-                                      deletedContainerName);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          'Region $deletedContainerName deleted'),
-                                      backgroundColor: const Color(0xFFFF4D6D),
-                                    ),
-                                  );
-                                  setState(() {
-                                    containersFuture =
-                                        ContainerManager.getContainers();
-                                    selectedContainerId = null;
-                                  });
-                                }
-                              },
-                              child: const Text(
-                                'Delete',
-                                style: TextStyle(fontSize: 16),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFD6D5C9),
-                                foregroundColor: const Color(0xFF592941),
-                                side: const BorderSide(
-                                    color: Color(0xFFD6D5C9), width: 2),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(25),
-                                ),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                              onPressed: () async {
-                                final container =
-                                    await ContainerManager.getContainer(
-                                        selectedContainerId!);
-                                if (container != null && context.mounted) {
-                                  Navigator.pop(context);
-                                  onContainerSelected(container);
-                                }
-                              },
-                              child: const Text(
-                                'Navigate',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Color(0xFF592941),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    if (selectedContainerId != null) const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.add),
+                        label: const Text('New Region'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFD6D5C9),
                           foregroundColor: const Color(0xFF592941),
@@ -523,21 +475,42 @@ class ContainerSheets {
                           Navigator.pop(context);
                           ContainerSheets.showCreateContainer(
                             context: context,
-                            selectedState: selectedState!,
-                            selectedDistrict: selectedDistrict!,
-                            selectedBlock: selectedBlock!,
+                            selectedState: selectedState,
+                            selectedDistrict: selectedDistrict,
+                            selectedBlock: selectedBlock,
                             onContainerCreated: (container) {
                               onContainerSelected(container);
                             },
                           );
                         },
-                        child: const Text(
-                          'Create a region',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF592941),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.navigation_outlined),
+                        label: const Text('Navigate'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD6D5C9),
+                          foregroundColor: const Color(0xFF592941),
+                          side: const BorderSide(
+                              color: Color(0xFFD6D5C9), width: 2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
                           ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
+                        onPressed: selectedContainerId != null
+                            ? () async {
+                                final container =
+                                    await ContainerManager.getContainer(
+                                        selectedContainerId!);
+                                if (container != null && context.mounted) {
+                                  Navigator.pop(context);
+                                  onContainerSelected(container);
+                                }
+                              }
+                            : null,
                       ),
                     ),
                   ],
