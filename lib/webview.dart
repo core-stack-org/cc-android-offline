@@ -155,11 +155,14 @@ class _WebViewState extends State<WebViewApp> {
   }
 
   Future<bool> _handlePopScope() async {
-    if (await controller.canGoBack()) {
-      await controller.goBack();
-      return false;
+    if (webViewController != null) {
+      bool canGoBack = await webViewController!.canGoBack();
+      if (canGoBack) {
+        await webViewController!.goBack();
+        return false; // Stay in webview, navigate back within web app
+      }
     }
-    return true;
+    return true; // No more web history, exit webview
   }
 
   @override
@@ -171,7 +174,7 @@ class _WebViewState extends State<WebViewApp> {
         final navigator = Navigator.of(context);
         final shouldPop = await _handlePopScope();
         if (shouldPop) {
-          navigator.pop();
+          navigator.pop(); // Go back to location selection
         }
       },
       child: Scaffold(
@@ -214,6 +217,22 @@ class _WebViewState extends State<WebViewApp> {
               ),
               onWebViewCreated: (InAppWebViewController controller) {
                 webViewController = controller;
+              },
+              onLoadStart: (controller, url) {
+                setState(() {
+                  loadingProgress = 0.0;
+                });
+              },
+              onProgressChanged: (controller, progress) {
+                setState(() {
+                  loadingProgress = progress / 100.0;
+                });
+              },
+              onLoadStop: (controller, url) async {
+                setState(() {
+                  loadingProgress = 1.0;
+                });
+                // Add your geolocation and title tracking here if needed
               },
               androidOnPermissionRequest:
                   (controller, origin, resources) async {
