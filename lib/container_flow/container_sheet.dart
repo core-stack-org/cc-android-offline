@@ -506,8 +506,54 @@ class ContainerSheets {
                                     await ContainerManager.getContainer(
                                         selectedContainerId!);
                                 if (container != null && context.mounted) {
-                                  Navigator.pop(context);
-                                  onContainerSelected(container);
+                                  if (container.state == selectedState &&
+                                      container.district == selectedDistrict &&
+                                      container.block == selectedBlock) {
+                                    if (container.isDownloaded) {
+                                      Navigator.pop(context);
+                                      onContainerSelected(container);
+                                    } else {
+                                      bool? confirm = await showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('Refresh Layers'),
+                                          content: const Text(
+                                              'The layers for this region are not yet downloaded. Do you want to refresh all layers now?'),
+                                          actions: [
+                                            TextButton(
+                                              child: const Text('Cancel'),
+                                              onPressed: () =>
+                                                  Navigator.pop(context, false),
+                                            ),
+                                            TextButton(
+                                              child: const Text('Refresh'),
+                                              onPressed: () =>
+                                                  Navigator.pop(context, true),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true && context.mounted) {
+                                        _handleRedownload(context, container);
+                                      }
+                                    }
+                                  } else {
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text('Region Mismatch'),
+                                        content: const Text(
+                                            'The selected region does not match with the selected State, District and Tehsil.'),
+                                        actions: [
+                                          TextButton(
+                                            child: const Text('OK'),
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
                                 }
                               }
                             : null,
