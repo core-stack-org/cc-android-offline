@@ -16,6 +16,7 @@ class WebViewApp extends StatefulWidget {
 
 class _WebViewState extends State<WebViewApp> {
   late final WebViewController controller;
+  InAppWebViewController? webViewController;
   double loadingProgress = 0.0;
   String webviewTitle = 'Commons Connect';
 
@@ -191,7 +192,9 @@ class _WebViewState extends State<WebViewApp> {
           leading: IconButton(
             icon: const Icon(Icons.home),
             onPressed: () {
-              controller.loadRequest(WebUri(widget.url.toString()));
+              print('Home button clicked - Loading URL: ${widget.url}');
+              webViewController?.loadUrl(
+                  urlRequest: URLRequest(url: WebUri(widget.url.toString())));
             },
           ),
           actions: [
@@ -209,6 +212,9 @@ class _WebViewState extends State<WebViewApp> {
               initialUrlRequest: URLRequest(
                 url: WebUri(widget.url.toString()),
               ),
+              onWebViewCreated: (InAppWebViewController controller) {
+                webViewController = controller;
+              },
               androidOnPermissionRequest:
                   (controller, origin, resources) async {
                 return PermissionRequestResponse(
