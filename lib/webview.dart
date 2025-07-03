@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart'
-    hide WebResourceError;
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 class WebViewApp extends StatefulWidget {
   final String? url;
@@ -15,7 +11,6 @@ class WebViewApp extends StatefulWidget {
 }
 
 class _WebViewState extends State<WebViewApp> {
-  late final WebViewController controller;
   InAppWebViewController? webViewController;
   double loadingProgress = 0.0;
   String webviewTitle = 'Commons Connect';
@@ -23,54 +18,13 @@ class _WebViewState extends State<WebViewApp> {
   @override
   void initState() {
     super.initState();
-
-    controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..addJavaScriptChannel(
-        'TitleChannel',
-        onMessageReceived: (JavaScriptMessage message) {
-          setState(() {
-            webviewTitle = message.message.isNotEmpty
-                ? message.message
-                : 'Commons Connect';
-          });
-        },
-      )
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onProgress: (progress) {
-            setState(() {
-              loadingProgress = progress / 100;
-            });
-          },
-          onPageFinished: (url) async {
-            setState(() {
-              loadingProgress = 1.0;
-            });
-
-            await _initializeGeolocation();
-            await _initializeTitleTracking();
-          },
-          onWebResourceError: (WebResourceError error) {
-            print('Web Resource Error: ${error.description}');
-          },
-        ),
-      );
-
-    // Configure platform-specific settings
-    if (controller.platform is AndroidWebViewController) {
-      final androidController = controller.platform as AndroidWebViewController;
-      androidController.setMediaPlaybackRequiresUserGesture(false);
-    }
-
-    // Load the URL after configuration
-    controller.loadRequest(WebUri(widget.url.toString()));
   }
 
   Future<void> _initializeGeolocation() async {
+    if (webViewController == null) return;
     try {
       final position = await Geolocator.getCurrentPosition();
-      await controller.runJavaScript('''
+      await webViewController!.evaluateJavascript(source: '''
         window.navigator.geolocation.getCurrentPosition = (success, error) => {
           success({
             coords: {
@@ -91,8 +45,9 @@ class _WebViewState extends State<WebViewApp> {
   }
 
   Future<void> _initializeTitleTracking() async {
+    if (webViewController == null) return;
     try {
-      await controller.runJavaScript('''
+      await webViewController!.evaluateJavascript(source: '''
         function sendTitleToFlutter() {
           var title = document.title;
           
@@ -118,8 +73,8 @@ class _WebViewState extends State<WebViewApp> {
             title = title.trim().substring(0, 50);
           }
           
-          if (typeof TitleChannel !== 'undefined') {
-            TitleChannel.postMessage(title || 'Commons Connect');
+          if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+            window.flutter_inappwebview.callHandler('TitleChannel', title || 'Commons Connect');
           }
         }
         
@@ -217,6 +172,20 @@ class _WebViewState extends State<WebViewApp> {
               ),
               onWebViewCreated: (InAppWebViewController controller) {
                 webViewController = controller;
+                webViewController!.addJavaScriptHandler(
+                  handlerName: 'TitleChannel',
+                  callback: (args) {
+                    setState(() {
+                      if (args.isNotEmpty && args[0] is String) {
+                        final title = args[0] as String;
+                        webviewTitle =
+                            title.isNotEmpty ? title : 'Commons Connect';
+                      } else {
+                        webviewTitle = 'Commons Connect';
+                      }
+                    });
+                  },
+                );
               },
               onLoadStart: (controller, url) {
                 setState(() {
@@ -232,7 +201,8 @@ class _WebViewState extends State<WebViewApp> {
                 setState(() {
                   loadingProgress = 1.0;
                 });
-                // Add your geolocation and title tracking here if needed
+                await _initializeGeolocation();
+                await _initializeTitleTracking();
               },
               androidOnPermissionRequest:
                   (controller, origin, resources) async {
