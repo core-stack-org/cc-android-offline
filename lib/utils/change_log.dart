@@ -95,21 +95,18 @@ class _ChangelogBottomSheetState extends State<ChangelogBottomSheet> {
                   _buildVersionSection(
                     'Version $_appVersion',
                     [
-                      "In offline usage, we added the planning forms.",
-                      "Added a feature that lets you see your filled data for each form. You can also edit or update any details that were filled incorrectly.",
-                      "You can either sync a single form data or select multiple forms at a time and sync them.",
-                      "The submitted data creates a temporary layer which now persists.",
-                      "Added a feature where you can refresh all the layers or just the plan layers for a region.",
-                      "The download sheet is now non-collapsible until the Download is complete.",
-                      "You can add a Lat/Lon while marking a location for download.",
-                      "Few users were not able to submit images through the ODK forms. That has been fixed now.",
+                      "GPS location fixes.",
+                      "Proper messaging for offline mode."
                     ],
                   ),
                   const SizedBox(height: 20),
                   _buildVersionSection(
-                    'Coming Soon',
+                    'In Previous Version',
                     [
-                      "Login functionality",
+                      "Home and Back buttons were not working in some phones. This has been fixed now.",
+                      "UX improvements.",
+                      "Syncing issues are resolved.",
+                      "Bugs fixes and improvements.",
                     ],
                   ),
                 ],

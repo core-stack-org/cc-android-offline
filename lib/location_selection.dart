@@ -757,15 +757,22 @@ class _LocationSelectionState extends State<LocationSelection> {
                       ),
                     ),
                     const SizedBox(height: 20.0),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16.0),
-                      child: Text(
-                        "*BETA Offline mode works in remote areas without internet with limited features.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w400,
-                          color: Color.fromARGB(255, 77, 77, 77),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      child: Container(
+                        padding: const EdgeInsets.all(14.0),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade400.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        child: const Text(
+                          "*BETA Offline mode works in remote areas without internet with limited features.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            color: Color.fromARGB(255, 77, 77, 77),
+                          ),
                         ),
                       ),
                     ),
