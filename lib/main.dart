@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import './splash/splash_screen.dart';
 import 'location_selection.dart';
@@ -24,18 +26,18 @@ Future<void> checkLocationPermission(BuildContext context) async {
       );
     }
   }
-  
+
   if (permission == LocationPermission.deniedForever) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Location permissions are permanently denied. Please enable them in settings.'),
+        content: Text(
+            'Location permissions are permanently denied. Please enable them in settings.'),
         duration: Duration(seconds: 3),
       ),
     );
     await Geolocator.openAppSettings();
   }
 }
-
 
 Future<void> initializeApp() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,15 +60,23 @@ Future<void> initializeApp() async {
 
 void main() async {
   await initializeApp();
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'), // English
+        Locale('hi'), // Hindi
+      ],
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
       routes: {
@@ -98,4 +108,3 @@ class _LocationAwareAppState extends State<LocationAwareApp> {
     return const SplashScreen();
   }
 }
-

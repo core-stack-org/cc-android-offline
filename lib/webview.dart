@@ -120,6 +120,20 @@ class _WebViewState extends State<WebViewApp> {
     return true; // No more web history, exit webview
   }
 
+  void _showContextMenu() {
+    // This method is no longer needed since we're using PopupMenuButton
+  }
+
+  void _goToHomePage() {
+    print('Home button clicked - Loading URL: ${widget.url}');
+    webViewController?.loadUrl(
+        urlRequest: URLRequest(url: WebUri(widget.url.toString())));
+  }
+
+  void _goToLocationSelection() {
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -147,20 +161,56 @@ class _WebViewState extends State<WebViewApp> {
             ),
             overflow: TextOverflow.ellipsis,
           ),
-          leading: IconButton(
-            icon: const Icon(Icons.home),
-            onPressed: () {
-              print('Home button clicked - Loading URL: ${widget.url}');
-              webViewController?.loadUrl(
-                  urlRequest: URLRequest(url: WebUri(widget.url.toString())));
-            },
-          ),
+          automaticallyImplyLeading: false,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () {
-                Navigator.pop(context);
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.white),
+              onSelected: (String value) {
+                switch (value) {
+                  case 'home':
+                    _goToHomePage();
+                    break;
+                  case 'location':
+                    _goToLocationSelection();
+                    break;
+                }
               },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                PopupMenuItem<String>(
+                  value: 'location',
+                  child: Row(
+                    children: [
+                      Icon(Icons.pin_drop_rounded,
+                          color: Colors.white.withValues(alpha: 0.9)),
+                      SizedBox(width: 12),
+                      Text(
+                        'Return to Location Selection',
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9)),
+                      ),
+                    ],
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'home',
+                  child: Row(
+                    children: [
+                      Icon(Icons.arrow_drop_down,
+                          color: Colors.white.withValues(alpha: 0.9)),
+                      SizedBox(width: 12),
+                      Text(
+                        'Return to Plan Selection',
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              color: Colors.black.withValues(alpha: 0.9),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ],
         ),

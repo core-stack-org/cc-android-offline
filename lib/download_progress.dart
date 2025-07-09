@@ -495,7 +495,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                       int completedLayers = 0;
                       int totalLayers = 0;
 
-                      totalProgress += baseMapProgress;
+                      if (baseMapProgress >= 0) {
+                        totalProgress += baseMapProgress;
+                      }
                       if (baseMapProgress == 1.0) completedLayers++;
                       totalLayers++;
 
@@ -506,8 +508,10 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                       for (var layer in nonPlanLayers) {
                         double layerProgress =
                             vectorLayerProgress[layer['name']] ?? 0.0;
-                        if (layerProgress == 1.0) completedLayers++;
-                        totalProgress += layerProgress;
+                        if (layerProgress >= 0) {
+                          totalProgress += layerProgress;
+                          if (layerProgress == 1.0) completedLayers++;
+                        }
                         totalLayers++;
                       }
 
@@ -592,6 +596,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                           strokeWidth: 2,
                         ),
                       )
+                    else if (baseMapProgress < 0)
+                      const Icon(Icons.error, color: Colors.red)
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -634,6 +640,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                       strokeWidth: 2,
                                     ),
                                   )
+                                else if (layerProgress < 0)
+                                  const Icon(Icons.error, color: Colors.red)
                               ],
                             ),
                           ),

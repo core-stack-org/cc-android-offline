@@ -4,6 +4,7 @@ import 'package:nrmflutter/utils/constants.dart';
 import 'package:nrmflutter/db/location_db.dart';
 import 'package:nrmflutter/utils/layers_config.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'dart:io';
 import 'container_manager.dart';
@@ -14,6 +15,7 @@ class ContainerSheets {
   /// Shows bottom sheet for creating a new container
   static void showCreateContainer({
     required BuildContext context,
+    required String selectedLanguage,
     required String selectedState,
     required String selectedDistrict,
     required String selectedBlock,
@@ -202,6 +204,7 @@ class ContainerSheets {
   /// Shows bottom sheet for selecting an existing container
   static void showContainerList({
     required BuildContext context,
+    required String selectedLanguage,
     required String selectedState,
     required String selectedDistrict,
     required String selectedBlock,
@@ -475,6 +478,7 @@ class ContainerSheets {
                           Navigator.pop(context);
                           ContainerSheets.showCreateContainer(
                             context: context,
+                            selectedLanguage: selectedLanguage,
                             selectedState: selectedState,
                             selectedDistrict: selectedDistrict,
                             selectedBlock: selectedBlock,
@@ -597,6 +601,7 @@ class ContainerSheets {
     }
   }
 
+  // TODO: Remove this function
   static Future<void> _handleRefresh(
       BuildContext context, OfflineContainer container) async {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(

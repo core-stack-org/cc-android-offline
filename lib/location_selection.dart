@@ -24,6 +24,8 @@ import './container_flow/container_manager.dart';
 import './container_flow/container_sheet.dart';
 import './download_progress.dart';
 
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 class LocationSelection extends StatefulWidget {
   const LocationSelection({super.key});
 
@@ -45,6 +47,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   String _appVersion = '';
   String _deviceInfo = 'Unknown';
   String _modeSelectionMessage = "You have selected ONLINE mode";
+  String _selectedLanguage = 'en';
 
   List<Map<String, dynamic>> states = [];
   List<Map<String, dynamic>> districts = [];
@@ -55,6 +58,10 @@ class _LocationSelectionState extends State<LocationSelection> {
     super.initState();
     _loadInfo();
     fetchLocationData();
+    // Initialize the mode selection message
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateModeSelectionMessage();
+    });
   }
 
   List<Map<String, dynamic>> sortLocationData(List<Map<String, dynamic>> data) {
@@ -161,7 +168,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   void submitLocation() {
     HapticFeedback.mediumImpact();
     String url =
-        "${ccUrl}?geoserver_url=${geoserverUrl.substring(0, geoserverUrl.length - 1)}&app_name=nrmApp&state_name=$selectedState&dist_name=$selectedDistrict&block_name=$selectedBlock&block_id=$selectedBlockID&isOffline=false";
+        "${ccUrl}?geoserver_url=${geoserverUrl.substring(0, geoserverUrl.length - 1)}&app_name=nrmApp&state_name=$selectedState&dist_name=$selectedDistrict&block_name=$selectedBlock&block_id=$selectedBlockID&isOffline=false&language=$_selectedLanguage";
 
     Navigator.push(
       context,
@@ -186,8 +193,9 @@ class _LocationSelectionState extends State<LocationSelection> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Access Application without Internet",
+                  Text(
+                    getLocalizedText(
+                        context, 'accessApplicationWithoutInternet'),
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -195,8 +203,8 @@ class _LocationSelectionState extends State<LocationSelection> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    "To download the layers for offline connectivity, please tick off agree and press on download button. The layers will take around 300 MB of your phone storage.",
+                  Text(
+                    getLocalizedText(context, 'downloadLayersMessage'),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
@@ -214,8 +222,8 @@ class _LocationSelectionState extends State<LocationSelection> {
                           });
                         },
                       ),
-                      const Text(
-                        "Agree and Download Layers",
+                      Text(
+                        getLocalizedText(context, 'agreeAndDownloadLayers'),
                         style: TextStyle(
                           fontSize: 14,
                           color: Color(0xFF592941),
@@ -250,8 +258,8 @@ class _LocationSelectionState extends State<LocationSelection> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 40, vertical: 15),
                       ),
-                      child: const Text(
-                        "Download Layers",
+                      child: Text(
+                        getLocalizedText(context, 'downloadLayers'),
                         style: TextStyle(
                           color: Color(0xFF592941),
                           fontSize: 16,
@@ -271,6 +279,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   void showContainerList() {
     ContainerSheets.showContainerList(
       context: context,
+      selectedLanguage: _selectedLanguage,
       selectedState: selectedState ?? '',
       selectedDistrict: selectedDistrict ?? '',
       selectedBlock: selectedBlock ?? '',
@@ -307,7 +316,8 @@ class _LocationSelectionState extends State<LocationSelection> {
           "&block_id=$selectedBlockID" +
           "&isOffline=true" +
           "&container_name=${container.name}" +
-          "&plans=$encodedPlans";
+          "&plans=$encodedPlans" +
+          "&language=$_selectedLanguage";
 
       print('Offline URL: $url');
 
@@ -324,7 +334,8 @@ class _LocationSelectionState extends State<LocationSelection> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading offline view: ${e.toString()}'),
+            content: Text(
+                '${getLocalizedText(context, 'errorLoadingOfflineView')} ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -412,7 +423,8 @@ class _LocationSelectionState extends State<LocationSelection> {
         selectedBlock == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please select State, District, and Block.'),
+          content:
+              Text(getLocalizedText(context, 'pleaseSelectStateDistrictBlock')),
           backgroundColor: Theme.of(context).colorScheme.error,
           behavior: SnackBarBehavior.floating,
           shape:
@@ -428,6 +440,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     } else {
       ContainerSheets.showContainerList(
         context: context,
+        selectedLanguage: _selectedLanguage,
         selectedState: selectedState!,
         selectedDistrict: selectedDistrict!,
         selectedBlock: selectedBlock!,
@@ -496,13 +509,157 @@ class _LocationSelectionState extends State<LocationSelection> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-              'Could not open email client. Please send your report to support@core-stack.org'),
+          content: Text(getLocalizedText(context, 'couldNotOpenEmailClient')),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
       print('Could not launch $emailLaunchUri');
     }
+  }
+
+  Widget _buildLanguageSelector() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 10.0),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedLanguage,
+          onChanged: (String? newValue) {
+            if (newValue != null) {
+              setState(() {
+                _selectedLanguage = newValue;
+                HapticFeedback.lightImpact();
+                // Update the mode selection message when language changes
+                _updateModeSelectionMessage();
+              });
+            }
+          },
+          dropdownColor: Colors.black.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(20),
+          menuMaxHeight: 200,
+          items: const [
+            DropdownMenuItem(
+              value: 'en',
+              child: Text(
+                'English (en)',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
+            DropdownMenuItem(
+              value: 'hi',
+              child: Text(
+                'हिंदी (hi)',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
+          ],
+          selectedItemBuilder: (BuildContext context) {
+            return <String>['en', 'hi'].map<Widget>((String item) {
+              return Center(
+                  child: Text(item,
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)));
+            }).toList();
+          },
+          icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+          style: const TextStyle(color: Colors.white, fontSize: 18),
+        ),
+      ),
+    );
+  }
+
+  String getLocalizedText(BuildContext context, String key) {
+    final localizations = _selectedLanguage == 'hi'
+        ? AppLocalizations.of(
+            context)! // This will use Hindi if device is set to Hindi
+        : AppLocalizations.of(context)!; // Or you can create a custom method
+
+    // For now, create a simple mapping
+    switch (key) {
+      case 'selectLocation':
+        return _selectedLanguage == 'hi' ? 'स्थान चुनें' : 'Select a location';
+      case 'selectState':
+        return _selectedLanguage == 'hi' ? 'राज्य चुनें' : 'Select a State';
+      case 'selectDistrict':
+        return _selectedLanguage == 'hi' ? 'जिला चुनें' : 'Select a District';
+      case 'selectTehsil':
+        return _selectedLanguage == 'hi' ? 'तहसील चुनें' : 'Select a Tehsil';
+      case 'selectStateDistrictTehsil':
+        return _selectedLanguage == 'hi'
+            ? 'नीचे दिए गए ड्रॉप-डाउन से राज्य, जिला और तहसील का चयन करें। '
+            : 'Select State, District and Tehsil from the dropdown';
+      case 'onlineMode':
+        return _selectedLanguage == 'hi' ? 'ऑनलाइन मोड' : 'Online mode';
+      case 'offlineMode':
+        return _selectedLanguage == 'hi' ? 'ऑफलाइन मोड*' : 'Offline mode*';
+      case 'submit':
+        return _selectedLanguage == 'hi' ? 'जमा करें' : 'SUBMIT';
+      case 'onlineModeSelected':
+        return _selectedLanguage == 'hi'
+            ? 'आपने ऑनलाइन मोड चुना है'
+            : 'You have selected ONLINE mode';
+      case 'offlineModeSelected':
+        return _selectedLanguage == 'hi'
+            ? 'आपने ऑफलाइन मोड चुना है'
+            : 'You have selected OFFLINE mode';
+      case 'betaOfflineNote':
+        return _selectedLanguage == 'hi'
+            ? '*बीटा ऑफलाइन मोड सीमित सुविधाओं के साथ इंटरनेट के बिना दूरदराज के क्षेत्रों में काम करता है।'
+            : '*BETA Offline mode works in remote areas without internet with limited features.';
+      case 'version':
+        return _selectedLanguage == 'hi' ? 'संस्करण:' : 'version:';
+      case 'fileaBugReport':
+        return _selectedLanguage == 'hi'
+            ? 'बग रिपोर्ट दर्ज करें'
+            : 'File a bug report';
+      case 'whatsNew':
+        return _selectedLanguage == 'hi' ? 'नया क्या है' : "What's New";
+      case 'accessApplicationWithoutInternet':
+        return _selectedLanguage == 'hi'
+            ? 'इंटरनेट के बिना एप्लिकेशन तक पहुंचें'
+            : 'Access Application without Internet';
+      case 'downloadLayersMessage':
+        return _selectedLanguage == 'hi'
+            ? 'ऑफलाइन कनेक्टिविटी के लिए लेयर डाउनलोड करने हेतु, कृपया सहमत पर टिक करें और डाउनलोड बटन दबाएं। लेयर आपके फोन स्टोरेज का लगभग 300 MB लेंगे।'
+            : 'To download the layers for offline connectivity, please tick off agree and press on download button. The layers will take around 300 MB of your phone storage.';
+      case 'agreeAndDownloadLayers':
+        return _selectedLanguage == 'hi'
+            ? 'सहमत हैं और लेयर डाउनलोड करें'
+            : 'Agree and Download Layers';
+      case 'downloadLayers':
+        return _selectedLanguage == 'hi'
+            ? 'लेयर डाउनलोड करें'
+            : 'Download Layers';
+      case 'pleaseSelectStateDistrictBlock':
+        return _selectedLanguage == 'hi'
+            ? 'कृपया राज्य, जिला और ब्लॉक चुनें।'
+            : 'Please select State, District, and Block.';
+      case 'errorLoadingOfflineView':
+        return _selectedLanguage == 'hi'
+            ? 'ऑफलाइन व्यू लोड करने में त्रुटि:'
+            : 'Error loading offline view:';
+      case 'couldNotOpenEmailClient':
+        return _selectedLanguage == 'hi'
+            ? 'ईमेल क्लाइंट नहीं खोल सके। कृपया अपनी रिपोर्ट support@core-stack.org पर भेजें'
+            : 'Could not open email client. Please send your report to support@core-stack.org';
+      default:
+        return key;
+    }
+  }
+
+  void _updateModeSelectionMessage() {
+    setState(() {
+      if (_isSelected[0]) {
+        _modeSelectionMessage = getLocalizedText(context, 'onlineModeSelected');
+      } else {
+        _modeSelectionMessage =
+            getLocalizedText(context, 'offlineModeSelected');
+      }
+    });
   }
 
   @override
@@ -517,21 +674,14 @@ class _LocationSelectionState extends State<LocationSelection> {
         backgroundColor: Colors.black,
         centerTitle: true,
         foregroundColor: Colors.white,
-        title: const Text(
-          'Select a location',
-          style: TextStyle(fontSize: 18),
-        ),
+        title: Text(getLocalizedText(context, 'selectLocation')),
         leading: IconButton(
           icon: const Icon(Icons.history),
           onPressed: () => ChangeLog.showChangelogBottomSheet(context),
-          tooltip: "What's New",
+          tooltip: getLocalizedText(context, 'whatsNew'),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline_rounded),
-            onPressed: () => UseInfo.showInstructionsSheet(context),
-          ),
-          const SizedBox(width: 8),
+          _buildLanguageSelector(),
         ],
       ),
       body: Stack(
@@ -569,12 +719,13 @@ class _LocationSelectionState extends State<LocationSelection> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 32.0),
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.symmetric(horizontal: 10.0),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'Select State, District and Tehsil from the dropdown',
+                          getLocalizedText(
+                              context, 'selectStateDistrictTehsil'),
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -586,7 +737,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                     const SizedBox(height: 16.0),
                     _buildDropdown(
                       value: selectedState,
-                      hint: 'Select a State',
+                      hint: getLocalizedText(context, 'selectState'),
                       items: states,
                       onChanged: (String? value) {
                         setState(() {
@@ -598,7 +749,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                     const SizedBox(height: 16.0),
                     _buildDropdown(
                       value: selectedDistrict,
-                      hint: 'Select a District',
+                      hint: getLocalizedText(context, 'selectDistrict'),
                       items: districts,
                       onChanged: (String? value) {
                         setState(() {
@@ -610,7 +761,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                     const SizedBox(height: 16.0),
                     _buildDropdown(
                       value: selectedBlock,
-                      hint: 'Select a Tehsil',
+                      hint: getLocalizedText(context, 'selectTehsil'),
                       items: blocks,
                       onChanged: (String? value) {
                         if (value != null) {
@@ -656,11 +807,11 @@ class _LocationSelectionState extends State<LocationSelection> {
                                   setState(() {
                                     HapticFeedback.lightImpact();
                                     _isSelected = [true, false];
-                                    _modeSelectionMessage =
-                                        "You have selected ONLINE mode";
+                                    _updateModeSelectionMessage();
                                   });
                                 },
-                                child: const Text('Online mode'),
+                                child: Text(
+                                    getLocalizedText(context, 'onlineMode')),
                               )
                             : OutlinedButton(
                                 style: OutlinedButton.styleFrom(
@@ -678,11 +829,11 @@ class _LocationSelectionState extends State<LocationSelection> {
                                   setState(() {
                                     HapticFeedback.lightImpact();
                                     _isSelected = [true, false];
-                                    _modeSelectionMessage =
-                                        "You have selected ONLINE mode";
+                                    _updateModeSelectionMessage();
                                   });
                                 },
-                                child: const Text('Online mode'),
+                                child: Text(
+                                    getLocalizedText(context, 'onlineMode')),
                               ),
                         SizedBox(width: 16),
                         _isSelected[1]
@@ -701,11 +852,11 @@ class _LocationSelectionState extends State<LocationSelection> {
                                   setState(() {
                                     HapticFeedback.lightImpact();
                                     _isSelected = [false, true];
-                                    _modeSelectionMessage =
-                                        "You have selected OFFLINE mode";
+                                    _updateModeSelectionMessage();
                                   });
                                 },
-                                child: const Text('Offline mode*'),
+                                child: Text(
+                                    getLocalizedText(context, 'offlineMode')),
                               )
                             : OutlinedButton(
                                 style: OutlinedButton.styleFrom(
@@ -723,11 +874,11 @@ class _LocationSelectionState extends State<LocationSelection> {
                                   setState(() {
                                     HapticFeedback.lightImpact();
                                     _isSelected = [false, true];
-                                    _modeSelectionMessage =
-                                        "You have selected OFFLINE mode";
+                                    _updateModeSelectionMessage();
                                   });
                                 },
-                                child: const Text('Offline mode*'),
+                                child: Text(
+                                    getLocalizedText(context, 'offlineMode')),
                               ),
                       ],
                     ),
@@ -753,7 +904,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                           ),
                         ),
                         onPressed: _isSubmitEnabled ? _handleSubmit : null,
-                        child: const Text('SUBMIT'),
+                        child: Text(getLocalizedText(context, 'submit')),
                       ),
                     ),
                     const SizedBox(height: 20.0),
@@ -765,8 +916,8 @@ class _LocationSelectionState extends State<LocationSelection> {
                           color: Colors.grey.shade400.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12.0),
                         ),
-                        child: const Text(
-                          "*BETA Offline mode works in remote areas without internet with limited features.",
+                        child: Text(
+                          getLocalizedText(context, 'betaOfflineNote'),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 16,
@@ -780,7 +931,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                     Padding(
                       padding: EdgeInsets.only(bottom: 16.0),
                       child: Text(
-                        'version: $_appVersion',
+                        '${getLocalizedText(context, 'version')} $_appVersion',
                         style: TextStyle(
                           color: Color(0xFF592941),
                           fontSize: 14,
@@ -802,7 +953,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'File a bug report',
+                              getLocalizedText(context, 'fileaBugReport'),
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Color(0xFF592941),
