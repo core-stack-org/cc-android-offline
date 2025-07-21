@@ -95,20 +95,18 @@ class _ChangelogBottomSheetState extends State<ChangelogBottomSheet> {
                   _buildVersionSection(
                     'Version $_appVersion',
                     [
-                      "GPS location fixes.",
-                      "Proper messaging for offline mode."
+                      "On screen navigation is now available.",
+                      "You can now see if the asset has been marked for maintenance at a glance.",
+                      "Bug fixes and improvements."
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  _buildVersionSection(
-                    'In Previous Version',
-                    [
-                      "Home and Back buttons were not working in some phones. This has been fixed now.",
-                      "UX improvements.",
-                      "Syncing issues are resolved.",
-                      "Bugs fixes and improvements.",
-                    ],
-                  ),
+                  // const SizedBox(height: 20),
+                  // _buildVersionSection(
+                  //   'In Previous Version',
+                  //   [
+
+                  //   ],
+                  // ),
                 ],
               ),
             ),

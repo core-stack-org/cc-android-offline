@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class WebViewApp extends StatefulWidget {
   final String? url;
-  const WebViewApp({super.key, @required this.url});
+  final String selectedLanguage;
+  const WebViewApp(
+      {super.key, @required this.url, this.selectedLanguage = 'hi'});
 
   @override
   State<WebViewApp> createState() => _WebViewState();
@@ -109,6 +112,21 @@ class _WebViewState extends State<WebViewApp> {
     }
   }
 
+  String getLocalizedText(BuildContext context, String key) {
+    switch (key) {
+      case 'returnToLocationSelection':
+        return widget.selectedLanguage == 'hi'
+            ? 'स्थान चयन पर वापस जाएं'
+            : 'Return to Location Selection';
+      case 'returnToPlanSelection':
+        return widget.selectedLanguage == 'hi'
+            ? 'योजना चयन पर वापस जाएं'
+            : 'Return to Plan Selection';
+      default:
+        return key;
+    }
+  }
+
   Future<bool> _handlePopScope() async {
     if (webViewController != null) {
       bool canGoBack = await webViewController!.canGoBack();
@@ -184,7 +202,7 @@ class _WebViewState extends State<WebViewApp> {
                           color: Colors.white.withValues(alpha: 0.9)),
                       SizedBox(width: 12),
                       Text(
-                        'Return to Location Selection',
+                        getLocalizedText(context, 'returnToLocationSelection'),
                         style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9)),
                       ),
@@ -195,11 +213,11 @@ class _WebViewState extends State<WebViewApp> {
                   value: 'home',
                   child: Row(
                     children: [
-                      Icon(Icons.arrow_drop_down,
+                      Icon(Icons.checklist,
                           color: Colors.white.withValues(alpha: 0.9)),
                       SizedBox(width: 12),
                       Text(
-                        'Return to Plan Selection',
+                        getLocalizedText(context, 'returnToPlanSelection'),
                         style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9)),
                       ),

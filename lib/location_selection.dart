@@ -47,7 +47,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   String _appVersion = '';
   String _deviceInfo = 'Unknown';
   String _modeSelectionMessage = "You have selected ONLINE mode";
-  String _selectedLanguage = 'en';
+  String _selectedLanguage = 'hi';
 
   List<Map<String, dynamic>> states = [];
   List<Map<String, dynamic>> districts = [];
@@ -169,11 +169,12 @@ class _LocationSelectionState extends State<LocationSelection> {
     HapticFeedback.mediumImpact();
     String url =
         "${ccUrl}?geoserver_url=${geoserverUrl.substring(0, geoserverUrl.length - 1)}&app_name=nrmApp&state_name=$selectedState&dist_name=$selectedDistrict&block_name=$selectedBlock&block_id=$selectedBlockID&isOffline=false&language=$_selectedLanguage";
-
+    print('URL: $url');
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => WebViewApp(url: url),
+        builder: (context) =>
+            WebViewApp(url: url, selectedLanguage: _selectedLanguage),
       ),
     );
   }
@@ -289,6 +290,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     );
   }
 
+  // MARK: - Offline
   Future<void> navigateToWebViewOffline(OfflineContainer container) async {
     try {
       final directory = await getApplicationDocumentsDirectory();

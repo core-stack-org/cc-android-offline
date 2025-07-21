@@ -54,5 +54,7 @@
   "successfullyRefreshedPlanData": "{regionName} के लिए योजना डेटा सफलतापूर्वक रीफ्रेश हो गया",
   "errorRefreshingData": "डेटा रीफ्रेश करने में त्रुटि: {error}",
   "latitude": "अक्षांश",
-  "longitude": "देशांतर"
+  "longitude": "देशांतर",
+  "returnToLocationSelection": "स्थान चयन पर वापस जाएं",
+  "returnToPlanSelection": "योजना चयन पर वापस जाएं"
 }

@@ -54,5 +54,7 @@
   "successfullyRefreshedPlanData": "Successfully refreshed plan data for {regionName}",
   "errorRefreshingData": "Error refreshing data: {error}",
   "latitude": "Latitude",
-  "longitude": "Longitude"
+  "longitude": "Longitude",
+  "returnToLocationSelection": "Return to Location Selection",
+  "returnToPlanSelection": "Return to Plan Selection"
 }
