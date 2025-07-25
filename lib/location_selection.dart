@@ -319,7 +319,9 @@ class _LocationSelectionState extends State<LocationSelection> {
           "&isOffline=true" +
           "&container_name=${container.name}" +
           "&plans=$encodedPlans" +
-          "&language=$_selectedLanguage";
+          "&language=$_selectedLanguage" +
+          "&latitude=${container.latitude}" +
+          "&longitude=${container.longitude}";
 
       print('Offline URL: $url');
 
