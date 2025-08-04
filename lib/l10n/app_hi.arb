@@ -4,7 +4,7 @@
   "selectState": "राज्य चुनें",
   "selectDistrict": "जिला चुनें",
   "selectTehsil": "तहसील चुनें", 
-  "selectStateDistrictTehsil": "ड्रॉपडाउन से राज्य, जिला और तहसील चुनें",
+  "selectStateDistrictTehsil": "नीचे दिए गए ड्रॉप-डाउन से राज्य, जिला और तहसील का चयन करें।",
   "onlineMode": "ऑनलाइन मोड",
   "offlineMode": "ऑफलाइन मोड",
   "submit": "जमा करें",
@@ -53,8 +53,8 @@
   "noPlanLayersToRefresh": "रीफ्रेश करने के लिए कोई योजना लेयर नहीं।",
   "successfullyRefreshedPlanData": "{regionName} के लिए योजना डेटा सफलतापूर्वक रीफ्रेश हो गया",
   "errorRefreshingData": "डेटा रीफ्रेश करने में त्रुटि: {error}",
-  "latitude": "अक्षांश",
-  "longitude": "देशांतर",
+  "latitude": "अक्षांश (lat)",
+  "longitude": "देशांतर (lon)",
   "returnToLocationSelection": "स्थान चयन पर वापस जाएं",
   "returnToPlanSelection": "योजना चयन पर वापस जाएं"
 }

@@ -25,6 +25,7 @@ import './container_flow/container_sheet.dart';
 import './download_progress.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../main.dart'; // Import to access localeNotifier
 
 class LocationSelection extends StatefulWidget {
   const LocationSelection({super.key});
@@ -46,7 +47,6 @@ class _LocationSelectionState extends State<LocationSelection> {
   bool _isSubmitEnabled = false;
   String _appVersion = '';
   String _deviceInfo = 'Unknown';
-  String _modeSelectionMessage = "You have selected ONLINE mode";
   String _selectedLanguage = 'hi';
 
   List<Map<String, dynamic>> states = [];
@@ -58,10 +58,6 @@ class _LocationSelectionState extends State<LocationSelection> {
     super.initState();
     _loadInfo();
     fetchLocationData();
-    // Initialize the mode selection message
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updateModeSelectionMessage();
-    });
   }
 
   List<Map<String, dynamic>> sortLocationData(List<Map<String, dynamic>> data) {
@@ -186,6 +182,8 @@ class _LocationSelectionState extends State<LocationSelection> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
       builder: (BuildContext context) {
+        final localizations = AppLocalizations.of(context)!;
+
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setSheetState) {
             return Container(
@@ -195,9 +193,8 @@ class _LocationSelectionState extends State<LocationSelection> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    getLocalizedText(
-                        context, 'accessApplicationWithoutInternet'),
-                    style: TextStyle(
+                    localizations.accessApplicationWithoutInternet,
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF592941),
@@ -205,8 +202,8 @@ class _LocationSelectionState extends State<LocationSelection> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    getLocalizedText(context, 'downloadLayersMessage'),
-                    style: TextStyle(
+                    localizations.downloadLayersMessage,
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: Color(0xFF592941),
@@ -224,8 +221,8 @@ class _LocationSelectionState extends State<LocationSelection> {
                         },
                       ),
                       Text(
-                        getLocalizedText(context, 'agreeAndDownloadLayers'),
-                        style: TextStyle(
+                        localizations.agreeAndDownloadLayers,
+                        style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF592941),
                         ),
@@ -260,8 +257,8 @@ class _LocationSelectionState extends State<LocationSelection> {
                             horizontal: 40, vertical: 15),
                       ),
                       child: Text(
-                        getLocalizedText(context, 'downloadLayers'),
-                        style: TextStyle(
+                        localizations.downloadLayers,
+                        style: const TextStyle(
                           color: Color(0xFF592941),
                           fontSize: 16,
                         ),
@@ -292,6 +289,8 @@ class _LocationSelectionState extends State<LocationSelection> {
 
   // MARK: - Offline
   Future<void> navigateToWebViewOffline(OfflineContainer container) async {
+    final localizations = AppLocalizations.of(context)!;
+
     try {
       final directory = await getApplicationDocumentsDirectory();
       final persistentOfflinePath =
@@ -339,7 +338,7 @@ class _LocationSelectionState extends State<LocationSelection> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                '${getLocalizedText(context, 'errorLoadingOfflineView')} ${e.toString()}'),
+                '${localizations.errorLoadingOfflineView} ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -419,6 +418,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   }
 
   void _handleSubmit() {
+    final localizations = AppLocalizations.of(context)!;
     HapticFeedback.mediumImpact();
     bool isOnlineMode = _isSelected[0];
 
@@ -427,13 +427,12 @@ class _LocationSelectionState extends State<LocationSelection> {
         selectedBlock == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text(getLocalizedText(context, 'pleaseSelectStateDistrictBlock')),
+          content: Text(localizations.pleaseSelectStateDistrictBlock),
           backgroundColor: Theme.of(context).colorScheme.error,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-          margin: EdgeInsets.all(16),
+          margin: const EdgeInsets.all(16),
         ),
       );
       return;
@@ -484,6 +483,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   }
 
   Future<void> _launchEmail() async {
+    final localizations = AppLocalizations.of(context)!;
     final Uri emailLaunchUri = Uri(
       scheme: 'mailto',
       path: 'support@core-stack.org',
@@ -513,7 +513,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(getLocalizedText(context, 'couldNotOpenEmailClient')),
+          content: Text(localizations.couldNotOpenEmailClient),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
@@ -537,8 +537,8 @@ class _LocationSelectionState extends State<LocationSelection> {
               setState(() {
                 _selectedLanguage = newValue;
                 HapticFeedback.lightImpact();
-                // Update the mode selection message when language changes
-                _updateModeSelectionMessage();
+                // Update the global locale
+                localeNotifier.value = Locale(newValue);
               });
             }
           },
@@ -576,98 +576,9 @@ class _LocationSelectionState extends State<LocationSelection> {
     );
   }
 
-  String getLocalizedText(BuildContext context, String key) {
-    final localizations = _selectedLanguage == 'hi'
-        ? AppLocalizations.of(
-            context)! // This will use Hindi if device is set to Hindi
-        : AppLocalizations.of(context)!; // Or you can create a custom method
-
-    // For now, create a simple mapping
-    switch (key) {
-      case 'selectLocation':
-        return _selectedLanguage == 'hi' ? 'स्थान चुनें' : 'Select a location';
-      case 'selectState':
-        return _selectedLanguage == 'hi' ? 'राज्य चुनें' : 'Select a State';
-      case 'selectDistrict':
-        return _selectedLanguage == 'hi' ? 'जिला चुनें' : 'Select a District';
-      case 'selectTehsil':
-        return _selectedLanguage == 'hi' ? 'तहसील चुनें' : 'Select a Tehsil';
-      case 'selectStateDistrictTehsil':
-        return _selectedLanguage == 'hi'
-            ? 'नीचे दिए गए ड्रॉप-डाउन से राज्य, जिला और तहसील का चयन करें। '
-            : 'Select State, District and Tehsil from the dropdown';
-      case 'onlineMode':
-        return _selectedLanguage == 'hi' ? 'ऑनलाइन मोड' : 'Online mode';
-      case 'offlineMode':
-        return _selectedLanguage == 'hi' ? 'ऑफलाइन मोड*' : 'Offline mode*';
-      case 'submit':
-        return _selectedLanguage == 'hi' ? 'जमा करें' : 'SUBMIT';
-      case 'onlineModeSelected':
-        return _selectedLanguage == 'hi'
-            ? 'आपने ऑनलाइन मोड चुना है'
-            : 'You have selected ONLINE mode';
-      case 'offlineModeSelected':
-        return _selectedLanguage == 'hi'
-            ? 'आपने ऑफलाइन मोड चुना है'
-            : 'You have selected OFFLINE mode';
-      case 'betaOfflineNote':
-        return _selectedLanguage == 'hi'
-            ? '*बीटा ऑफलाइन मोड सीमित सुविधाओं के साथ इंटरनेट के बिना दूरदराज के क्षेत्रों में काम करता है।'
-            : '*BETA Offline mode works in remote areas without internet with limited features.';
-      case 'version':
-        return _selectedLanguage == 'hi' ? 'संस्करण:' : 'version:';
-      case 'fileaBugReport':
-        return _selectedLanguage == 'hi'
-            ? 'बग रिपोर्ट दर्ज करें'
-            : 'File a bug report';
-      case 'whatsNew':
-        return _selectedLanguage == 'hi' ? 'नया क्या है' : "What's New";
-      case 'accessApplicationWithoutInternet':
-        return _selectedLanguage == 'hi'
-            ? 'इंटरनेट के बिना एप्लिकेशन तक पहुंचें'
-            : 'Access Application without Internet';
-      case 'downloadLayersMessage':
-        return _selectedLanguage == 'hi'
-            ? 'ऑफलाइन कनेक्टिविटी के लिए लेयर डाउनलोड करने हेतु, कृपया सहमत पर टिक करें और डाउनलोड बटन दबाएं। लेयर आपके फोन स्टोरेज का लगभग 300 MB लेंगे।'
-            : 'To download the layers for offline connectivity, please tick off agree and press on download button. The layers will take around 300 MB of your phone storage.';
-      case 'agreeAndDownloadLayers':
-        return _selectedLanguage == 'hi'
-            ? 'सहमत हैं और लेयर डाउनलोड करें'
-            : 'Agree and Download Layers';
-      case 'downloadLayers':
-        return _selectedLanguage == 'hi'
-            ? 'लेयर डाउनलोड करें'
-            : 'Download Layers';
-      case 'pleaseSelectStateDistrictBlock':
-        return _selectedLanguage == 'hi'
-            ? 'कृपया राज्य, जिला और ब्लॉक चुनें।'
-            : 'Please select State, District, and Block.';
-      case 'errorLoadingOfflineView':
-        return _selectedLanguage == 'hi'
-            ? 'ऑफलाइन व्यू लोड करने में त्रुटि:'
-            : 'Error loading offline view:';
-      case 'couldNotOpenEmailClient':
-        return _selectedLanguage == 'hi'
-            ? 'ईमेल क्लाइंट नहीं खोल सके। कृपया अपनी रिपोर्ट support@core-stack.org पर भेजें'
-            : 'Could not open email client. Please send your report to support@core-stack.org';
-      default:
-        return key;
-    }
-  }
-
-  void _updateModeSelectionMessage() {
-    setState(() {
-      if (_isSelected[0]) {
-        _modeSelectionMessage = getLocalizedText(context, 'onlineModeSelected');
-      } else {
-        _modeSelectionMessage =
-            getLocalizedText(context, 'offlineModeSelected');
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     const Color customGrey = Color(0xFFD6D4C8);
     const Color darkTextColor = Colors.black87;
 
@@ -678,11 +589,11 @@ class _LocationSelectionState extends State<LocationSelection> {
         backgroundColor: Colors.black,
         centerTitle: true,
         foregroundColor: Colors.white,
-        title: Text(getLocalizedText(context, 'selectLocation')),
+        title: Text(localizations.selectLocation),
         leading: IconButton(
           icon: const Icon(Icons.history),
           onPressed: () => ChangeLog.showChangelogBottomSheet(context),
-          tooltip: getLocalizedText(context, 'whatsNew'),
+          tooltip: localizations.whatsNew,
         ),
         actions: [
           _buildLanguageSelector(),
@@ -724,13 +635,12 @@ class _LocationSelectionState extends State<LocationSelection> {
                   children: [
                     const SizedBox(height: 32.0),
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 10.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          getLocalizedText(
-                              context, 'selectStateDistrictTehsil'),
-                          style: TextStyle(
+                          localizations.selectStateDistrictTehsil,
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF592941),
@@ -741,7 +651,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                     const SizedBox(height: 16.0),
                     _buildDropdown(
                       value: selectedState,
-                      hint: getLocalizedText(context, 'selectState'),
+                      hint: localizations.selectState,
                       items: states,
                       onChanged: (String? value) {
                         setState(() {
@@ -753,7 +663,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                     const SizedBox(height: 16.0),
                     _buildDropdown(
                       value: selectedDistrict,
-                      hint: getLocalizedText(context, 'selectDistrict'),
+                      hint: localizations.selectDistrict,
                       items: districts,
                       onChanged: (String? value) {
                         setState(() {
@@ -765,7 +675,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                     const SizedBox(height: 16.0),
                     _buildDropdown(
                       value: selectedBlock,
-                      hint: getLocalizedText(context, 'selectTehsil'),
+                      hint: localizations.selectTehsil,
                       items: blocks,
                       onChanged: (String? value) {
                         if (value != null) {
@@ -784,12 +694,14 @@ class _LocationSelectionState extends State<LocationSelection> {
                     ),
                     const SizedBox(height: 15.0),
                     Text(
-                      _modeSelectionMessage,
+                      _isSelected[0]
+                          ? localizations.onlineModeSelected
+                          : localizations.offlineModeSelected,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
-                          color: const Color(0xFF592941)),
+                          color: Color(0xFF592941)),
                     ),
                     const SizedBox(height: 15.0),
                     Row(
@@ -799,10 +711,10 @@ class _LocationSelectionState extends State<LocationSelection> {
                             ? ElevatedButton(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: customGrey,
-                                  foregroundColor: Color(0xFF592941),
-                                  padding: EdgeInsets.symmetric(
+                                  foregroundColor: const Color(0xFF592941),
+                                  padding: const EdgeInsets.symmetric(
                                       horizontal: 24, vertical: 12),
-                                  textStyle: TextStyle(fontSize: 15),
+                                  textStyle: const TextStyle(fontSize: 15),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(20.0),
                                   ),
@@ -811,20 +723,18 @@ class _LocationSelectionState extends State<LocationSelection> {
                                   setState(() {
                                     HapticFeedback.lightImpact();
                                     _isSelected = [true, false];
-                                    _updateModeSelectionMessage();
                                   });
                                 },
-                                child: Text(
-                                    getLocalizedText(context, 'onlineMode')),
+                                child: Text(localizations.onlineMode),
                               )
                             : OutlinedButton(
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: customGrey,
-                                  side:
-                                      BorderSide(color: customGrey, width: 1.5),
-                                  padding: EdgeInsets.symmetric(
+                                  side: const BorderSide(
+                                      color: customGrey, width: 1.5),
+                                  padding: const EdgeInsets.symmetric(
                                       horizontal: 24, vertical: 12),
-                                  textStyle: TextStyle(fontSize: 15),
+                                  textStyle: const TextStyle(fontSize: 15),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(20.0),
                                   ),
@@ -833,21 +743,19 @@ class _LocationSelectionState extends State<LocationSelection> {
                                   setState(() {
                                     HapticFeedback.lightImpact();
                                     _isSelected = [true, false];
-                                    _updateModeSelectionMessage();
                                   });
                                 },
-                                child: Text(
-                                    getLocalizedText(context, 'onlineMode')),
+                                child: Text(localizations.onlineMode),
                               ),
-                        SizedBox(width: 16),
+                        const SizedBox(width: 16),
                         _isSelected[1]
                             ? ElevatedButton(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: customGrey,
-                                  foregroundColor: Color(0xFF592941),
-                                  padding: EdgeInsets.symmetric(
+                                  foregroundColor: const Color(0xFF592941),
+                                  padding: const EdgeInsets.symmetric(
                                       horizontal: 24, vertical: 12),
-                                  textStyle: TextStyle(fontSize: 15),
+                                  textStyle: const TextStyle(fontSize: 15),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(20.0),
                                   ),
@@ -856,20 +764,18 @@ class _LocationSelectionState extends State<LocationSelection> {
                                   setState(() {
                                     HapticFeedback.lightImpact();
                                     _isSelected = [false, true];
-                                    _updateModeSelectionMessage();
                                   });
                                 },
-                                child: Text(
-                                    getLocalizedText(context, 'offlineMode')),
+                                child: Text(localizations.offlineMode),
                               )
                             : OutlinedButton(
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: customGrey,
-                                  side:
-                                      BorderSide(color: customGrey, width: 1.5),
-                                  padding: EdgeInsets.symmetric(
+                                  side: const BorderSide(
+                                      color: customGrey, width: 1.5),
+                                  padding: const EdgeInsets.symmetric(
                                       horizontal: 24, vertical: 12),
-                                  textStyle: TextStyle(fontSize: 15),
+                                  textStyle: const TextStyle(fontSize: 15),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(20.0),
                                   ),
@@ -878,15 +784,13 @@ class _LocationSelectionState extends State<LocationSelection> {
                                   setState(() {
                                     HapticFeedback.lightImpact();
                                     _isSelected = [false, true];
-                                    _updateModeSelectionMessage();
                                   });
                                 },
-                                child: Text(
-                                    getLocalizedText(context, 'offlineMode')),
+                                child: Text(localizations.offlineMode),
                               ),
                       ],
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       child: ElevatedButton(
@@ -908,7 +812,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                           ),
                         ),
                         onPressed: _isSubmitEnabled ? _handleSubmit : null,
-                        child: Text(getLocalizedText(context, 'submit')),
+                        child: Text(localizations.submit),
                       ),
                     ),
                     const SizedBox(height: 20.0),
@@ -921,9 +825,9 @@ class _LocationSelectionState extends State<LocationSelection> {
                           borderRadius: BorderRadius.circular(12.0),
                         ),
                         child: Text(
-                          getLocalizedText(context, 'betaOfflineNote'),
+                          localizations.betaOfflineNote,
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w400,
                             color: Color.fromARGB(255, 77, 77, 77),
@@ -933,10 +837,10 @@ class _LocationSelectionState extends State<LocationSelection> {
                     ),
                     const SizedBox(height: 32.0),
                     Padding(
-                      padding: EdgeInsets.only(bottom: 16.0),
+                      padding: const EdgeInsets.only(bottom: 16.0),
                       child: Text(
-                        '${getLocalizedText(context, 'version')} $_appVersion',
-                        style: TextStyle(
+                        '${localizations.version} $_appVersion',
+                        style: const TextStyle(
                           color: Color(0xFF592941),
                           fontSize: 14,
                         ),
@@ -950,15 +854,15 @@ class _LocationSelectionState extends State<LocationSelection> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
-                            Icon(
+                            const Icon(
                               Icons.bug_report,
                               color: Color(0xFF592941),
                               size: 16,
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              getLocalizedText(context, 'fileaBugReport'),
-                              style: TextStyle(
+                              localizations.fileaBugReport,
+                              style: const TextStyle(
                                 fontSize: 14,
                                 color: Color(0xFF592941),
                               ),

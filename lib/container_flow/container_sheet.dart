@@ -33,6 +33,8 @@ class ContainerSheets {
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
       builder: (BuildContext context) {
+        final localizations = AppLocalizations.of(context)!;
+
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return Padding(
@@ -45,9 +47,9 @@ class ContainerSheets {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Create a new region",
-                      style: TextStyle(
+                    Text(
+                      localizations.createNewRegion,
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF592941),
@@ -90,8 +92,8 @@ class ContainerSheets {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           locationSelected
-                              ? 'Latitude: ${selectedLat?.toStringAsFixed(4)}, Longitude: ${selectedLon?.toStringAsFixed(4)}'
-                              : 'Mark a location on the map',
+                              ? '${localizations.latitude}: ${selectedLat?.toStringAsFixed(4)}, ${localizations.longitude}: ${selectedLon?.toStringAsFixed(4)}'
+                              : localizations.markLocationOnMap,
                           style: const TextStyle(
                             color: Color(0xFF592941),
                             fontSize: 16,
@@ -117,7 +119,7 @@ class ContainerSheets {
                           color: const Color(0xFF592941),
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Name your region',
+                          hintText: localizations.nameYourRegion,
                           hintStyle: TextStyle(
                             color: const Color(0xFF592941),
                             fontSize: 16,
@@ -143,9 +145,9 @@ class ContainerSheets {
                             ? () async {
                                 if (containerNameController.text.isEmpty) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content:
-                                            Text('Please enter a region name')),
+                                    SnackBar(
+                                        content: Text(localizations
+                                            .pleaseEnterRegionName)),
                                   );
                                   return;
                                 }
@@ -182,9 +184,9 @@ class ContainerSheets {
                             vertical: 15,
                           ),
                         ),
-                        child: const Text(
-                          "Create Region",
-                          style: TextStyle(
+                        child: Text(
+                          localizations.createRegion,
+                          style: const TextStyle(
                             color: Color(0xFF592941),
                             fontSize: 16,
                           ),
@@ -223,364 +225,390 @@ class ContainerSheets {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Container(
-          height: MediaQuery.of(context).size.height * 0.9,
-          child: Column(
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Text(
-                      'Select a region',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF592941),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (_refreshingContainerName != null)
+        builder: (context, setState) {
+          final localizations = AppLocalizations.of(context)!;
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.9,
+            child: Column(
+              children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: LinearProgressIndicator(
-                    color: Colors.blue,
-                    backgroundColor: Colors.blue.withOpacity(0.2),
+                  padding: EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Text(
+                        localizations.selectARegion,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF592941),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              Expanded(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  child: FutureBuilder<List<OfflineContainer>>(
-                    future: containersFuture,
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+                if (_refreshingContainerName != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: LinearProgressIndicator(
+                      color: Colors.blue,
+                      backgroundColor: Colors.blue.withOpacity(0.2),
+                    ),
+                  ),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    child: FutureBuilder<List<OfflineContainer>>(
+                      future: containersFuture,
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
 
-                      final containers = snapshot.data!;
+                        final containers = snapshot.data!;
 
-                      if (containers.isEmpty) {
-                        return const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Looks like there are no regions created yet',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color.fromARGB(255, 129, 129, 129),
+                        if (containers.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  localizations.looksLikeNoRegionsCreated,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color.fromARGB(255, 129, 129, 129),
+                                  ),
                                 ),
-                              ),
-                              SizedBox(height: 12),
-                              Text(
-                                'Please create a region to start using the app',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey,
+                                const SizedBox(height: 12),
+                                Text(
+                                  localizations.pleaseCreateRegionToStart,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      // Sort containers by creation date, newest first
-                      containers
-                          .sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-                      final selectedContainer = containers.firstWhere(
-                        (container) => container.name == selectedContainerId,
-                        orElse: () => containers.first,
-                      );
-
-                      return ListView.builder(
-                        itemCount: containers.length,
-                        itemBuilder: (context, index) {
-                          final container = containers[index];
-                          final isSelected =
-                              container.name == selectedContainerId;
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color(0xFFDBEFF2)
-                                  : Colors.white,
-                              border: Border.all(
-                                  color: const Color(0xFF8DCBD5), width: 1),
-                              borderRadius: BorderRadius.circular(12),
+                              ],
                             ),
-                            child: ListTile(
-                              onTap: () {
-                                setState(() {
-                                  selectedContainerId = container.name;
-                                });
-                              },
-                              trailing: PopupMenuButton<String>(
-                                color: Colors.black.withAlpha(215),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15.0),
-                                ),
-                                onSelected: (value) async {
-                                  if (value == 'redownload') {
-                                    _handleRedownload(context, container);
-                                  } else if (value == 'refresh') {
-                                    setState(() {
-                                      _refreshingContainerName = container.name;
-                                    });
-                                    await _refreshPlanLayers(
-                                        context, container);
-                                    if (context.mounted) {
+                          );
+                        }
+
+                        // Sort containers by creation date, newest first
+                        containers
+                            .sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+                        final selectedContainer = containers.firstWhere(
+                          (container) => container.name == selectedContainerId,
+                          orElse: () => containers.first,
+                        );
+
+                        return ListView.builder(
+                          itemCount: containers.length,
+                          itemBuilder: (context, index) {
+                            final container = containers[index];
+                            final isSelected =
+                                container.name == selectedContainerId;
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xFFDBEFF2)
+                                    : Colors.white,
+                                border: Border.all(
+                                    color: const Color(0xFF8DCBD5), width: 1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ListTile(
+                                onTap: () {
+                                  setState(() {
+                                    selectedContainerId = container.name;
+                                  });
+                                },
+                                trailing: PopupMenuButton<String>(
+                                  color: Colors.black.withAlpha(215),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15.0),
+                                  ),
+                                  onSelected: (value) async {
+                                    if (value == 'redownload') {
+                                      _handleRedownload(context, container);
+                                    } else if (value == 'refresh') {
                                       setState(() {
-                                        _refreshingContainerName = null;
+                                        _refreshingContainerName =
+                                            container.name;
                                       });
+                                      await _refreshPlanLayers(
+                                          context, container);
+                                      if (context.mounted) {
+                                        setState(() {
+                                          _refreshingContainerName = null;
+                                        });
+                                      }
+                                    } else if (value == 'delete') {
+                                      bool confirm = await showDialog(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: Text(localizations
+                                                  .deleteRegionConfirmTitle),
+                                              content: Text(localizations
+                                                  .deleteRegionConfirmMessage(
+                                                      container.name)),
+                                              actions: [
+                                                TextButton(
+                                                  child: Text(
+                                                      localizations.cancel),
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                          context, false),
+                                                ),
+                                                TextButton(
+                                                  child: Text(
+                                                      localizations.delete),
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                          context, true),
+                                                ),
+                                              ],
+                                            ),
+                                          ) ??
+                                          false;
+
+                                      if (confirm && context.mounted) {
+                                        await _deleteContainerAndData(
+                                            container.name);
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(localizations
+                                                .regionDeleted(container.name)),
+                                            backgroundColor:
+                                                const Color(0xFFFF4D6D),
+                                          ),
+                                        );
+                                        setState(() {
+                                          containersFuture =
+                                              ContainerManager.getContainers();
+                                          if (selectedContainerId ==
+                                              container.name) {
+                                            selectedContainerId = null;
+                                          }
+                                        });
+                                      }
                                     }
-                                  } else if (value == 'delete') {
-                                    bool confirm = await showDialog(
+                                  },
+                                  itemBuilder: (BuildContext context) =>
+                                      <PopupMenuEntry<String>>[
+                                    PopupMenuItem<String>(
+                                      value: 'redownload',
+                                      child: Text(
+                                        localizations.refreshAllLayers,
+                                        style: const TextStyle(
+                                            color: Colors.white),
+                                      ),
+                                    ),
+                                    PopupMenuItem<String>(
+                                      value: 'refresh',
+                                      child: Text(
+                                        localizations.refreshPlanLayersOnly,
+                                        style: const TextStyle(
+                                            color: Colors.white),
+                                      ),
+                                    ),
+                                    PopupMenuItem<String>(
+                                      value: 'delete',
+                                      child: Text(
+                                        localizations.deleteRegion,
+                                        style:
+                                            const TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                contentPadding: const EdgeInsets.all(16),
+                                title: Text(
+                                  container.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      '${container.state} > ${container.district} > ${container.block}',
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      container.isDownloaded
+                                          ? localizations.readyForOfflineUse
+                                          : localizations.notYetDownloaded,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: container.isDownloaded
+                                            ? Colors.green
+                                            : Colors.orange,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        color: Colors.grey.shade300,
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.add, color: Color(0xFF592941)),
+                          label: Text(localizations.newRegion),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD6D5C9),
+                            foregroundColor: const Color(0xFF592941),
+                            side: const BorderSide(
+                                color: Color(0xFFD6D5C9), width: 2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onPressed: () {
+                            Navigator.pop(context);
+                            ContainerSheets.showCreateContainer(
+                              context: context,
+                              selectedLanguage: selectedLanguage,
+                              selectedState: selectedState,
+                              selectedDistrict: selectedDistrict,
+                              selectedBlock: selectedBlock,
+                              onContainerCreated: (container) {
+                                onContainerSelected(container);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: Transform.rotate(
+                            angle: 1.5708, // 90 degrees in radians (π/2)
+                            child: const Icon(Icons.navigation_rounded),
+                          ),
+                          label: Text(localizations.navigate),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD6D5C9),
+                            foregroundColor: const Color(0xFF592941),
+                            side: const BorderSide(
+                                color: Color(0xFFD6D5C9), width: 2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onPressed: selectedContainerId != null
+                              ? () async {
+                                  final container =
+                                      await ContainerManager.getContainer(
+                                          selectedContainerId!);
+                                  if (container != null && context.mounted) {
+                                    if (container.state == selectedState &&
+                                        container.district ==
+                                            selectedDistrict &&
+                                        container.block == selectedBlock) {
+                                      if (container.isDownloaded) {
+                                        Navigator.pop(context);
+                                        onContainerSelected(container);
+                                      } else {
+                                        bool? confirm = await showDialog(
                                           context: context,
                                           builder: (context) => AlertDialog(
-                                            title: const Text('Delete Region'),
-                                            content: Text(
-                                                'This will delete all offline data for ${container.name}. Continue?'),
+                                            title: Text(
+                                                localizations.refreshLayers),
+                                            content: Text(localizations
+                                                .layersNotDownloaded),
                                             actions: [
                                               TextButton(
-                                                child: const Text('Cancel'),
+                                                child:
+                                                    Text(localizations.cancel),
                                                 onPressed: () => Navigator.pop(
                                                     context, false),
                                               ),
                                               TextButton(
-                                                child: const Text('Delete'),
+                                                child:
+                                                    Text(localizations.refresh),
                                                 onPressed: () => Navigator.pop(
                                                     context, true),
                                               ),
                                             ],
                                           ),
-                                        ) ??
-                                        false;
-
-                                    if (confirm && context.mounted) {
-                                      await _deleteContainerAndData(
-                                          container.name);
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                              'Region ${container.name} deleted'),
-                                          backgroundColor:
-                                              const Color(0xFFFF4D6D),
-                                        ),
-                                      );
-                                      setState(() {
-                                        containersFuture =
-                                            ContainerManager.getContainers();
-                                        if (selectedContainerId ==
-                                            container.name) {
-                                          selectedContainerId = null;
+                                        );
+                                        if (confirm == true &&
+                                            context.mounted) {
+                                          _handleRedownload(context, container);
                                         }
-                                      });
-                                    }
-                                  }
-                                },
-                                itemBuilder: (BuildContext context) =>
-                                    <PopupMenuEntry<String>>[
-                                  const PopupMenuItem<String>(
-                                    value: 'redownload',
-                                    child: Text(
-                                      'Refresh all layers',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                  ),
-                                  const PopupMenuItem<String>(
-                                    value: 'refresh',
-                                    child: Text(
-                                      'Refresh plan layers only',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                  ),
-                                  const PopupMenuItem<String>(
-                                    value: 'delete',
-                                    child: Text(
-                                      'Delete region',
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              contentPadding: const EdgeInsets.all(16),
-                              title: Text(
-                                container.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    '${container.state} > ${container.district} > ${container.block}',
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    container.isDownloaded
-                                        ? 'Ready for offline use'
-                                        : 'Not yet downloaded',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: container.isDownloaded
-                                          ? Colors.green
-                                          : Colors.orange,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(
-                      color: Colors.grey.shade300,
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.add),
-                        label: const Text('New Region'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFD6D5C9),
-                          foregroundColor: const Color(0xFF592941),
-                          side: const BorderSide(
-                              color: Color(0xFFD6D5C9), width: 2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          ContainerSheets.showCreateContainer(
-                            context: context,
-                            selectedLanguage: selectedLanguage,
-                            selectedState: selectedState,
-                            selectedDistrict: selectedDistrict,
-                            selectedBlock: selectedBlock,
-                            onContainerCreated: (container) {
-                              onContainerSelected(container);
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.navigation_outlined),
-                        label: const Text('Navigate'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFD6D5C9),
-                          foregroundColor: const Color(0xFF592941),
-                          side: const BorderSide(
-                              color: Color(0xFFD6D5C9), width: 2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        onPressed: selectedContainerId != null
-                            ? () async {
-                                final container =
-                                    await ContainerManager.getContainer(
-                                        selectedContainerId!);
-                                if (container != null && context.mounted) {
-                                  if (container.state == selectedState &&
-                                      container.district == selectedDistrict &&
-                                      container.block == selectedBlock) {
-                                    if (container.isDownloaded) {
-                                      Navigator.pop(context);
-                                      onContainerSelected(container);
+                                      }
                                     } else {
-                                      bool? confirm = await showDialog(
+                                      showDialog(
                                         context: context,
                                         builder: (context) => AlertDialog(
-                                          title: const Text('Refresh Layers'),
-                                          content: const Text(
-                                              'The layers for this region are not yet downloaded. Do you want to refresh all layers now?'),
+                                          title: Text(
+                                              localizations.regionMismatch),
+                                          content: Text(localizations
+                                              .regionMismatchMessage),
                                           actions: [
                                             TextButton(
-                                              child: const Text('Cancel'),
+                                              child: Text(localizations.ok),
                                               onPressed: () =>
-                                                  Navigator.pop(context, false),
-                                            ),
-                                            TextButton(
-                                              child: const Text('Refresh'),
-                                              onPressed: () =>
-                                                  Navigator.pop(context, true),
+                                                  Navigator.pop(context),
                                             ),
                                           ],
                                         ),
                                       );
-                                      if (confirm == true && context.mounted) {
-                                        _handleRedownload(context, container);
-                                      }
                                     }
-                                  } else {
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        title: const Text('Region Mismatch'),
-                                        content: const Text(
-                                            'The selected region does not match with the selected State, District and Tehsil.'),
-                                        actions: [
-                                          TextButton(
-                                            child: const Text('OK'),
-                                            onPressed: () =>
-                                                Navigator.pop(context),
-                                          ),
-                                        ],
-                                      ),
-                                    );
                                   }
                                 }
-                              }
-                            : null,
+                              : null,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
   static Future<void> _handleRedownload(
       BuildContext context, OfflineContainer container) async {
+    final localizations = AppLocalizations.of(context)!;
+
     final blockId =
         await _getBlockId(container.state, container.district, container.block);
     if (blockId == null) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Could not find block information to re-download.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(localizations.couldNotFindBlockInfo)));
       }
       return;
     }
@@ -611,14 +639,17 @@ class ContainerSheets {
 
   static Future<void> _refreshPlanLayers(
       BuildContext context, OfflineContainer container) async {
+    final localizations = AppLocalizations.of(context)!;
+
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Refreshing plan data for ${container.name}...')));
+        content: Text(localizations.refreshingPlanData(container.name))));
+
     final blockId =
         await _getBlockId(container.state, container.district, container.block);
     if (blockId == null) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Could not find block information to refresh.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(localizations.couldNotFindBlockInfoRefresh)));
       }
       return;
     }
@@ -645,7 +676,7 @@ class ContainerSheets {
       if (planLayers.isEmpty) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No plan layers to refresh.')));
+              SnackBar(content: Text(localizations.noPlanLayersToRefresh)));
         }
         return;
       }
@@ -656,14 +687,14 @@ class ContainerSheets {
       }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content:
-                Text('Successfully refreshed plan data for ${container.name}'),
+            content: Text(
+                localizations.successfullyRefreshedPlanData(container.name)),
             backgroundColor: Colors.green));
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Error refreshing data: $e'),
+            content: Text(localizations.errorRefreshingData(e.toString())),
             backgroundColor: Colors.red));
       }
     }

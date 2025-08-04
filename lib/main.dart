@@ -13,6 +13,9 @@ import './server/local_server.dart';
 // Global variable to store the server URL
 String? globalServerUrl;
 
+// Global ValueNotifier for locale changes
+ValueNotifier<Locale> localeNotifier = ValueNotifier(const Locale('hi'));
+
 Future<void> checkLocationPermission(BuildContext context) async {
   LocationPermission permission = await Geolocator.checkPermission();
   if (permission == LocationPermission.denied) {
@@ -66,22 +69,28 @@ void main() async {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('en'), // English
-        Locale('hi'), // Hindi
-      ],
-      debugShowCheckedModeBanner: false,
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const LocationAwareApp(),
-        '/location': (context) => const LocationSelection(),
+    return ValueListenableBuilder<Locale>(
+      valueListenable: localeNotifier,
+      builder: (context, locale, child) {
+        return MaterialApp(
+          locale: locale,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('en'), // English
+            Locale('hi'), // Hindi
+          ],
+          debugShowCheckedModeBanner: false,
+          initialRoute: '/',
+          routes: {
+            '/': (context) => const LocationAwareApp(),
+            '/location': (context) => const LocationSelection(),
+          },
+        );
       },
     );
   }
