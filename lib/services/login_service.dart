@@ -15,7 +15,6 @@ class LoginService {
       print('Username: $username');
       print('Password: [HIDDEN]');
 
-      // Prepare the request body
       final Map<String, dynamic> requestBody = {
         'username': username,
         'password': password,
@@ -49,7 +48,6 @@ class LoginService {
       if (response.statusCode == 200) {
         print('=== LOGIN API SUCCESS (200) ===');
 
-        // Extract tokens and user data from the response
         final String? accessToken = responseData['access'];
         final String? refreshToken = responseData['refresh'];
         final Map<String, dynamic>? userData = responseData['user'];
@@ -321,6 +319,40 @@ class LoginService {
     } finally {
       await clearStoredCredentials();
       print('User logged out successfully');
+    }
+  }
+
+  /// Get authentication data for webview
+  Future<Map<String, dynamic>?> getAuthDataForWebView() async {
+    try {
+      final accessToken = await getValidAccessToken();
+      final userData = await getUserData();
+
+      if (accessToken != null && userData != null) {
+        return {
+          'access_token': accessToken,
+          'user': userData,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        };
+      }
+      return null;
+    } catch (e) {
+      print('Error getting auth data for webview: $e');
+      return null;
+    }
+  }
+
+  /// Refresh token specifically for webview requests
+  Future<Map<String, dynamic>?> refreshTokenForWebView() async {
+    try {
+      final success = await refreshAccessToken();
+      if (success) {
+        return await getAuthDataForWebView();
+      }
+      return null;
+    } catch (e) {
+      print('Error refreshing token for webview: $e');
+      return null;
     }
   }
 }

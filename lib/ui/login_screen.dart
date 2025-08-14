@@ -34,7 +34,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _validateForm() {
-    final isValid = _usernameController.text.trim().isNotEmpty &&
+    final normalizedUsername =
+        _normalizePhoneNumber(_usernameController.text.trim());
+    final isValid = normalizedUsername.isNotEmpty &&
         _passwordController.text.trim().isNotEmpty;
 
     if (isValid != _isFormValid) {
@@ -53,6 +55,19 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  String _normalizePhoneNumber(String input) {
+    String cleaned = input.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+
+    if (cleaned.startsWith('+')) {
+      cleaned = cleaned.substring(1);
+
+      if (cleaned.startsWith('91') && cleaned.length == 12) {
+        return cleaned.substring(2);
+      }
+    }
+    return cleaned;
+  }
+
   Future<void> _performLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -62,12 +77,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
       HapticFeedback.mediumImpact();
 
-      print('Username: ${_usernameController.text}');
+      final normalizedUsername =
+          _normalizePhoneNumber(_usernameController.text);
+
+      print('Original Username: ${_usernameController.text}');
+      print('Normalized Username: $normalizedUsername');
       print('Timestamp: ${DateTime.now()}');
 
       try {
         final success = await _loginService.login(
-          _usernameController.text,
+          normalizedUsername,
           _passwordController.text,
         );
 
@@ -128,73 +147,47 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLanguageSelector() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.7),
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: const Color(0xFFD6D4C8), width: 1.0),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.language,
-            color: Color(0xFF592941),
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            'Language:',
-            style: TextStyle(
-              fontSize: 16,
-              color: Color(0xFF592941),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedLanguage,
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    setState(() {
-                      _selectedLanguage = newValue;
-                    });
-                    HapticFeedback.lightImpact();
-                  }
-                },
-                dropdownColor: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'hi',
-                    child: Text(
-                      'हिंदी (Hindi)',
-                      style: TextStyle(
-                        color: Color(0xFF592941),
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  DropdownMenuItem(
-                    value: 'en',
-                    child: Text(
-                      'English',
-                      style: TextStyle(
-                        color: Color(0xFF592941),
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ],
-                icon: const Icon(
-                  Icons.arrow_drop_down,
+    return Center(
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedLanguage,
+          onChanged: (String? newValue) {
+            if (newValue != null) {
+              setState(() {
+                _selectedLanguage = newValue;
+              });
+              HapticFeedback.lightImpact();
+            }
+          },
+          dropdownColor: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          items: const [
+            DropdownMenuItem(
+              value: 'hi',
+              child: Text(
+                'हिंदी (hi)',
+                style: TextStyle(
                   color: Color(0xFF592941),
+                  fontSize: 16,
                 ),
               ),
             ),
+            DropdownMenuItem(
+              value: 'en',
+              child: Text(
+                'English (en)',
+                style: TextStyle(
+                  color: Color(0xFF592941),
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+          icon: const Icon(
+            Icons.arrow_drop_down,
+            color: Color(0xFF592941),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -265,6 +258,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your phone number';
                     }
+
+                    final normalizedPhone = _normalizePhoneNumber(value);
+                    if (normalizedPhone.isEmpty) {
+                      return 'Please enter a valid phone number';
+                    }
+
+                    // Basic length check for phone numbers (should be at least 10 digits)
+                    if (normalizedPhone.length < 10) {
+                      return 'Phone number should be at least 10 digits';
+                    }
+
                     return null;
                   },
                 ),
