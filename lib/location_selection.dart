@@ -19,16 +19,19 @@ import 'package:nrmflutter/utils/constants.dart';
 import 'package:nrmflutter/utils/change_log.dart';
 
 import './server/local_server.dart';
-import './utils/use_info.dart';
 import './container_flow/container_manager.dart';
 import './container_flow/container_sheet.dart';
 import './download_progress.dart';
+import './ui/profile_screen.dart';
+import './services/logout.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../main.dart'; // Import to access localeNotifier
 
 class LocationSelection extends StatefulWidget {
-  const LocationSelection({super.key});
+  final String? selectedLanguage;
+
+  const LocationSelection({super.key, this.selectedLanguage});
 
   @override
   _LocationSelectionState createState() => _LocationSelectionState();
@@ -47,7 +50,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   bool _isSubmitEnabled = false;
   String _appVersion = '';
   String _deviceInfo = 'Unknown';
-  String _selectedLanguage = 'hi';
+  late String _selectedLanguage;
 
   List<Map<String, dynamic>> states = [];
   List<Map<String, dynamic>> districts = [];
@@ -56,6 +59,9 @@ class _LocationSelectionState extends State<LocationSelection> {
   @override
   void initState() {
     super.initState();
+    _selectedLanguage = widget.selectedLanguage ??
+        'hi'; // if no language is passed, default to hindi
+    localeNotifier.value = Locale(_selectedLanguage);
     _loadInfo();
     fetchLocationData();
   }
@@ -363,7 +369,7 @@ class _LocationSelectionState extends State<LocationSelection> {
         boxShadow: value != null
             ? [
                 BoxShadow(
-                  color: const Color(0xFF592941).withOpacity(0.1),
+                  color: const Color(0xFF592941).withValues(alpha: 0.1),
                   blurRadius: 5,
                   offset: const Offset(0, 2),
                 )
@@ -576,11 +582,90 @@ class _LocationSelectionState extends State<LocationSelection> {
     );
   }
 
+  Widget _buildProfileMenu() {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.person, color: Colors.white),
+      tooltip: 'Profile Menu',
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      onSelected: (String value) {
+        HapticFeedback.lightImpact();
+        switch (value) {
+          case 'profile':
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ProfileStatsScreen(),
+              ),
+            );
+            break;
+          case 'changelogs':
+            ChangeLog.showChangelogBottomSheet(context);
+            break;
+          case 'logout':
+            LogoutService.showLogoutConfirmationDialog(context);
+            break;
+        }
+      },
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+        const PopupMenuItem<String>(
+          value: 'profile',
+          child: Row(
+            children: [
+              Icon(Icons.person, color: Color(0xFF592941)),
+              SizedBox(width: 12),
+              Text(
+                'Profile',
+                style: TextStyle(
+                  color: Color(0xFF592941),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'changelogs',
+          child: Row(
+            children: [
+              Icon(Icons.history, color: Color(0xFF592941)),
+              SizedBox(width: 12),
+              Text(
+                'Change Logs',
+                style: TextStyle(
+                  color: Color(0xFF592941),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'logout',
+          child: Row(
+            children: [
+              Icon(Icons.logout, color: Colors.red),
+              SizedBox(width: 12),
+              Text(
+                'Logout',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     const Color customGrey = Color(0xFFD6D4C8);
-    const Color darkTextColor = Colors.black87;
 
     return Scaffold(
       backgroundColor:
@@ -590,11 +675,7 @@ class _LocationSelectionState extends State<LocationSelection> {
         centerTitle: true,
         foregroundColor: Colors.white,
         title: Text(localizations.selectLocation),
-        leading: IconButton(
-          icon: const Icon(Icons.history),
-          onPressed: () => ChangeLog.showChangelogBottomSheet(context),
-          tooltip: localizations.whatsNew,
-        ),
+        leading: _buildProfileMenu(),
         actions: [
           _buildLanguageSelector(),
         ],

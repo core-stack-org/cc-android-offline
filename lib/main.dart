@@ -7,6 +7,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import './splash/splash_screen.dart';
 import 'location_selection.dart';
+import './ui/login_screen.dart';
 import './utils/offline_asset.dart';
 import './server/local_server.dart';
 
@@ -88,6 +89,7 @@ class MyApp extends StatelessWidget {
           initialRoute: '/',
           routes: {
             '/': (context) => const LocationAwareApp(),
+            '/login': (context) => const LoginScreen(),
             '/location': (context) => const LocationSelection(),
           },
         );
