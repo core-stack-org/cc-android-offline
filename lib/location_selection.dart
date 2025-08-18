@@ -56,6 +56,8 @@ class _LocationSelectionState extends State<LocationSelection> {
   List<Map<String, dynamic>> districts = [];
   List<Map<String, dynamic>> blocks = [];
 
+  final GlobalKey _profileButtonKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -583,82 +585,174 @@ class _LocationSelectionState extends State<LocationSelection> {
   }
 
   Widget _buildProfileMenu() {
-    return PopupMenuButton<String>(
+    return IconButton(
+      key: _profileButtonKey,
       icon: const Icon(Icons.person, color: Colors.white),
       tooltip: 'Profile Menu',
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
+      onPressed: () => _showProfileMenu(),
+    );
+  }
+
+  void _showProfileMenu() async {
+    // Ensure widget is mounted and layout is complete
+    if (!mounted) return;
+
+    // Wait for the current frame to complete
+    await Future.delayed(Duration.zero);
+
+    // Double-check mount status after delay
+    if (!mounted) return;
+
+    try {
+      final RenderBox? renderBox =
+          _profileButtonKey.currentContext?.findRenderObject() as RenderBox?;
+      if (renderBox == null || !renderBox.hasSize) {
+        print('RenderBox not ready for profile menu');
+        return;
+      }
+
+      final Offset offset = renderBox.localToGlobal(Offset.zero);
+      final Size size = renderBox.size;
+
+      final RelativeRect position = RelativeRect.fromLTRB(
+        offset.dx,
+        offset.dy + size.height,
+        offset.dx + size.width,
+        offset.dy + size.height + 200, // Menu height
+      );
+
+      HapticFeedback.lightImpact();
+
+      final String? selected = await showMenu<String>(
+        context: context,
+        position: position,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        constraints: const BoxConstraints(
+          minWidth: 200,
+          maxWidth: 250,
+        ),
+        items: [
+          const PopupMenuItem<String>(
+            value: 'profile',
+            child: Row(
+              children: [
+                Icon(Icons.person, color: Color(0xFF592941)),
+                SizedBox(width: 12),
+                Text(
+                  'Profile',
+                  style: TextStyle(
+                    color: Color(0xFF592941),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const PopupMenuItem<String>(
+            value: 'changelogs',
+            child: Row(
+              children: [
+                Icon(Icons.history, color: Color(0xFF592941)),
+                SizedBox(width: 12),
+                Text(
+                  'Change Logs',
+                  style: TextStyle(
+                    color: Color(0xFF592941),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const PopupMenuItem<String>(
+            value: 'logout',
+            child: Row(
+              children: [
+                Icon(Icons.logout, color: Colors.red),
+                SizedBox(width: 12),
+                Text(
+                  'Logout',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+
+      // Handle the selection with proper safety checks
+      if (selected != null && mounted) {
+        _handleMenuSelection(selected);
+      }
+    } catch (e) {
+      print('Error showing profile menu: $e');
+      // Fallback: show a simple dialog if positioning fails
+      if (mounted) {
+        _showFallbackProfileMenu();
+      }
+    }
+  }
+
+  void _handleMenuSelection(String value) {
+    switch (value) {
+      case 'profile':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ProfileStatsScreen(),
+          ),
+        );
+        break;
+      case 'changelogs':
+        ChangeLog.showChangelogBottomSheet(context);
+        break;
+      case 'logout':
+        LogoutService.showLogoutConfirmationDialog(context);
+        break;
+    }
+  }
+
+  void _showFallbackProfileMenu() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Profile Menu'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                _handleMenuSelection('profile');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.history),
+              title: const Text('Change Logs'),
+              onTap: () {
+                Navigator.pop(context);
+                _handleMenuSelection('changelogs');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Logout', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _handleMenuSelection('logout');
+              },
+            ),
+          ],
+        ),
       ),
-      onSelected: (String value) {
-        HapticFeedback.lightImpact();
-        switch (value) {
-          case 'profile':
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ProfileStatsScreen(),
-              ),
-            );
-            break;
-          case 'changelogs':
-            ChangeLog.showChangelogBottomSheet(context);
-            break;
-          case 'logout':
-            LogoutService.showLogoutConfirmationDialog(context);
-            break;
-        }
-      },
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        const PopupMenuItem<String>(
-          value: 'profile',
-          child: Row(
-            children: [
-              Icon(Icons.person, color: Color(0xFF592941)),
-              SizedBox(width: 12),
-              Text(
-                'Profile',
-                style: TextStyle(
-                  color: Color(0xFF592941),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'changelogs',
-          child: Row(
-            children: [
-              Icon(Icons.history, color: Color(0xFF592941)),
-              SizedBox(width: 12),
-              Text(
-                'Change Logs',
-                style: TextStyle(
-                  color: Color(0xFF592941),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'logout',
-          child: Row(
-            children: [
-              Icon(Icons.logout, color: Colors.red),
-              SizedBox(width: 12),
-              Text(
-                'Logout',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 

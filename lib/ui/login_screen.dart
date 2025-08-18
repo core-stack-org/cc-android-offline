@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Required for HapticFeedback
 import '../location_selection.dart';
 import '../services/login_service.dart';
+import '../main.dart'; // Import to access localeNotifier
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -156,6 +157,8 @@ class _LoginScreenState extends State<LoginScreen> {
               setState(() {
                 _selectedLanguage = newValue;
               });
+              // Update the global locale immediately when language is changed
+              localeNotifier.value = Locale(newValue);
               HapticFeedback.lightImpact();
             }
           },
@@ -251,7 +254,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: Color(0xFFD6D4C8), width: 2.0),
                     ),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.7),
+                    fillColor: Colors.white.withValues(alpha: 0.7),
                   ),
                   keyboardType: TextInputType.text,
                   validator: (value) {
@@ -288,7 +291,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: Color(0xFFD6D4C8), width: 2.0),
                     ),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.7),
+                    fillColor: Colors.white.withValues(alpha: 0.7),
                   ),
                   obscureText: true,
                   validator: (value) {
