@@ -16,7 +16,7 @@ class LogoutService {
             borderRadius: BorderRadius.circular(20.0),
           ),
           child: Container(
-            width: MediaQuery.of(context).size.width * 0.85, // Expanded width
+            width: MediaQuery.of(context).size.width * 0.85,
             padding: const EdgeInsets.all(24.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -48,11 +48,9 @@ class LogoutService {
                           foregroundColor: const Color(0xFF592941),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                                25.0), // Much more rounded
+                            borderRadius: BorderRadius.circular(25.0),
                             side: const BorderSide(
-                              color: Color(
-                                  0xFF592941), // Border color as requested
+                              color: Color(0xFF592941),
                               width: 2.0,
                             ),
                           ),
@@ -78,8 +76,7 @@ class LogoutService {
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                                25.0), // Much more rounded
+                            borderRadius: BorderRadius.circular(25.0),
                           ),
                         ),
                         child: const Text(
@@ -106,79 +103,115 @@ class LogoutService {
   }
 
   static Future<void> performLogout(BuildContext context) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const AlertDialog(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          content: Padding(
-            padding: EdgeInsets.all(20.0),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(width: 20),
-                Text(
-                  'Logging out...',
-                  style: TextStyle(color: Colors.black87),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+    // Store multiple references for better reliability
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    bool dialogShown = false;
 
     try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) {
+          dialogShown = true;
+          return WillPopScope(
+            onWillPop: () async => false,
+            child: const AlertDialog(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              content: Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(width: 20),
+                    Text(
+                      'Logging out...',
+                      style: TextStyle(color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+
       print('Starting logout process...');
 
       await Future.any([
         _loginService.logout(),
-        Future.delayed(const Duration(seconds: 10), () {
+        Future.delayed(const Duration(seconds: 8), () {
           throw Exception('Logout timeout - please check your connection');
         }),
       ]);
 
       print('Logout completed successfully');
+    } catch (e) {
+      print('Logout error: $e');
+      await _loginService.clearStoredCredentials();
+    }
 
-      if (context.mounted) {
-        Navigator.of(context).pop();
+    try {
+      if (dialogShown) {
+        navigator.pop();
+        print('Dialog closed');
+      }
+    } catch (e) {
+      print('Error closing dialog: $e');
+    }
 
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          '/login',
-          (Route<dynamic> route) => false,
-        );
+    await Future.delayed(const Duration(milliseconds: 300));
 
-        ScaffoldMessenger.of(context).showSnackBar(
+    try {
+      print('Attempting navigation to login screen...');
+
+      await navigator.pushNamedAndRemoveUntil(
+        '/login',
+        (Route<dynamic> route) => false,
+      );
+
+      print('Navigation successful');
+
+      // Show success message
+      try {
+        scaffoldMessenger.showSnackBar(
           const SnackBar(
             content: Text('Logged out successfully'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
           ),
         );
+      } catch (e) {
+        print('Error showing snackbar: $e');
       }
     } catch (e) {
-      print('Logout error: $e');
+      print('Navigation error: $e');
 
-      if (context.mounted) {
-        Navigator.of(context).pop();
+      // Fallback: Try alternative navigation method
+      try {
+        print('Trying fallback navigation...');
 
-        await _loginService.clearStoredCredentials();
+        // Clear the entire navigation stack and push login
+        await navigator.pushReplacementNamed('/login');
 
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          '/login',
-          (Route<dynamic> route) => false,
-        );
+        print('Fallback navigation successful');
+      } catch (fallbackError) {
+        print('Fallback navigation also failed: $fallbackError');
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Logged out locally. ${e.toString()}'),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        // Last resort: Show error message and let user manually navigate
+        try {
+          scaffoldMessenger.showSnackBar(
+            const SnackBar(
+              content: Text('Logged out. Please restart the app.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 5),
+            ),
+          );
+        } catch (e) {
+          print('Error showing fallback snackbar: $e');
+        }
       }
     }
   }

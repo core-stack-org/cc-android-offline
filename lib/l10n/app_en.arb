@@ -7,7 +7,7 @@
   "selectStateDistrictTehsil": "Select State, District and Tehsil from the dropdown",
   "onlineMode": "Online mode",
   "offlineMode": "Offline mode",
-  "submit": "SUBMIT",
+  "submit": "Submit",
   "onlineModeSelected": "You have selected ONLINE mode",
   "offlineModeSelected": "You have selected OFFLINE mode",
   "betaOfflineNote": "*BETA Offline mode works in remote areas without internet with limited features.",

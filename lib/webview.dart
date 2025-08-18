@@ -4,6 +4,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'dart:convert';
 import '../services/login_service.dart';
+import 'package:flutter/services.dart';
 
 class WebViewApp extends StatefulWidget {
   final String? url;
@@ -20,6 +21,7 @@ class _WebViewState extends State<WebViewApp> {
   double loadingProgress = 0.0;
   String webviewTitle = 'Commons Connect';
   final LoginService _loginService = LoginService(); // Add this
+  final GlobalKey _optionsButtonKey = GlobalKey();
 
   @override
   void initState() {
@@ -236,6 +238,164 @@ class _WebViewState extends State<WebViewApp> {
     Navigator.pop(context);
   }
 
+  Widget _buildOptionsMenu() {
+    return IconButton(
+      key: _optionsButtonKey,
+      icon: const Icon(Icons.more_vert, color: Colors.white),
+      tooltip: 'Options',
+      onPressed: () => _showOptionsMenu(),
+    );
+  }
+
+  void _showOptionsMenu() async {
+    if (!mounted) return;
+
+    await Future.delayed(Duration.zero);
+
+    if (!mounted) return;
+
+    try {
+      final RenderBox? renderBox =
+          _optionsButtonKey.currentContext?.findRenderObject() as RenderBox?;
+      if (renderBox == null || !renderBox.hasSize) {
+        return;
+      }
+
+      final Offset offset = renderBox.localToGlobal(Offset.zero);
+      final Size size = renderBox.size;
+
+      final RelativeRect position = RelativeRect.fromLTRB(
+        offset.dx - 200, // Adjust to position from right edge
+        offset.dy + size.height,
+        offset.dx + size.width + 50,
+        offset.dy + size.height + 200,
+      );
+
+      HapticFeedback.lightImpact();
+
+      final String? selected = await showMenu<String>(
+        context: context,
+        position: position,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        constraints: const BoxConstraints(
+          minWidth: 220,
+          maxWidth: 280,
+        ),
+        items: [
+          PopupMenuItem<String>(
+            value: 'location',
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF592941).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  child: const Icon(
+                    Icons.pin_drop_rounded,
+                    color: Color(0xFF592941),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        getLocalizedText(context, 'returnToLocationSelection'),
+                        style: const TextStyle(
+                          color: Color(0xFF592941),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        widget.selectedLanguage == 'hi'
+                            ? 'स्थान चुनें'
+                            : 'Helps Choose Location',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w400,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuItem<String>(
+            value: 'home',
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10.0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF592941).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  child: const Icon(
+                    Icons.checklist,
+                    color: Color(0xFF592941),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        getLocalizedText(context, 'returnToPlanSelection'),
+                        style: const TextStyle(
+                          color: Color(0xFF592941),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        widget.selectedLanguage == 'hi'
+                            ? 'योजना चुनें'
+                            : 'Helps Choose Plans',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w400,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+
+      if (selected != null) {
+        HapticFeedback.mediumImpact();
+        switch (selected) {
+          case 'home':
+            _goToHomePage();
+            break;
+          case 'location':
+            _goToLocationSelection();
+            break;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error showing options menu: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -265,55 +425,7 @@ class _WebViewState extends State<WebViewApp> {
           ),
           automaticallyImplyLeading: false,
           actions: [
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, color: Colors.white),
-              onSelected: (String value) {
-                switch (value) {
-                  case 'home':
-                    _goToHomePage();
-                    break;
-                  case 'location':
-                    _goToLocationSelection();
-                    break;
-                }
-              },
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                PopupMenuItem<String>(
-                  value: 'location',
-                  child: Row(
-                    children: [
-                      Icon(Icons.pin_drop_rounded,
-                          color: Colors.white.withValues(alpha: 0.9)),
-                      SizedBox(width: 12),
-                      Text(
-                        getLocalizedText(context, 'returnToLocationSelection'),
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9)),
-                      ),
-                    ],
-                  ),
-                ),
-                PopupMenuItem<String>(
-                  value: 'home',
-                  child: Row(
-                    children: [
-                      Icon(Icons.checklist,
-                          color: Colors.white.withValues(alpha: 0.9)),
-                      SizedBox(width: 12),
-                      Text(
-                        getLocalizedText(context, 'returnToPlanSelection'),
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9)),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              color: Colors.black.withValues(alpha: 0.9),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
+            _buildOptionsMenu(),
           ],
         ),
         body: Stack(

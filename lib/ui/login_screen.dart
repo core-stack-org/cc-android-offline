@@ -242,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _usernameController,
                   decoration: InputDecoration(
-                    labelText: 'Username',
+                    labelText: 'Phone number',
                     hintText: 'Enter your phone number',
                     prefixIcon: const Icon(Icons.person_outline),
                     border: OutlineInputBorder(

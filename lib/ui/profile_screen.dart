@@ -46,7 +46,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
       elevation: 0,
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: BorderRadius.circular(16.0),
       ),
       color: Colors.white,
       child: Padding(
@@ -57,7 +57,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
               padding: const EdgeInsets.all(10.0),
               decoration: BoxDecoration(
                 color: const Color(0xFFD6D4C8).withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(8.0),
+                borderRadius: BorderRadius.circular(12.0),
               ),
               child: Icon(
                 icon,
@@ -162,7 +162,10 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
       return 'No projects assigned';
     }
 
-    return projectDetails.map((project) => project.toString()).join(', ');
+    return projectDetails
+        .map((project) =>
+            project['project_name'] as String? ?? 'Unknown Project')
+        .join(', ');
   }
 
   String _getRolesText() {
@@ -237,7 +240,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                             vertical: 12,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                         child: const Text('Retry'),
@@ -257,7 +260,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                         color: const Color.fromARGB(255, 238, 238, 238),
                         margin: const EdgeInsets.symmetric(vertical: 8.0),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(20)),
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
@@ -301,7 +304,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                         color: const Color.fromARGB(255, 238, 238, 238),
                         margin: const EdgeInsets.symmetric(vertical: 8.0),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(20)),
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
@@ -347,7 +350,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                           color: const Color.fromARGB(255, 238, 238, 238),
                           margin: const EdgeInsets.symmetric(vertical: 8.0),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(20)),
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Container(
@@ -355,7 +358,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                               padding: const EdgeInsets.all(16.0),
                               decoration: BoxDecoration(
                                 color: Colors.green.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12.0),
+                                borderRadius: BorderRadius.circular(16.0),
                                 border: Border.all(
                                   color: Colors.green.withOpacity(0.3),
                                   width: 1,
