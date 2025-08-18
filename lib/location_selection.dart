@@ -594,20 +594,16 @@ class _LocationSelectionState extends State<LocationSelection> {
   }
 
   void _showProfileMenu() async {
-    // Ensure widget is mounted and layout is complete
     if (!mounted) return;
 
-    // Wait for the current frame to complete
     await Future.delayed(Duration.zero);
 
-    // Double-check mount status after delay
     if (!mounted) return;
 
     try {
       final RenderBox? renderBox =
           _profileButtonKey.currentContext?.findRenderObject() as RenderBox?;
       if (renderBox == null || !renderBox.hasSize) {
-        print('RenderBox not ready for profile menu');
         return;
       }
 
@@ -618,7 +614,7 @@ class _LocationSelectionState extends State<LocationSelection> {
         offset.dx,
         offset.dy + size.height,
         offset.dx + size.width,
-        offset.dy + size.height + 200, // Menu height
+        offset.dy + size.height + 200,
       );
 
       HapticFeedback.lightImpact();
