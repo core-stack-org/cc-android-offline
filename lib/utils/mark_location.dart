@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class MapLocationSelector extends StatefulWidget {
   final String blockName;
@@ -52,7 +53,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
   Future<void> fetchPanchayatBoundary() async {
     final formattedDistrict = _formatNameForGeoServer(widget.districtName);
     final formattedBlock = _formatNameForGeoServer(widget.blockName);
-    
+
     final url = Uri.parse(
         '${widget.geoserverUrl}geoserver/panchayat_boundaries/ows?'
         'service=WFS&version=1.0.0&request=GetFeature&typeName=panchayat_boundaries:${formattedDistrict}_${formattedBlock}'
@@ -76,7 +77,8 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
             if (geomType == 'Polygon') {
               List<LatLng> polygonPoints = [];
               for (var coord in coords[0]) {
-                polygonPoints.add(LatLng(coord[1].toDouble(), coord[0].toDouble()));
+                polygonPoints
+                    .add(LatLng(coord[1].toDouble(), coord[0].toDouble()));
               }
               polygonsFromAllFeatures.add(polygonPoints);
             } else if (geomType == 'MultiPolygon') {
@@ -84,7 +86,8 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                 List<LatLng> polygonPoints = [];
                 for (var ring in polygon) {
                   for (var coord in ring) {
-                    polygonPoints.add(LatLng(coord[1].toDouble(), coord[0].toDouble()));
+                    polygonPoints
+                        .add(LatLng(coord[1].toDouble(), coord[0].toDouble()));
                   }
                 }
                 polygonsFromAllFeatures.add(polygonPoints);
@@ -170,7 +173,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Enter Coordinates'),
+          title: Text(AppLocalizations.of(context)!.enterCoordinates),
           content: Form(
             key: formKey,
             child: Column(
@@ -178,38 +181,44 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
               children: [
                 TextFormField(
                   controller: latController,
-                  decoration: const InputDecoration(labelText: 'Latitude'),
+                  decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.latitude),
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter latitude';
+                      return AppLocalizations.of(context)!.pleaseEnterLatitude;
                     }
                     final lat = double.tryParse(value);
                     if (lat == null) {
-                      return 'Please enter a valid number';
+                      return AppLocalizations.of(context)!
+                          .pleaseEnterValidNumber;
                     }
                     if (lat < -90 || lat > 90) {
-                      return 'Latitude must be between -90 and 90';
+                      return AppLocalizations.of(context)!
+                          .latitudeMustBeBetween;
                     }
                     return null;
                   },
                 ),
                 TextFormField(
                   controller: lonController,
-                  decoration: const InputDecoration(labelText: 'Longitude'),
+                  decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.longitude),
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter longitude';
+                      return AppLocalizations.of(context)!.pleaseEnterLongitude;
                     }
                     final lon = double.tryParse(value);
                     if (lon == null) {
-                      return 'Please enter a valid number';
+                      return AppLocalizations.of(context)!
+                          .pleaseEnterValidNumber;
                     }
                     if (lon < -180 || lon > 180) {
-                      return 'Longitude must be between -180 and 180';
+                      return AppLocalizations.of(context)!
+                          .longitudeMustBeBetween;
                     }
                     return null;
                   },
@@ -219,13 +228,13 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
           ),
           actions: [
             TextButton(
-              child: const Text('Cancel'),
+              child: Text(AppLocalizations.of(context)!.cancel),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
-              child: const Text('Done'),
+              child: Text(AppLocalizations.of(context)!.done),
               onPressed: () {
                 if (formKey.currentState!.validate()) {
                   final lat = double.parse(latController.text);
@@ -255,9 +264,9 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
       if (!serviceEnabled) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text(
-                  'Location services are disabled. Please enable them.')),
+          SnackBar(
+              content:
+                  Text(AppLocalizations.of(context)!.locationServicesDisabled)),
         );
         return;
       }
@@ -268,7 +277,9 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
         if (permission == LocationPermission.denied) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location permissions are denied')),
+            SnackBar(
+                content: Text(
+                    AppLocalizations.of(context)!.locationPermissionsDenied)),
           );
           return;
         }
@@ -277,9 +288,9 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
       if (permission == LocationPermission.deniedForever) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text(
-                  'Location permissions are permanently denied, we cannot request permissions.')),
+          SnackBar(
+              content: Text(AppLocalizations.of(context)!
+                  .locationPermissionsPermanentlyDenied)),
         );
         return;
       }
@@ -300,7 +311,9 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
           _currentZoom = newZoom;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Moved to current location')),
+          SnackBar(
+              content:
+                  Text(AppLocalizations.of(context)!.movedToCurrentLocation)),
         );
       }
     } catch (e) {
@@ -325,9 +338,9 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          'Place your marker',
-          style: TextStyle(
+        title: Text(
+          AppLocalizations.of(context)!.placeYourMarker,
+          style: const TextStyle(
             color: Colors.white,
           ),
         ),
@@ -340,9 +353,9 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
               }
             },
             itemBuilder: (BuildContext context) => [
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'add_lat_lon',
-                child: Text('Add Lat/Lon'),
+                child: Text(AppLocalizations.of(context)!.addLatLon),
               ),
             ],
           ),
@@ -370,9 +383,9 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
             ),
             children: [
               TileLayer(
-                urlTemplate: _isSatelliteView 
-                  ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-                  : 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+                urlTemplate: _isSatelliteView
+                    ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+                    : 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
               ),
               if (allPolygons.isNotEmpty)
                 PolygonLayer(
@@ -456,12 +469,14 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                         context: context,
                         builder: (BuildContext context) {
                           return AlertDialog(
-                            title: const Text('Select Map Layer'),
+                            title: Text(
+                                AppLocalizations.of(context)!.selectMapLayer),
                             content: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 ListTile(
-                                  title: const Text('Default'),
+                                  title: Text(AppLocalizations.of(context)!
+                                      .defaultLayer),
                                   leading: Radio<bool>(
                                     value: false,
                                     groupValue: _isSatelliteView,
@@ -474,7 +489,8 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                                   ),
                                 ),
                                 ListTile(
-                                  title: const Text('OpenStreetMap'),
+                                  title: Text(AppLocalizations.of(context)!
+                                      .openStreetMapLayer),
                                   leading: Radio<bool>(
                                     value: true,
                                     groupValue: _isSatelliteView,
@@ -492,7 +508,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                         },
                       );
                     },
-                    tooltip: 'Change map layer',
+                    tooltip: AppLocalizations.of(context)!.changeMapLayer,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -524,9 +540,10 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                               ),
                             ),
                           )
-                        : Icon(Icons.my_location, color: const Color(0xFF592941)),
+                        : Icon(Icons.my_location,
+                            color: const Color(0xFF592941)),
                     onPressed: _isGettingLocation ? null : _getCurrentLocation,
-                    tooltip: 'Go to current location',
+                    tooltip: AppLocalizations.of(context)!.goToCurrentLocation,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -560,14 +577,15 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                             _currentZoom = newZoom;
                           });
                         },
-                        tooltip: 'Zoom in',
+                        tooltip: AppLocalizations.of(context)!.zoomIn,
                       ),
                       Container(
                         height: 1,
                         color: const Color(0xFF592941),
                       ),
                       IconButton(
-                        icon: Icon(Icons.remove, color: const Color(0xFF592941)),
+                        icon:
+                            Icon(Icons.remove, color: const Color(0xFF592941)),
                         onPressed: () {
                           final newZoom = _currentZoom - 1;
                           mapController.move(
@@ -578,7 +596,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                             _currentZoom = newZoom;
                           });
                         },
-                        tooltip: 'Zoom out',
+                        tooltip: AppLocalizations.of(context)!.zoomOut,
                       ),
                     ],
                   ),
@@ -620,13 +638,28 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                           ),
                         ],
                       ),
-                      child: Text(
-                        'Lat: ${selectedLocation!.latitude.toStringAsFixed(4)}, '
-                        'Lon: ${selectedLocation!.longitude.toStringAsFixed(4)}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF592941),
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${AppLocalizations.of(context)!.latitude}: ${selectedLocation!.latitude.toStringAsFixed(6)}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF592941),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${AppLocalizations.of(context)!.longitude}: ${selectedLocation!.longitude.toStringAsFixed(6)}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF592941),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -650,9 +683,9 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                         ),
                         elevation: 4,
                       ),
-                      child: const Text(
-                        'Confirm',
-                        style: TextStyle(
+                      child: Text(
+                        AppLocalizations.of(context)!.confirm,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),

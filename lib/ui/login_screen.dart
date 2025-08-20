@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Required for HapticFeedback
+import 'package:flutter/services.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../location_selection.dart';
 import '../services/login_service.dart';
-import '../main.dart'; // Import to access localeNotifier
+import '../main.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -21,7 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   bool _isFormValid = false;
-  String _selectedLanguage = 'hi'; // Default to Hindi
+  String _selectedLanguage = 'en';
 
   @override
   void initState() {
@@ -35,10 +36,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _validateForm() {
-    final normalizedUsername =
-        _normalizePhoneNumber(_usernameController.text.trim());
-    final isValid = normalizedUsername.isNotEmpty &&
-        _passwordController.text.trim().isNotEmpty;
+    final username = _usernameController.text.trim();
+    final isValid =
+        username.isNotEmpty && _passwordController.text.trim().isNotEmpty;
 
     if (isValid != _isFormValid) {
       setState(() {
@@ -69,6 +69,13 @@ class _LoginScreenState extends State<LoginScreen> {
     return cleaned;
   }
 
+  bool _isPhoneNumber(String input) {
+    // Check if input contains any digits and looks like a phone number
+    String cleaned = input.replaceAll(RegExp(r'[\s\-\(\)+]'), '');
+    // If it contains digits and is mostly numeric, treat as phone number
+    return RegExp(r'^[0-9]+$').hasMatch(cleaned) && cleaned.length >= 6;
+  }
+
   Future<void> _performLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -78,16 +85,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
       HapticFeedback.mediumImpact();
 
-      final normalizedUsername =
-          _normalizePhoneNumber(_usernameController.text);
+      final rawUsername = _usernameController.text.trim();
+      // Only normalize if it's a phone number, otherwise use as-is
+      final username = _isPhoneNumber(rawUsername)
+          ? _normalizePhoneNumber(rawUsername)
+          : rawUsername;
 
-      print('Original Username: ${_usernameController.text}');
-      print('Normalized Username: $normalizedUsername');
+      print('Original Username: $rawUsername');
+      print('Is Phone Number: ${_isPhoneNumber(rawUsername)}');
+      print('Final Username: $username');
       print('Timestamp: ${DateTime.now()}');
 
       try {
         final success = await _loginService.login(
-          normalizedUsername,
+          username,
           _passwordController.text,
         );
 
@@ -105,8 +116,8 @@ class _LoginScreenState extends State<LoginScreen> {
               transitionDuration: const Duration(milliseconds: 300),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
-                const begin = Offset(1.0, 0.0); // Start from right
-                const end = Offset.zero; // End at current position
+                const begin = Offset(1.0, 0.0);
+                const end = Offset.zero;
                 const curve = Curves.ease;
 
                 var tween = Tween(begin: begin, end: end).chain(
@@ -124,7 +135,8 @@ class _LoginScreenState extends State<LoginScreen> {
           print('=== LOGIN FAILED - SHOWING ERROR ===');
           print('Success value was: $success');
           setState(() {
-            _errorMessage = 'Invalid username or password. Please try again.';
+            _errorMessage =
+                AppLocalizations.of(context)!.invalidUsernameOrPassword;
           });
         }
       } catch (e) {
@@ -132,12 +144,10 @@ class _LoginScreenState extends State<LoginScreen> {
         print('Error details: $e');
         print('Error type: ${e.runtimeType}');
         setState(() {
-          _errorMessage =
-              'Network error. Please check your connection and try again.';
+          _errorMessage = AppLocalizations.of(context)!.networkErrorMessage;
         });
       } finally {
         print('=== LOGIN ATTEMPT COMPLETED ===');
-        // Ensure loading state is reset even if widget is disposed during async operation
         if (mounted) {
           setState(() {
             _isLoading = false;
@@ -157,19 +167,18 @@ class _LoginScreenState extends State<LoginScreen> {
               setState(() {
                 _selectedLanguage = newValue;
               });
-              // Update the global locale immediately when language is changed
               localeNotifier.value = Locale(newValue);
               HapticFeedback.lightImpact();
             }
           },
           dropdownColor: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          items: const [
+          items: [
             DropdownMenuItem(
               value: 'hi',
               child: Text(
-                'हिंदी (hi)',
-                style: TextStyle(
+                AppLocalizations.of(context)!.hindi,
+                style: const TextStyle(
                   color: Color(0xFF592941),
                   fontSize: 16,
                 ),
@@ -178,8 +187,8 @@ class _LoginScreenState extends State<LoginScreen> {
             DropdownMenuItem(
               value: 'en',
               child: Text(
-                'English (en)',
-                style: TextStyle(
+                AppLocalizations.of(context)!.english,
+                style: const TextStyle(
                   color: Color(0xFF592941),
                   fontSize: 16,
                 ),
@@ -200,7 +209,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFCF4E9),
       appBar: AppBar(
-        automaticallyImplyLeading: false, // No back button to splash
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
@@ -232,7 +241,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Please login to continue',
+                  AppLocalizations.of(context)!.loginTitle,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: const Color(0xFF592941),
                       ),
@@ -242,8 +251,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _usernameController,
                   decoration: InputDecoration(
-                    labelText: 'Phone number',
-                    hintText: 'Enter your phone number',
+                    labelText:
+                        AppLocalizations.of(context)!.usernameOrPhoneNumber,
+                    hintText:
+                        AppLocalizations.of(context)!.usernameOrPhoneNumberHint,
                     prefixIcon: const Icon(Icons.person_outline),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.0),
@@ -259,18 +270,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: TextInputType.text,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your phone number';
+                      return AppLocalizations.of(context)!
+                          .pleaseEnterUsernameOrPhoneNumber;
                     }
 
-                    final normalizedPhone = _normalizePhoneNumber(value);
-                    if (normalizedPhone.isEmpty) {
-                      return 'Please enter a valid phone number';
-                    }
+                    // Only apply phone number validation if input looks like a phone number
+                    if (_isPhoneNumber(value)) {
+                      final normalizedPhone = _normalizePhoneNumber(value);
+                      if (normalizedPhone.isEmpty) {
+                        return AppLocalizations.of(context)!
+                            .pleaseEnterValidPhoneNumber;
+                      }
 
-                    // Basic length check for phone numbers (should be at least 10 digits)
-                    if (normalizedPhone.length < 10) {
-                      return 'Phone number should be at least 10 digits';
+                      if (normalizedPhone.length < 10) {
+                        return AppLocalizations.of(context)!
+                            .phoneNumberShouldBeAtLeast10Digits;
+                      }
                     }
+                    // For username (non-numeric input), no additional validation needed
 
                     return null;
                   },
@@ -279,8 +296,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: _passwordController,
                   decoration: InputDecoration(
-                    labelText: 'Password',
-                    hintText: 'Enter your password',
+                    labelText: AppLocalizations.of(context)!.password,
+                    hintText: AppLocalizations.of(context)!.passwordHint,
                     prefixIcon: const Icon(Icons.lock_outline),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.0),
@@ -296,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   obscureText: true,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
+                      return AppLocalizations.of(context)!.pleaseEnterPassword;
                     }
                     return null;
                   },
@@ -325,7 +342,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       )
                     : Center(
                         child: SizedBox(
-                          width: 200, // Fixed width instead of full width
+                          width: 200,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _isFormValid
@@ -358,7 +375,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             onPressed: _isFormValid ? _performLogin : null,
-                            child: const Text('Login'),
+                            child: Text(AppLocalizations.of(context)!.login),
                           ),
                         ),
                       ),
