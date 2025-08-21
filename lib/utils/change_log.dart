@@ -95,8 +95,9 @@ class _ChangelogBottomSheetState extends State<ChangelogBottomSheet> {
                   _buildVersionSection(
                     'Version $_appVersion',
                     [
-                      "On screen navigation is now available.",
-                      "You can now see if the asset has been marked for maintenance at a glance.",
+                      "Introducing login",
+                      "Users can now login to the app to access their account.",
+                      "They can see the plans respective to their projects and organizations.",
                       "Bug fixes and improvements."
                     ],
                   ),

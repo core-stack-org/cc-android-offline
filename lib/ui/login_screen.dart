@@ -22,7 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   bool _isFormValid = false;
-  String _selectedLanguage = 'en';
+  String _selectedLanguage = 'hi';
 
   @override
   void initState() {
