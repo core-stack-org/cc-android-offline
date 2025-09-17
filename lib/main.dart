@@ -3,7 +3,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import './l10n/app_localizations.dart';
 
 import './splash/splash_screen.dart';
 import 'location_selection.dart';

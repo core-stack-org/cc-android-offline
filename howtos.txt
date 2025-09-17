@@ -24,6 +24,12 @@ Start the app
 3. flutter run
 
 
+Update API Keys
+===============
+Need to update the API keys before running app in Following files
+1. plans_db.dart
+2. location_selection.dart
+
 TODOs
 =====
 [ ] raster layers

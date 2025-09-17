@@ -4,7 +4,8 @@ import 'package:nrmflutter/utils/constants.dart';
 import 'package:nrmflutter/db/location_db.dart';
 import 'package:nrmflutter/utils/layers_config.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 
 import 'dart:io';
 import 'container_manager.dart';

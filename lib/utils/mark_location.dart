@@ -5,7 +5,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 
 class MapLocationSelector extends StatefulWidget {
   final String blockName;

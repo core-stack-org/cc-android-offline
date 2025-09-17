@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import './l10n/app_localizations.dart';
 import 'dart:convert';
 import '../services/login_service.dart';
 import 'package:flutter/services.dart';

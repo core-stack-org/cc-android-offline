@@ -68,7 +68,7 @@ class LocalServer {
   );
 
   Future<shelf.Response> _handlePlansRequest(String blockId) async {
-    print("ANkit ANkit Ankit ANkit ANkit ANkit ANkit ANkit ANkit ANkit ANkit");
+
     print("Handling plans request for block ID: $blockId");
     try {
       final plans =
@@ -123,11 +123,11 @@ class LocalServer {
       final normalizedPath = requestPath.trim().toLowerCase();
       print('Normalized path: "$normalizedPath"');
 
-      if (normalizedPath == 'api/v1/get_plans' ||
-          normalizedPath == 'api/v1/get_plans/' ||
-          normalizedPath.startsWith('api/v1/get_plans')) {
+      if (normalizedPath == 'api/v1/watershed' ||
+          normalizedPath == 'api/v1/watershed/' ||
+          normalizedPath.startsWith('api/v1/watershed')) {
         print("Found plans request");
-        final blockId = request.url.queryParameters['block_id'];
+        final blockId = request.url.queryParameters['block'];
         print("Block ID from request: $blockId");
         if (blockId != null) {
           return await _handlePlansRequest(blockId);

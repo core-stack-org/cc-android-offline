@@ -25,7 +25,8 @@ import './download_progress.dart';
 import './ui/profile_screen.dart';
 import './services/logout.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import './l10n/app_localizations.dart';
 import '../main.dart'; // Import to access localeNotifier
 
 class LocationSelection extends StatefulWidget {
@@ -313,7 +314,11 @@ class _LocationSelectionState extends State<LocationSelection> {
       final serverUrl = await _localServer!.start();
 
       final plansResponse = await http.get(
-        Uri.parse('$serverUrl/api/v1/get_plans/?block_id=$selectedBlockID'),
+        Uri.parse('$serverUrl/api/v1/watershed/plans/?block=$selectedBlockID'),
+        headers: {
+          "Content-Type": "application/json",
+          'X-API-Key': 'xxxx',
+        },
       );
 
       if (plansResponse.statusCode != 200) {
@@ -321,6 +326,8 @@ class _LocationSelectionState extends State<LocationSelection> {
       }
 
       final encodedPlans = Uri.encodeComponent(plansResponse.body);
+      print("Plans are printed here !");
+      print(plansResponse.body);
 
       String url = "$serverUrl/maps?" +
           "geoserver_url=$serverUrl" +
