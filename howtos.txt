@@ -32,19 +32,6 @@ Need to update the API keys before running app in Following files
 1. plans_db.dart
 2. location_selection.dart
 
-
-Need to have a file in lib/config/aws_config.dart with Following code
-=====================================================================
-```
-class AWSConfig {
-  static const String accessKey = 'accessKey';
-  static const String secretKey = 'secretKey';
-  static const String region = 'region';
-  static const String bucketName = 'bucketName';
-}
-```
-
-
 TODOs
 =====
 [ ] raster layers
