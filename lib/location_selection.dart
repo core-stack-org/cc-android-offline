@@ -317,7 +317,7 @@ class _LocationSelectionState extends State<LocationSelection> {
         Uri.parse('$serverUrl/api/v1/watershed/plans/?block=$selectedBlockID'),
         headers: {
           "Content-Type": "application/json",
-          'X-API-Key': 'QPW7biUX.UeTKGQc3SIM32lZEESjBzyT5iZk2BVha',
+          'X-API-Key': 'xxx',
         },
       );
 
