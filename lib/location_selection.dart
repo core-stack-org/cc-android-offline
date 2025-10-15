@@ -19,16 +19,20 @@ import 'package:nrmflutter/utils/constants.dart';
 import 'package:nrmflutter/utils/change_log.dart';
 
 import './server/local_server.dart';
-import './utils/use_info.dart';
 import './container_flow/container_manager.dart';
 import './container_flow/container_sheet.dart';
 import './download_progress.dart';
+import './ui/profile_screen.dart';
+import './services/logout.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import './l10n/app_localizations.dart';
 import '../main.dart'; // Import to access localeNotifier
 
 class LocationSelection extends StatefulWidget {
-  const LocationSelection({super.key});
+  final String? selectedLanguage;
+
+  const LocationSelection({super.key, this.selectedLanguage});
 
   @override
   _LocationSelectionState createState() => _LocationSelectionState();
@@ -47,15 +51,25 @@ class _LocationSelectionState extends State<LocationSelection> {
   bool _isSubmitEnabled = false;
   String _appVersion = '';
   String _deviceInfo = 'Unknown';
-  String _selectedLanguage = 'hi';
+  late String _selectedLanguage;
 
   List<Map<String, dynamic>> states = [];
   List<Map<String, dynamic>> districts = [];
   List<Map<String, dynamic>> blocks = [];
 
+  final GlobalKey _profileButtonKey = GlobalKey();
+  final GlobalKey _languageButtonKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
+    _selectedLanguage = widget.selectedLanguage ?? 'hi';
+
+    // Set the locale BEFORE any UI builds
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      localeNotifier.value = Locale(_selectedLanguage);
+    });
+
     _loadInfo();
     fetchLocationData();
   }
@@ -300,7 +314,11 @@ class _LocationSelectionState extends State<LocationSelection> {
       final serverUrl = await _localServer!.start();
 
       final plansResponse = await http.get(
-        Uri.parse('$serverUrl/api/v1/get_plans/?block_id=$selectedBlockID'),
+        Uri.parse('$serverUrl/api/v1/watershed/plans/?block=$selectedBlockID'),
+        headers: {
+          "Content-Type": "application/json",
+          'X-API-Key': 'xxxx',
+        },
       );
 
       if (plansResponse.statusCode != 200) {
@@ -308,6 +326,8 @@ class _LocationSelectionState extends State<LocationSelection> {
       }
 
       final encodedPlans = Uri.encodeComponent(plansResponse.body);
+      print("Plans are printed here !");
+      print(plansResponse.body);
 
       String url = "$serverUrl/maps?" +
           "geoserver_url=$serverUrl" +
@@ -363,7 +383,7 @@ class _LocationSelectionState extends State<LocationSelection> {
         boxShadow: value != null
             ? [
                 BoxShadow(
-                  color: const Color(0xFF592941).withOpacity(0.1),
+                  color: const Color(0xFF592941).withValues(alpha: 0.1),
                   blurRadius: 5,
                   offset: const Offset(0, 2),
                 )
@@ -522,55 +542,365 @@ class _LocationSelectionState extends State<LocationSelection> {
   }
 
   Widget _buildLanguageSelector() {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 8.0),
-      padding: const EdgeInsets.symmetric(horizontal: 10.0),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(25),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedLanguage,
-          onChanged: (String? newValue) {
-            if (newValue != null) {
-              setState(() {
-                _selectedLanguage = newValue;
-                HapticFeedback.lightImpact();
-                // Update the global locale
-                localeNotifier.value = Locale(newValue);
-              });
-            }
-          },
-          dropdownColor: Colors.black.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(20),
-          menuMaxHeight: 200,
-          items: const [
-            DropdownMenuItem(
-              value: 'en',
-              child: Text(
-                'English (en)',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
+    return IconButton(
+      key: _languageButtonKey,
+      icon: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _selectedLanguage,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
             ),
-            DropdownMenuItem(
-              value: 'hi',
-              child: Text(
-                'हिंदी (hi)',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(
+            Icons.arrow_drop_down,
+            color: Colors.white,
+            size: 20,
+          ),
+        ],
+      ),
+      tooltip: 'Language Selection',
+      onPressed: () => _showLanguageMenu(),
+    );
+  }
+
+  void _showLanguageMenu() async {
+    if (!mounted) return;
+
+    await Future.delayed(Duration.zero);
+
+    if (!mounted) return;
+
+    try {
+      final RenderBox? renderBox =
+          _languageButtonKey.currentContext?.findRenderObject() as RenderBox?;
+      if (renderBox == null || !renderBox.hasSize) {
+        return;
+      }
+
+      final Offset offset = renderBox.localToGlobal(Offset.zero);
+      final Size size = renderBox.size;
+
+      final RelativeRect position = RelativeRect.fromLTRB(
+        offset.dx - 150, // Adjust to center the popup better
+        offset.dy + size.height,
+        offset.dx + size.width + 150,
+        offset.dy + size.height + 200,
+      );
+
+      HapticFeedback.lightImpact();
+
+      final String? selected = await showMenu<String>(
+        context: context,
+        position: position,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        constraints: const BoxConstraints(
+          minWidth: 180,
+          maxWidth: 220,
+        ),
+        items: [
+          PopupMenuItem<String>(
+            value: 'en',
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: _selectedLanguage == 'en'
+                        ? const Color(0xFF592941).withOpacity(0.1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: Icon(
+                    Icons.language,
+                    color: _selectedLanguage == 'en'
+                        ? const Color(0xFF592941)
+                        : Colors.grey[600],
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'English',
+                        style: TextStyle(
+                          color: _selectedLanguage == 'en'
+                              ? const Color(0xFF592941)
+                              : Colors.grey[800],
+                          fontWeight: _selectedLanguage == 'en'
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        'EN',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w400,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_selectedLanguage == 'en')
+                  Icon(
+                    Icons.check_circle,
+                    color: const Color(0xFF592941),
+                    size: 18,
+                  ),
+              ],
+            ),
+          ),
+          PopupMenuItem<String>(
+            value: 'hi',
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8.0),
+                  decoration: BoxDecoration(
+                    color: _selectedLanguage == 'hi'
+                        ? const Color(0xFF592941).withOpacity(0.1)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: Icon(
+                    Icons.translate,
+                    color: _selectedLanguage == 'hi'
+                        ? const Color(0xFF592941)
+                        : Colors.grey[600],
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'हिंदी',
+                        style: TextStyle(
+                          color: _selectedLanguage == 'hi'
+                              ? const Color(0xFF592941)
+                              : Colors.grey[800],
+                          fontWeight: _selectedLanguage == 'hi'
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        'HI',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w400,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_selectedLanguage == 'hi')
+                  Icon(
+                    Icons.check_circle,
+                    color: const Color(0xFF592941),
+                    size: 18,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      );
+
+      if (selected != null && selected != _selectedLanguage) {
+        setState(() {
+          _selectedLanguage = selected;
+          HapticFeedback.mediumImpact();
+          // Update the global locale
+          localeNotifier.value = Locale(selected);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error showing language menu: $e');
+    }
+  }
+
+  Widget _buildProfileMenu() {
+    return IconButton(
+      key: _profileButtonKey,
+      icon: const Icon(Icons.person, color: Colors.white),
+      tooltip: 'Profile Menu',
+      onPressed: () => _showProfileMenu(),
+    );
+  }
+
+  void _showProfileMenu() async {
+    if (!mounted) return;
+
+    await Future.delayed(Duration.zero);
+
+    if (!mounted) return;
+
+    try {
+      final RenderBox? renderBox =
+          _profileButtonKey.currentContext?.findRenderObject() as RenderBox?;
+      if (renderBox == null || !renderBox.hasSize) {
+        return;
+      }
+
+      final Offset offset = renderBox.localToGlobal(Offset.zero);
+      final Size size = renderBox.size;
+
+      final RelativeRect position = RelativeRect.fromLTRB(
+        offset.dx,
+        offset.dy + size.height,
+        offset.dx + size.width,
+        offset.dy + size.height + 200,
+      );
+
+      HapticFeedback.lightImpact();
+
+      final String? selected = await showMenu<String>(
+        context: context,
+        position: position,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        constraints: const BoxConstraints(
+          minWidth: 200,
+          maxWidth: 250,
+        ),
+        items: [
+          const PopupMenuItem<String>(
+            value: 'profile',
+            child: Row(
+              children: [
+                Icon(Icons.person, color: Color(0xFF592941)),
+                SizedBox(width: 12),
+                Text(
+                  'Profile',
+                  style: TextStyle(
+                    color: Color(0xFF592941),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const PopupMenuItem<String>(
+            value: 'changelogs',
+            child: Row(
+              children: [
+                Icon(Icons.history, color: Color(0xFF592941)),
+                SizedBox(width: 12),
+                Text(
+                  'Change Logs',
+                  style: TextStyle(
+                    color: Color(0xFF592941),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const PopupMenuItem<String>(
+            value: 'logout',
+            child: Row(
+              children: [
+                Icon(Icons.logout, color: Colors.red),
+                SizedBox(width: 12),
+                Text(
+                  'Logout',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+
+      // Handle the selection with proper safety checks
+      if (selected != null && mounted) {
+        _handleMenuSelection(selected);
+      }
+    } catch (e) {
+      print('Error showing profile menu: $e');
+      // Fallback: show a simple dialog if positioning fails
+      if (mounted) {
+        _showFallbackProfileMenu();
+      }
+    }
+  }
+
+  void _handleMenuSelection(String value) {
+    switch (value) {
+      case 'profile':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ProfileStatsScreen(),
+          ),
+        );
+        break;
+      case 'changelogs':
+        ChangeLog.showChangelogBottomSheet(context);
+        break;
+      case 'logout':
+        LogoutService.showLogoutConfirmationDialog(context);
+        break;
+    }
+  }
+
+  void _showFallbackProfileMenu() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Profile Menu'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                _handleMenuSelection('profile');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.history),
+              title: const Text('Change Logs'),
+              onTap: () {
+                Navigator.pop(context);
+                _handleMenuSelection('changelogs');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Logout', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _handleMenuSelection('logout');
+              },
             ),
           ],
-          selectedItemBuilder: (BuildContext context) {
-            return <String>['en', 'hi'].map<Widget>((String item) {
-              return Center(
-                  child: Text(item,
-                      style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.bold)));
-            }).toList();
-          },
-          icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-          style: const TextStyle(color: Colors.white, fontSize: 18),
         ),
       ),
     );
@@ -578,305 +908,308 @@ class _LocationSelectionState extends State<LocationSelection> {
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    const Color customGrey = Color(0xFFD6D4C8);
-    const Color darkTextColor = Colors.black87;
+    // Use ValueListenableBuilder to ensure we rebuild when locale changes
+    return ValueListenableBuilder<Locale>(
+      valueListenable: localeNotifier,
+      builder: (context, locale, child) {
+        final localizations = AppLocalizations.of(context)!;
+        const Color customGrey = Color(0xFFD6D4C8);
 
-    return Scaffold(
-      backgroundColor:
-          const Color.fromARGB(255, 255, 255, 255).withValues(alpha: 1.0),
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        centerTitle: true,
-        foregroundColor: Colors.white,
-        title: Text(localizations.selectLocation),
-        leading: IconButton(
-          icon: const Icon(Icons.history),
-          onPressed: () => ChangeLog.showChangelogBottomSheet(context),
-          tooltip: localizations.whatsNew,
-        ),
-        actions: [
-          _buildLanguageSelector(),
-        ],
-      ),
-      body: Stack(
-        children: <Widget>[
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.7,
-              child: Image.asset(
-                'assets/farm.jpg',
-                fit: BoxFit.cover,
-              ),
-            ),
+        return Scaffold(
+          backgroundColor:
+              const Color.fromARGB(255, 255, 255, 255).withValues(alpha: 1.0),
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            centerTitle: true,
+            foregroundColor: Colors.white,
+            title: Text(localizations.selectLocation),
+            leading: _buildProfileMenu(),
+            actions: [
+              _buildLanguageSelector(),
+            ],
           ),
-          Positioned.fill(
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: FractionallySizedBox(
-                heightFactor: 0.5,
-                widthFactor: 1.0,
-                child: BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-                  child: Container(
-                    color: Colors.transparent,
+          body: Stack(
+            children: <Widget>[
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.7,
+                  child: Image.asset(
+                    'assets/farm.jpg',
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: FractionallySizedBox(
+                    heightFactor: 0.5,
+                    widthFactor: 1.0,
+                    child: BackdropFilter(
+                      filter: ui.ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+                      child: Container(
+                        color: Colors.transparent,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Center(
+                // ... rest of your existing body content ...
+                child:
+                    _buildLocationSelectionContent(localizations, customGrey),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Extract the main content into a separate method to reduce duplication
+  Widget _buildLocationSelectionContent(
+      AppLocalizations localizations, Color customGrey) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            const SizedBox(height: 32.0),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  localizations.selectStateDistrictTehsil,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF592941),
                   ),
                 ),
               ),
             ),
-          ),
-          Center(
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 32.0),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          localizations.selectStateDistrictTehsil,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF592941),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16.0),
-                    _buildDropdown(
-                      value: selectedState,
-                      hint: localizations.selectState,
-                      items: states,
-                      onChanged: (String? value) {
-                        setState(() {
-                          selectedState = value;
-                          updateDistricts(value!);
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16.0),
-                    _buildDropdown(
-                      value: selectedDistrict,
-                      hint: localizations.selectDistrict,
-                      items: districts,
-                      onChanged: (String? value) {
-                        setState(() {
-                          selectedDistrict = value;
-                          updateBlocks(value!);
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16.0),
-                    _buildDropdown(
-                      value: selectedBlock,
-                      hint: localizations.selectTehsil,
-                      items: blocks,
-                      onChanged: (String? value) {
-                        if (value != null) {
-                          updateSelectedBlock(value);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 35.0),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                      child: const Divider(
-                        height: 1,
-                        thickness: 1.5,
-                        color: Color.fromARGB(255, 211, 211, 211),
-                      ),
-                    ),
-                    const SizedBox(height: 15.0),
-                    Text(
-                      _isSelected[0]
-                          ? localizations.onlineModeSelected
-                          : localizations.offlineModeSelected,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF592941)),
-                    ),
-                    const SizedBox(height: 15.0),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        _isSelected[0]
-                            ? ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: customGrey,
-                                  foregroundColor: const Color(0xFF592941),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 24, vertical: 12),
-                                  textStyle: const TextStyle(fontSize: 15),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20.0),
-                                  ),
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    HapticFeedback.lightImpact();
-                                    _isSelected = [true, false];
-                                  });
-                                },
-                                child: Text(localizations.onlineMode),
-                              )
-                            : OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: customGrey,
-                                  side: const BorderSide(
-                                      color: customGrey, width: 1.5),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 24, vertical: 12),
-                                  textStyle: const TextStyle(fontSize: 15),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20.0),
-                                  ),
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    HapticFeedback.lightImpact();
-                                    _isSelected = [true, false];
-                                  });
-                                },
-                                child: Text(localizations.onlineMode),
-                              ),
-                        const SizedBox(width: 16),
-                        _isSelected[1]
-                            ? ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: customGrey,
-                                  foregroundColor: const Color(0xFF592941),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 24, vertical: 12),
-                                  textStyle: const TextStyle(fontSize: 15),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20.0),
-                                  ),
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    HapticFeedback.lightImpact();
-                                    _isSelected = [false, true];
-                                  });
-                                },
-                                child: Text(localizations.offlineMode),
-                              )
-                            : OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: customGrey,
-                                  side: const BorderSide(
-                                      color: customGrey, width: 1.5),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 24, vertical: 12),
-                                  textStyle: const TextStyle(fontSize: 15),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20.0),
-                                  ),
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    HapticFeedback.lightImpact();
-                                    _isSelected = [false, true];
-                                  });
-                                },
-                                child: Text(localizations.offlineMode),
-                              ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: ElevatedButton(
+            const SizedBox(height: 16.0),
+            _buildDropdown(
+              value: selectedState,
+              hint: localizations.selectState,
+              items: states,
+              onChanged: (String? value) {
+                setState(() {
+                  selectedState = value;
+                  updateDistricts(value!);
+                });
+              },
+            ),
+            const SizedBox(height: 16.0),
+            _buildDropdown(
+              value: selectedDistrict,
+              hint: localizations.selectDistrict,
+              items: districts,
+              onChanged: (String? value) {
+                setState(() {
+                  selectedDistrict = value;
+                  updateBlocks(value!);
+                });
+              },
+            ),
+            const SizedBox(height: 16.0),
+            _buildDropdown(
+              value: selectedBlock,
+              hint: localizations.selectTehsil,
+              items: blocks,
+              onChanged: (String? value) {
+                if (value != null) {
+                  updateSelectedBlock(value);
+                }
+              },
+            ),
+            const SizedBox(height: 35.0),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40.0),
+              child: const Divider(
+                height: 1,
+                thickness: 1.5,
+                color: Color.fromARGB(255, 211, 211, 211),
+              ),
+            ),
+            const SizedBox(height: 15.0),
+            Text(
+              _isSelected[0]
+                  ? localizations.onlineModeSelected
+                  : localizations.offlineModeSelected,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF592941)),
+            ),
+            const SizedBox(height: 15.0),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                _isSelected[0]
+                    ? ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isSubmitEnabled
-                              ? customGrey
-                              : Colors.grey.shade400,
-                          foregroundColor: _isSubmitEnabled
-                              ? const Color(0xFF592941)
-                              : Colors.white,
-                          minimumSize: const Size(200.0, 24),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          textStyle: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5),
+                          backgroundColor: customGrey,
+                          foregroundColor: const Color(0xFF592941),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                          textStyle: const TextStyle(fontSize: 15),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20.0),
                           ),
                         ),
-                        onPressed: _isSubmitEnabled ? _handleSubmit : null,
-                        child: Text(localizations.submit),
-                      ),
-                    ),
-                    const SizedBox(height: 20.0),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16.0),
-                      child: Container(
-                        padding: const EdgeInsets.all(14.0),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade400.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        child: Text(
-                          localizations.betaOfflineNote,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                            color: Color.fromARGB(255, 77, 77, 77),
+                        onPressed: () {
+                          setState(() {
+                            HapticFeedback.lightImpact();
+                            _isSelected = [true, false];
+                          });
+                        },
+                        child: Text(localizations.onlineMode),
+                      )
+                    : OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: customGrey,
+                          side: BorderSide(color: customGrey, width: 1.5),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                          textStyle: const TextStyle(fontSize: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20.0),
                           ),
                         ),
+                        onPressed: () {
+                          setState(() {
+                            HapticFeedback.lightImpact();
+                            _isSelected = [true, false];
+                          });
+                        },
+                        child: Text(localizations.onlineMode),
                       ),
-                    ),
-                    const SizedBox(height: 32.0),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
-                      child: Text(
-                        '${localizations.version} $_appVersion',
-                        style: const TextStyle(
-                          color: Color(0xFF592941),
-                          fontSize: 14,
+                const SizedBox(width: 16),
+                _isSelected[1]
+                    ? ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: customGrey,
+                          foregroundColor: const Color(0xFF592941),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                          textStyle: const TextStyle(fontSize: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20.0),
+                          ),
                         ),
+                        onPressed: () {
+                          setState(() {
+                            HapticFeedback.lightImpact();
+                            _isSelected = [false, true];
+                          });
+                        },
+                        child: Text(localizations.offlineMode),
+                      )
+                    : OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: customGrey,
+                          side: BorderSide(color: customGrey, width: 1.5),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                          textStyle: const TextStyle(fontSize: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20.0),
+                          ),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            HapticFeedback.lightImpact();
+                            _isSelected = [false, true];
+                          });
+                        },
+                        child: Text(localizations.offlineMode),
                       ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      _isSubmitEnabled ? customGrey : Colors.grey.shade400,
+                  foregroundColor:
+                      _isSubmitEnabled ? const Color(0xFF592941) : Colors.white,
+                  minimumSize: const Size(200.0, 24),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20.0),
+                  ),
+                ),
+                onPressed: _isSubmitEnabled ? _handleSubmit : null,
+                child: Text(localizations.submit),
+              ),
+            ),
+            const SizedBox(height: 20.0),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Container(
+                padding: const EdgeInsets.all(14.0),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                child: Text(
+                  localizations.betaOfflineNote,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: Color.fromARGB(255, 77, 77, 77),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 32.0),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: Text(
+                '${localizations.version} $_appVersion',
+                style: const TextStyle(
+                  color: Color(0xFF592941),
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16.0, top: 4.0),
+              child: InkWell(
+                onTap: _launchEmail,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    const Icon(
+                      Icons.bug_report,
+                      color: Color(0xFF592941),
+                      size: 16,
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0, top: 4.0),
-                      child: InkWell(
-                        onTap: _launchEmail,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            const Icon(
-                              Icons.bug_report,
-                              color: Color(0xFF592941),
-                              size: 16,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              localizations.fileaBugReport,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF592941),
-                              ),
-                            ),
-                          ],
-                        ),
+                    const SizedBox(width: 8),
+                    Text(
+                      localizations.fileaBugReport,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF592941),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

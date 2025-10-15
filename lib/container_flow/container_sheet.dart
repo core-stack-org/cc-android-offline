@@ -4,7 +4,8 @@ import 'package:nrmflutter/utils/constants.dart';
 import 'package:nrmflutter/db/location_db.dart';
 import 'package:nrmflutter/utils/layers_config.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 
 import 'dart:io';
 import 'container_manager.dart';
@@ -84,7 +85,7 @@ class ContainerSheets {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
                         alignment: Alignment.centerLeft,
                       ),
                       child: Container(
@@ -115,20 +116,20 @@ class ContainerSheets {
                       child: TextField(
                         controller: containerNameController,
                         enabled: locationSelected,
-                        style: TextStyle(
-                          color: const Color(0xFF592941),
+                        style: const TextStyle(
+                          color: Color(0xFF592941),
                         ),
                         decoration: InputDecoration(
                           hintText: localizations.nameYourRegion,
-                          hintStyle: TextStyle(
-                            color: const Color(0xFF592941),
+                          hintStyle: const TextStyle(
+                            color: Color(0xFF592941),
                             fontSize: 16,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding: EdgeInsets.symmetric(
+                          contentPadding: const EdgeInsets.symmetric(
                             horizontal: 20,
                             vertical: 15,
                           ),

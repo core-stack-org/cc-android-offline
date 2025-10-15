@@ -38,8 +38,7 @@ class OfflineAssetsManager {
 
     // Copy specific directories to persistent offline directory
     await _copySpecificDirectories(offlineDir.path, persistentOfflineDir.path);
-    print(
-        'Specific directories copied to persistent location: ${persistentOfflineDir.path}');
+    print('Specific directories copied to persistent location: ${persistentOfflineDir.path}');
 
     await _listDirectoryContents(offlineDir);
     await _listDirectoryContents(persistentOfflineDir);
@@ -48,36 +47,6 @@ class OfflineAssetsManager {
       print('Offline data verified successfully.');
     } else {
       print('Offline data verification failed. Some files may be missing.');
-    }
-  }
-
-  static Future<void> _copyDirectory(String source, String destination) async {
-    try {
-      final manifestContent = await rootBundle.loadString('AssetManifest.json');
-      final Map<String, dynamic> manifestMap = json.decode(manifestContent);
-      print('Assets in manifest: ${manifestMap.keys.length}');
-
-      int copiedFiles = 0;
-      for (final asset in manifestMap.keys) {
-        if (asset.startsWith(source)) {
-          try {
-            final fileData = await rootBundle.load(asset);
-            final fileBytes = fileData.buffer.asUint8List();
-            final relativePath = asset.substring(source.length + 1);
-            final filePath = path.join(destination, relativePath);
-            final file = File(filePath);
-            await file.create(recursive: true);
-            await file.writeAsBytes(fileBytes);
-            print('Copied: $asset to $filePath');
-            copiedFiles++;
-          } catch (e) {
-            print('Error copying asset $asset: $e');
-          }
-        }
-      }
-      print('Total files copied: $copiedFiles');
-    } catch (e) {
-      print('Error reading asset manifest: $e');
     }
   }
 
@@ -128,7 +97,7 @@ class OfflineAssetsManager {
     try {
       final manifestContent = await rootBundle.loadString('AssetManifest.json');
       final Map<String, dynamic> manifestMap = json.decode(manifestContent);
-
+      
       for (final asset in manifestMap.keys) {
         if (asset.startsWith('assets/offline_data/webapp/')) {
           final fileData = await rootBundle.load(asset);
@@ -161,7 +130,7 @@ class OfflineAssetsManager {
     final persistentOfflineDir = Directory(await _persistentOfflinePath);
 
     // Required folders to check
-    final requiredFolders = ['base_map_tiles', 'vector_layers'];
+    final requiredFolders = ['base_map_tiles', 'vector_layers', 's3_data'];
 
     try {
       // Check if the root persistent offline directory exists

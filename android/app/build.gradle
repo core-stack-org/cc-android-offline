@@ -5,9 +5,9 @@ plugins {
 }
 
 android {
-    namespace = "com.example.nrmflutter"
+    namespace = "com.corestack.commonsconnect"
     compileSdk = 35
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.nrmflutter"
+        applicationId = "com.corestack.commonsconnect"
         minSdk = 29
         targetSdk = 34
         versionCode = flutter.versionCode

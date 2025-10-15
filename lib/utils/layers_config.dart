@@ -20,7 +20,7 @@ class LayersConfig {
       },
       {
         "name": "NREGA Assets",
-        "geoserverPath": "nrega_assets:${formattedDistrict}_$formattedBlock"
+        "geoserverPath": "nrega_assets:${formattedDistrict}_${formattedBlock}"
       },
       {
         "name": "Well Depth Yearly",
@@ -49,7 +49,7 @@ class LayersConfig {
       {
         "name": "Cropping Intensity",
         "geoserverPath":
-            "cropping_intensity:${formattedDistrict}_${formattedBlock}_intensity"
+            "crop_intensity:${formattedDistrict}_${formattedBlock}_intensity"
       },
       {
         "name": "Crop Grid",

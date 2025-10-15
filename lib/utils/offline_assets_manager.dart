@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import '../config/aws_config.dart';
+import './s3_helper.dart';
+
 
 class OfflineAssetsManager {
   static const String WEBAPP_ASSET_PATH = 'assets/webapp';
@@ -106,4 +109,5 @@ class OfflineAssetsManager {
       rethrow;
     }
   }
+
 }
