@@ -10,12 +10,14 @@ Remove existing data
 4. cd app_flutter/persistent_offline_data
    rm -rf *
 
+
 Add the web app build
 =====================
 1. npm run build at the web app 
 2. in the flutter app, assets/offline_data/webapp
    rm -rf *
 3. copy the build folder contents to assets/offline_data/webapp
+
 
 Start the app
 =============
@@ -30,6 +32,19 @@ Need to update the API keys before running app in Following files
 1. plans_db.dart
 2. location_selection.dart
 
+
+Need to have a file in lib/config/aws_config.dart with Following code
+=====================================================================
+```
+class AWSConfig {
+  static const String accessKey = 'accessKey';
+  static const String secretKey = 'secretKey';
+  static const String region = 'region';
+  static const String bucketName = 'bucketName';
+}
+```
+
+
 TODOs
 =====
 [ ] raster layers
@@ -40,6 +55,7 @@ TODOs
 [x] fetch new layer of the resources marked
 [x] location access inside the webview
 [x] download layer state fix
+
 
 TEST URL for WebView
 http://localhost:3000/maps?geoserver_url=https://geoserver.gramvaani.org:8443&state_name=Jharkhand&dist_name=Godda&block_name=Poreyahat&block_id=741&isOffline=false&plans=%7B%22plans%22%3A%5B%7B%22plan_id%22%3A73%2C%22facilitator_name%22%3A%22Default%22%2C%22plan%22%3A%22Default%20Plan%20Poreyahat%22%2C%22village_name%22%3A%22-%22%2C%22gram_panchayat%22%3A%22-%22%2C%22state%22%3A%2220%22%2C%22district%22%3A64%2C%22block%22%3A741%7D%2C%7B%22plan_id%22%3A86%2C%22facilitator_name%22%3A%22PRADAN%22%2C%22plan%22%3A%22Plan%20Daharlangi%22%2C%22village_name%22%3A%22Daharlangi%22%2C%22gram_panchayat%22%3A%22Sid
@@ -52,10 +68,15 @@ persistent_offline_data/
         containerName/
             vector_layers/
             base_map_tiles/
+            image_layers/
+            s3_data/
 
          containerName2/
             vector_layers/
             base_map_tiles/
+            image_layers/
+            s3_data/
+            
     webapp/
         index.html
         static

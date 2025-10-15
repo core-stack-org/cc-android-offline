@@ -11,37 +11,53 @@ class LocalServer {
   final String persistentOfflineDataDirectory;
   final String? containerName;
 
-  // Add constants for common paths and MIME types
   static const String VECTOR_LAYERS_PATH = 'vector_layers';
   static const String BASE_MAP_TILES_PATH = 'base_map_tiles';
   static const String WEBAPP_PATH = 'webapp';
   static const String CONTAINERS_PATH = 'containers';
+  static const String S3_DATA_PATH = 's3_data';
+  static const String IMAGE_LAYERS_PATH = 'image_layers'; // ADD THIS
 
   LocalServer(this.persistentOfflineDataDirectory, [this.containerName]) {
     print('LocalServer initialized with directory: $persistentOfflineDataDirectory${containerName != null ? ' for container: $containerName' : ''}');
-    _validateOfflineData(); // Check data availability on startup
+    _validateOfflineData();
   }
 
   String get _basePath => containerName != null 
       ? path.join(persistentOfflineDataDirectory, CONTAINERS_PATH, containerName!)
       : persistentOfflineDataDirectory;
 
-  // Validate offline data exists
   Future<void> _validateOfflineData() async {
     final vectorLayersDir = Directory(path.join(_basePath, VECTOR_LAYERS_PATH));
     if (!await vectorLayersDir.exists()) {
       print('Warning: Vector layers directory not found at ${vectorLayersDir.path}');
     } else {
-      // List available vector layers
       final files = await vectorLayersDir.list().map((f) => path.basename(f.path)).toList();
       print('Available vector layers: $files');
+    }
+
+    final s3DataDir = Directory(path.join(_basePath, S3_DATA_PATH));
+    if (!await s3DataDir.exists()) {
+      print('Warning: S3 data directory not found at ${s3DataDir.path}');
+    } else {
+      final files = await s3DataDir.list().map((f) => path.basename(f.path)).toList();
+      print('Available S3 data files: $files');
+    }
+
+    // ADD THIS: Validate image layers
+    final imageLayersDir = Directory(path.join(_basePath, IMAGE_LAYERS_PATH));
+    if (!await imageLayersDir.exists()) {
+      print('Warning: Image layers directory not found at ${imageLayersDir.path}');
+    } else {
+      final files = await imageLayersDir.list().map((f) => path.basename(f.path)).toList();
+      print('Available image layers: $files');
     }
   }
 
   Future<String> start() async {
     final handler = const shelf.Pipeline()
         .addMiddleware(shelf.logRequests())
-        .addMiddleware(_handleCors) // Add CORS middleware
+        .addMiddleware(_handleCors)
         .addHandler(_handleRequest);
 
     try {
@@ -54,179 +70,255 @@ class LocalServer {
     }
   }
 
-  // Separate CORS middleware
   final shelf.Middleware _handleCors = shelf.createMiddleware(
     requestHandler: (request) => null,
     responseHandler: (response) {
       return response.change(headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Origin, Content-Type, X-Auth-Token',
+        'Access-Control-Allow-Headers': 'Origin, Content-Type, X-Auth-Token, Range', // ADD Range
         'Access-Control-Max-Age': '3600',
+        'Access-Control-Expose-Headers': 'Accept-Ranges, Content-Length, Content-Range', // ADD THIS
       });
     },
   );
 
   Future<shelf.Response> _handlePlansRequest(String blockId) async {
-
     print("Handling plans request for block ID: $blockId");
     try {
-      final plans =
-          await PlansDatabase.instance.getPlansForBlock(int.parse(blockId));
+      final plans = await PlansDatabase.instance.getPlansForBlock(int.parse(blockId));
       print("Found ${plans.length} plans for block $blockId");
-      if (plans.isEmpty) {
-        print("No plans found for block $blockId");
-      } else {
-        print("First plan: ${plans.first}");
-      }
-
+      
       final responseJson = json.encode({'plans': plans});
-      print("Sending response with length: ${responseJson.length}");
-
+      
       return shelf.Response.ok(
         responseJson,
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Cache-Control': 'max-age=3600',
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-          'Access-Control-Allow-Headers':
-              'Origin, Content-Type, X-Auth-Token, ngrok-skip-browser-warning',
-          'X-Content-Type-Options': 'nosniff'
         },
       );
     } catch (e) {
       print('Error serving plans: $e');
       return shelf.Response.internalServerError(
-          body: json.encode({'error': e.toString()}),
+        body: json.encode({'error': e.toString()}),
+        headers: {'Content-Type': 'application/json; charset=utf-8'}
+      );
+    }
+  }
+
+  Future<shelf.Response> _handleS3DataRequest(String? formName) async {
+    print("Handling S3 data request for form: ${formName ?? 'list all'}");
+    
+    try {
+      final s3DataDir = Directory(path.join(_basePath, S3_DATA_PATH));
+      
+      if (!await s3DataDir.exists()) {
+        return shelf.Response.notFound(
+          json.encode({'error': 'S3 data directory not found'}),
+          headers: {'Content-Type': 'application/json; charset=utf-8'}
+        );
+      }
+
+      if (formName == null || formName.isEmpty) {
+        final files = await s3DataDir
+            .list()
+            .where((entity) => entity is File && entity.path.endsWith('.json'))
+            .map((entity) => path.basename(entity.path))
+            .toList();
+        
+        return shelf.Response.ok(
+          json.encode({'forms': files, 'count': files.length}),
           headers: {
             'Content-Type': 'application/json; charset=utf-8',
-            'Access-Control-Allow-Origin': '*'
-          });
+            'Access-Control-Allow-Origin': '*',
+          },
+        );
+      }
+
+      final fileName = formName.endsWith('.json') ? formName : '$formName.json';
+      final filePath = path.join(_basePath, S3_DATA_PATH, fileName);
+      
+      final file = File(filePath);
+      if (!await file.exists()) {
+        return shelf.Response.notFound(
+          json.encode({'error': 'Form not found: $formName'}),
+          headers: {'Content-Type': 'application/json; charset=utf-8'}
+        );
+      }
+
+      final content = await file.readAsString();
+      
+      return shelf.Response.ok(
+        content,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
+        },
+      );
+    } catch (e) {
+      print('Error serving S3 data: $e');
+      return shelf.Response.internalServerError(
+        body: json.encode({'error': e.toString()}),
+        headers: {'Content-Type': 'application/json; charset=utf-8'}
+      );
     }
   }
 
   Future<shelf.Response> _handleRequest(shelf.Request request) async {
     final requestPath = request.url.path;
     print('Handling request for path: $requestPath');
-    print('Full request URL: ${request.url}');
 
     try {
-      // Handle OPTIONS requests for CORS
       if (request.method == 'OPTIONS') {
         return shelf.Response.ok('');
       }
 
-      // Handle plans request first
-      print('Checking for plans request...');
-      print('Request path: "$requestPath"');
       final normalizedPath = requestPath.trim().toLowerCase();
-      print('Normalized path: "$normalizedPath"');
 
-      if (normalizedPath == 'api/v1/watershed' ||
-          normalizedPath == 'api/v1/watershed/' ||
-          normalizedPath.startsWith('api/v1/watershed')) {
-        print("Found plans request");
+      // Handle plans
+      if (normalizedPath.startsWith('api/v1/watershed')) {
         final blockId = request.url.queryParameters['block'];
-        print("Block ID from request: $blockId");
         if (blockId != null) {
           return await _handlePlansRequest(blockId);
         }
-        print("Missing block_id parameter");
         return shelf.Response.badRequest(body: 'Missing block_id parameter');
       }
 
-      // Handle container-specific requests first
+      // Handle S3 forms
+      if (normalizedPath.startsWith('api/v1/forms')) {
+        final pathSegments = requestPath.split('/');
+        final formIndex = pathSegments.indexOf('forms');
+        String? formName;
+        if (formIndex != -1 && formIndex + 1 < pathSegments.length) {
+          formName = pathSegments[formIndex + 1];
+        }
+        return await _handleS3DataRequest(formName);
+      }
+
+      // FIX: Handle container-specific requests (image layers, vector layers, etc.)
       if (requestPath.startsWith('containers/')) {
-        // This is a container-specific request, serve directly from persistentOfflineDataDirectory
+        print('Container-specific request: $requestPath');
+        
+        // Check if it's an image layer request (GeoTIFF)
+        if (requestPath.contains('/image_layers/')) {
+          print('Image layer request detected');
+          return await _serveImageLayer(request, requestPath);
+        }
+        
+        // For other container files
         return await _serveFile(requestPath, isWebApp: false);
       }
 
-      // Handle route requests (like /maps) by serving index.html
-      if (requestPath.isEmpty ||
-          requestPath == '/' ||
-          !requestPath.contains('.')) {
+      // FIX: Handle root-level webapp requests
+      if (requestPath.isEmpty || requestPath == '/' || !requestPath.contains('.')) {
         return _serveIndexHtml();
       }
 
-      // Special handling for CSS files
-      if (requestPath.endsWith('.css')) {
-        final filePath = path.join(persistentOfflineDataDirectory, WEBAPP_PATH, requestPath);
-        final file = File(filePath);
-        if (await file.exists()) {
-          final content = await file.readAsString();
-          return shelf.Response.ok(
-            content,
-            headers: {
-              'Content-Type': 'text/css',
-              'Cache-Control': 'max-age=3600',
-              'Access-Control-Allow-Origin': '*',
-            },
-          );
-        }
-      }
-
-      // For all other requests (like static assets), serve from the webapp directory
+      // Serve static assets from webapp directory
       return await _serveFile(requestPath, isWebApp: true);
+      
     } catch (e, stackTrace) {
       print('Error handling request: $e');
       print('Stack trace: $stackTrace');
       return shelf.Response.internalServerError(
-          body: 'Internal Server Error: ${e.toString()}');
-    }
-  }
-
-  // Specialized handler for vector layers
-  Future<shelf.Response> _serveVectorLayer(String requestPath) async {
-    final filePath = path.join(_basePath, VECTOR_LAYERS_PATH, path.basename(requestPath));
-    print('Serving vector layer from: $filePath');
-
-    try {
-      final file = File(filePath);
-      if (!await file.exists()) {
-        print('Vector layer not found: $filePath');
-        return shelf.Response.notFound('Vector layer not found');
-      }
-
-      final content = await file.readAsString();
-      return shelf.Response.ok(
-        content,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'max-age=3600',
-        },
+        body: 'Internal Server Error: ${e.toString()}'
       );
-    } catch (e) {
-      print('Error serving vector layer: $e');
-      return shelf.Response.internalServerError(
-          body: 'Error serving vector layer: ${e.toString()}');
     }
   }
 
-  // Specialized handler for base map tiles
-  Future<shelf.Response> _serveBaseMapTile(String requestPath) async {
-    final filePath = path.join(_basePath, BASE_MAP_TILES_PATH, requestPath.replaceFirst('$BASE_MAP_TILES_PATH/', ''));
-    print('Serving base map tile from: $filePath');
+  // NEW: Specialized handler for image layers with Range support
+  Future<shelf.Response> _serveImageLayer(shelf.Request request, String requestPath) async {
+    final filePath = path.join(persistentOfflineDataDirectory, requestPath);
+    print('Serving image layer from: $filePath');
 
     try {
       final file = File(filePath);
       if (!await file.exists()) {
-        print('Base map tile not found: $filePath');
-        return shelf.Response.notFound('Base map tile not found');
+        print('Image layer not found: $filePath');
+        return shelf.Response.notFound('Image layer not found');
       }
 
+      final fileLength = await file.length();
+      final rangeHeader = request.headers['range'];
+
+      print('File size: $fileLength bytes');
+      print('Range header: $rangeHeader');
+
+      // Handle range requests for GeoTIFF streaming
+      if (rangeHeader != null && rangeHeader.startsWith('bytes=')) {
+        return await _serveRangeRequest(file, fileLength, rangeHeader);
+      }
+
+      // Serve full file
       final bytes = await file.readAsBytes();
       return shelf.Response.ok(
         bytes,
         headers: {
-          'Content-Type': 'image/png',
+          'Content-Type': 'image/tiff',
+          'Content-Length': fileLength.toString(),
+          'Accept-Ranges': 'bytes', // CRITICAL: Tell client we support range requests
           'Cache-Control': 'max-age=3600',
+          'Access-Control-Allow-Origin': '*',
         },
       );
     } catch (e) {
-      print('Error serving base map tile: $e');
+      print('Error serving image layer: $e');
       return shelf.Response.internalServerError(
-          body: 'Error serving base map tile: ${e.toString()}');
+        body: 'Error serving image layer: ${e.toString()}'
+      );
+    }
+  }
+
+  // NEW: Handle HTTP Range requests
+  Future<shelf.Response> _serveRangeRequest(File file, int fileLength, String rangeHeader) async {
+    try {
+      // Parse range header: "bytes=0-1023" or "bytes=1024-"
+      final rangeMatch = RegExp(r'bytes=(\d+)-(\d*)').firstMatch(rangeHeader);
+      
+      if (rangeMatch == null) {
+        return shelf.Response(416, body: 'Invalid range header');
+      }
+
+      final start = int.parse(rangeMatch.group(1)!);
+      final endStr = rangeMatch.group(2);
+      final end = endStr != null && endStr.isNotEmpty 
+          ? int.parse(endStr)
+          : fileLength - 1;
+
+      if (start >= fileLength || end >= fileLength || start > end) {
+        return shelf.Response(416, 
+          headers: {'Content-Range': 'bytes */$fileLength'},
+          body: 'Range not satisfiable'
+        );
+      }
+
+      final length = end - start + 1;
+      
+      // Read only the requested byte range
+      final randomAccessFile = await file.open();
+      await randomAccessFile.setPosition(start);
+      final bytes = await randomAccessFile.read(length);
+      await randomAccessFile.close();
+
+      print('Serving range: $start-$end/$fileLength ($length bytes)');
+
+      return shelf.Response(206, // 206 Partial Content
+        body: bytes,
+        headers: {
+          'Content-Type': 'image/tiff',
+          'Content-Length': length.toString(),
+          'Content-Range': 'bytes $start-$end/$fileLength',
+          'Accept-Ranges': 'bytes',
+          'Access-Control-Allow-Origin': '*',
+        },
+      );
+    } catch (e) {
+      print('Error serving range request: $e');
+      return shelf.Response.internalServerError(
+        body: 'Error serving range: ${e.toString()}'
+      );
     }
   }
 
@@ -243,16 +335,11 @@ class LocalServer {
     final file = File(filePath);
 
     if (await file.exists()) {
-      // Explicitly set MIME types for web assets
       String mimeType;
       if (filePath.endsWith('.js')) {
         mimeType = 'application/javascript';
-      } else if (filePath.endsWith('.js.map')) {
-        mimeType = 'application/json';
       } else if (filePath.endsWith('.css')) {
         mimeType = 'text/css';
-      } else if (filePath.endsWith('.css.map')) {
-        mimeType = 'application/json';
       } else if (filePath.endsWith('.html')) {
         mimeType = 'text/html';
       } else if (filePath.endsWith('.json')) {
@@ -269,6 +356,8 @@ class LocalServer {
         mimeType = 'font/woff2';
       } else if (filePath.endsWith('.ttf')) {
         mimeType = 'font/ttf';
+      } else if (filePath.endsWith('.geojson')) {
+        mimeType = 'application/geo+json';
       } else {
         mimeType = lookupMimeType(filePath) ?? 'application/octet-stream';
       }
@@ -290,8 +379,12 @@ class LocalServer {
     return shelf.Response.notFound('File not found');
   }
 
+  // FIX: Serve index.html from root webapp directory, not container
   Future<shelf.Response> _serveIndexHtml() async {
-    final indexPath = path.join(_basePath, WEBAPP_PATH, 'index.html');
+    // CHANGED: Always serve from root webapp directory
+    final indexPath = path.join(persistentOfflineDataDirectory, WEBAPP_PATH, 'index.html');
+    print('Serving index.html from: $indexPath');
+    
     final indexFile = File(indexPath);
     if (await indexFile.exists()) {
       return shelf.Response.ok(
@@ -299,9 +392,12 @@ class LocalServer {
         headers: {
           'Content-Type': 'text/html',
           'Cache-Control': 'max-age=3600',
+          'Access-Control-Allow-Origin': '*',
         },
       );
     }
+    
+    print('Index file not found at: $indexPath');
     return shelf.Response.notFound('Index file not found');
   }
 

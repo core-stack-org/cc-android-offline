@@ -112,7 +112,7 @@ class BaseMapDownloader {
       }
     } else {
       print(
-          "Failed to download tile: x=$x, y=$y, z=$z. Status code: ${response.statusCode}");
+          "Failed to download tile: x=$x, y=$y, z=$z.saveTileInfo Status code: ${response.statusCode}");
     }
   }
 

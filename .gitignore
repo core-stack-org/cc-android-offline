@@ -10,6 +10,7 @@
 .svn/
 migrate_working_dir/
 assets/offline_data/
+lib/config/aws_config.dart
 
 # IntelliJ related
 *.iml

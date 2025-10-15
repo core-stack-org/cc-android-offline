@@ -46,6 +46,7 @@ dependencies:
   connectivity_plus: ^4.0.1
   vector_map_tiles: ^8.0.0
   url_launcher: ^6.2.2
+  crypto: ^3.0.3
   flutter_launcher_icons: ^0.13.1
   flutter:
     sdk: flutter

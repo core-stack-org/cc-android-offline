@@ -1,13 +1,19 @@
 import 'dart:io';
+import 'dart:convert';  
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:nrmflutter/container_flow/container_manager.dart';
-import 'package:nrmflutter/container_flow/container_sheet.dart';
+//import 'package:nrmflutter/container_flow/container_sheet.dart';
 import 'package:nrmflutter/utils/constants.dart';
 import 'package:nrmflutter/utils/download_base_map.dart';
 import 'package:nrmflutter/utils/layers_config.dart';
 import 'package:nrmflutter/utils/offline_asset.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
+
+import './utils/s3_helper.dart';
+import './config/aws_config.dart';
+
 
 class DownloadProgressPage extends StatefulWidget {
   final OfflineContainer container;
@@ -32,14 +38,37 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
   bool isDownloadComplete = false;
   double baseMapProgress = 0.0;
   Map<String, double> vectorLayerProgress = {};
+  Map<String, double> imageLayerProgress = {};
   Map<String, bool> layerCancelled = {};
   late BaseMapDownloader baseMapDownloader;
   Future<List<Map<String, String>>>? _cachedLayers;
   bool _isLoadingLayers = false;
 
+  Map<String, double> s3JsonProgress = {};
+  Map<String, double> webappProgress = {};
+  late S3Helper s3Helper;
+
+  
+  static String formatName(String? name) {
+    if (name == null) return '';
+    return name
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s*\([^)]*\)'), '')
+        .replaceAll(RegExp(r'[-\s]+'), '_')
+        .trim();
+  }
+
   @override
   void initState() {
     super.initState();
+
+    s3Helper = S3Helper(
+      accessKey: AWSConfig.accessKey,
+      secretKey: AWSConfig.secretKey,
+      region: AWSConfig.region,
+      bucketName: AWSConfig.bucketName,
+    );
+
     baseMapDownloader = BaseMapDownloader(
       onProgressUpdate: (progress) {
         if (mounted) {
@@ -50,6 +79,420 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       },
     );
     downloadAllLayers(widget.container);
+  }
+
+  // *c Downloads webapp static files from S3 and replaces existing files
+  Future<void> downloadWebappFiles() async {
+    print("Starting downloadWebappFiles from S3");
+    
+    final directory = await getApplicationDocumentsDirectory();
+    final webappDir = Directory('${directory.path}/persistent_offline_data/webapp');
+    
+    try {
+      // Download manifest first
+      print("Downloading webapp manifest...");
+      final manifestContent = await s3Helper.downloadFile('webapp-manifest.json');
+      final manifestData = json.decode(manifestContent);
+      final List<String> files = List<String>.from(manifestData['files']);
+      
+      print("Found ${files.length} webapp files in manifest");
+
+      // Clear existing webapp files
+      if (await webappDir.exists()) {
+        print("Clearing old webapp files...");
+        await webappDir.delete(recursive: true);
+      }
+      
+      print(webappDir);
+      // /data/user/0/com.example.nrmflutter/app_flutter/persistent_offline_data/webapp/vite.svg
+      await webappDir.create(recursive: true);
+
+      // Download each file
+      for (final fileKey in files) {
+        if (layerCancelled[fileKey] == true) continue;
+
+        if (mounted) {
+          setState(() {
+            webappProgress[fileKey] = 0.0;
+          });
+        }
+
+        try {
+          await downloadWebappFile(
+            s3ObjectKey: fileKey,
+            localFilePath: fileKey,
+            webappDir: webappDir,
+          );
+          print("Downloaded: $fileKey");
+        } catch (e) {
+          print("Error downloading $fileKey: $e");
+        }
+      }
+      
+      print("Finished downloadWebappFiles");
+    } catch (e) {
+      print("Error in downloadWebappFiles: $e");
+      rethrow;
+    }
+  }
+
+  // * Downloads a single webapp file from S3
+  Future<void> downloadWebappFile({
+    required String s3ObjectKey,
+    required String localFilePath,
+    required Directory webappDir,
+  }) async {
+    try {
+      print("Starting download of webapp file: $s3ObjectKey");
+      
+      if (layerCancelled[localFilePath] == true) {
+        if (mounted) {
+          setState(() {
+            webappProgress[localFilePath] = -1.0;
+          });
+        }
+        return;
+      }
+
+      // Update progress to show download started
+      if (mounted) {
+        setState(() {
+          webappProgress[localFilePath] = 0.1;
+        });
+      }
+
+      // Determine if file is binary or text
+      final isBinary = localFilePath.endsWith('.png') ||
+          localFilePath.endsWith('.jpg') ||
+          localFilePath.endsWith('.jpeg') ||
+          localFilePath.endsWith('.gif') ||
+          localFilePath.endsWith('.ico') ||
+          localFilePath.endsWith('.woff') ||
+          localFilePath.endsWith('.woff2') ||
+          localFilePath.endsWith('.ttf');
+
+      // Download from S3
+      print("Downloading from S3: s3://${AWSConfig.bucketName}/$s3ObjectKey");
+      
+      final filePath = path.join(webappDir.path, localFilePath);
+      final file = File(filePath);
+      
+      // Create parent directories if needed
+      await file.parent.create(recursive: true);
+      
+      if (isBinary) {
+        // For binary files, download as bytes
+        final fileBytes = await s3Helper.downloadFileBytes(s3ObjectKey);
+        
+        if (mounted) {
+          setState(() {
+            webappProgress[localFilePath] = 0.8;
+          });
+        }
+        
+        await file.writeAsBytes(fileBytes);
+      } else {
+        // For text files, download as string
+        final fileContent = await s3Helper.downloadFile(s3ObjectKey);
+        
+        if (mounted) {
+          setState(() {
+            webappProgress[localFilePath] = 0.8;
+          });
+        }
+        
+        await file.writeAsString(fileContent);
+      }
+      
+      print("Successfully saved webapp file: $localFilePath");
+
+      // Update progress to complete
+      if (mounted) {
+        setState(() {
+          webappProgress[localFilePath] = 1.0;
+        });
+      }
+    } catch (e) {
+      print('Error downloading webapp file $localFilePath: $e');
+      if (mounted) {
+        setState(() {
+          webappProgress[localFilePath] = -1.0;
+        });
+      }
+      rethrow;
+    }
+  }
+
+  // * Downloads JSON file from S3 and saves it to container directory
+  Future<void> downloadS3Json({required String s3ObjectKey, required String localFileName, required OfflineContainer container}) async {
+    try {
+      print("Starting download of S3 JSON: $s3ObjectKey for container: ${container.name}");
+      
+      if (layerCancelled[localFileName] == true) {
+        if (mounted) {
+          setState(() {
+            s3JsonProgress[localFileName] = -1.0;
+          });
+        }
+        return;
+      }
+
+      // Update progress to show download started
+      if (mounted) {
+        setState(() {
+          s3JsonProgress[localFileName] = 0.1;
+        });
+      }
+
+      // Download from S3
+      final jsonContent = await s3Helper.downloadFile(s3ObjectKey);
+      
+      // Update progress to show download complete, now saving
+      if (mounted) {
+        setState(() {
+          s3JsonProgress[localFileName] = 0.8;
+        });
+      }
+
+      // Get the app documents directory
+      final directory = await getApplicationDocumentsDirectory();
+      
+      // Create path similar to vector layers structure
+      final containerPath = 
+          '${directory.path}/persistent_offline_data/containers/${container.name}';
+      
+      // You can organize S3 JSONs in their own folder
+      final filePath = '$containerPath/s3_data/$localFileName';
+      print("Saving S3 JSON to: $filePath");
+
+      // Create file and save content
+      final file = File(filePath);
+      await file.create(recursive: true);
+      await file.writeAsString(jsonContent);
+      
+      print("Successfully saved S3 JSON: $localFileName");
+
+      // Update progress to complete
+      if (mounted) {
+        setState(() {
+          s3JsonProgress[localFileName] = 1.0;
+        });
+      }
+    } catch (e) {
+      print('Error downloading S3 JSON $localFileName: $e');
+      if (mounted) {
+        setState(() {
+          s3JsonProgress[localFileName] = -1.0;
+        });
+      }
+      rethrow;
+    }
+  }
+
+  // * Downloads multiple JSON files from S3
+  Future<void> downloadS3JsonFiles(OfflineContainer container) async {
+    print("Starting downloadS3JsonFiles");
+    
+    final s3Files = {
+      'add_settlements.json': 'add_settlements.json',
+      'add_well.json': 'add_well.json',
+      'cropping_pattern.json': 'cropping_pattern.json',
+      'feedback_Agri.json' : 'feedback_Agri.json',
+      'feedback_Groundwater.json' : 'feedback_Groundwater.json',
+      'feedback_surfacewaterbodies.json' : 'feedback_surfacewaterbodies.json',
+      'irrigation_work.json' : 'irrigation_work.json',
+      'livelihood.json' : 'livelihood.json',
+      'maintenance_irr.json' : 'maintenance_irr.json',
+      'maintenance_recharge_st.json' : 'maintenance_recharge_st.json',
+      'maintenance_rs_swb.json' : 'maintenance_rs_swb.json',
+      'maintenance_water_structures.json' : 'maintenance_water_structures.json',
+      'recharge_structure.json' : 'recharge_structure.json',
+      'water_structure.json' : 'water_structure.json'
+    };
+
+    for (var entry in s3Files.entries) {
+      final s3ObjectKey = entry.key;
+      final localFileName = entry.value;
+      
+      print("Processing S3 file: $s3ObjectKey -> $localFileName");
+      
+      if (layerCancelled[localFileName] == true) {
+        print("S3 file $localFileName is cancelled, skipping");
+        continue;
+      }
+
+      if (mounted) {
+        setState(() {
+          s3JsonProgress[localFileName] = 0.0;
+        });
+      }
+
+      try {
+        await downloadS3Json(
+          s3ObjectKey: s3ObjectKey,
+          localFileName: localFileName,
+          container: container,
+        );
+        print("Successfully downloaded S3 JSON: $localFileName");
+      } catch (e) {
+        print("Error downloading S3 JSON $localFileName: $e");
+        // Continue with other files even if one fails
+      }
+    }
+
+    print("Finished downloadS3JsonFiles");
+  }
+
+  // * Downloads all image layers (CLART + LULC for multiple years)
+  Future<void> downloadImageLayers(OfflineContainer container) async {
+    print("Starting downloadImageLayers");
+    
+    final districtFormatted = formatName(widget.selectedDistrict);
+    final blockFormatted = formatName(widget.selectedBlock);
+    
+    print("Formatted district: $districtFormatted, block: $blockFormatted");
+
+    // 1. Download CLART layer
+    final clartLayerName = 'clart_${districtFormatted}_${blockFormatted}';
+    final clartUrl = '${geoserverUrl}geoserver/clart/wcs?service=WCS&version=2.0.1&request=GetCoverage&CoverageId=clart:${districtFormatted}_${blockFormatted}_clart&styles=testClart&format=geotiff&compression=LZW&tiling=false';
+    
+    if (mounted) {
+      setState(() {
+        imageLayerProgress[clartLayerName] = 0.0;
+      });
+    }
+
+    try {
+      await downloadImageLayer(
+        layerName: clartLayerName,
+        url: clartUrl,
+        container: container,
+      );
+      print("Successfully downloaded CLART layer: $clartLayerName");
+    } catch (e) {
+      print("Error downloading CLART layer: $e");
+    }
+
+    // 2. Download LULC layers for each year
+    final yearDataLulc = [
+      "17_18",
+      "18_19",
+      "19_20",
+      "20_21",
+      "21_22",
+      "22_23",
+      "23_24"
+    ];
+
+    for (var yearValue in yearDataLulc) {
+      if (layerCancelled['lulc_$yearValue'] == true) {
+        print("LULC layer for year $yearValue is cancelled, skipping");
+        continue;
+      }
+
+      final lulcLayerName = 'lulc_${yearValue}_${blockFormatted}';
+      final lulcUrl = '${geoserverUrl}geoserver/LULC_level_3/wcs?service=WCS&version=2.0.1&request=GetCoverage&CoverageId=LULC_level_3:LULC_${yearValue}_${blockFormatted}_level_3&styles=lulc_level_3_style&format=geotiff&compression=LZW&tiling=false';
+      
+      if (mounted) {
+        setState(() {
+          imageLayerProgress[lulcLayerName] = 0.0;
+        });
+      }
+
+      try {
+        await downloadImageLayer(
+          layerName: lulcLayerName,
+          url: lulcUrl,
+          container: container,
+        );
+        print("Successfully downloaded LULC layer: $lulcLayerName");
+      } catch (e) {
+        print("Error downloading LULC layer $lulcLayerName: $e");
+        // Continue with other years even if one fails
+      }
+    }
+
+    print("Finished downloadImageLayers");
+  }
+
+  // * Downloads a single image layer (GeoTIFF)
+  Future<void> downloadImageLayer({
+    required String layerName,
+    required String url,
+    required OfflineContainer container,
+  }) async {
+    try {
+      print("Starting download of image layer: $layerName for container: ${container.name}");
+      print("URL: $url");
+      
+      if (layerCancelled[layerName] == true) {
+        if (mounted) {
+          setState(() {
+            imageLayerProgress[layerName] = -1.0;
+          });
+        }
+        return;
+      }
+
+      final request = await http.Client().send(http.Request('GET', Uri.parse(url)));
+
+      if (request.statusCode == 200) {
+        final directory = await getApplicationDocumentsDirectory();
+        final formattedLayerName = formatLayerName(layerName);
+
+        final containerPath =
+            '${directory.path}/persistent_offline_data/containers/${container.name}';
+
+        final filePath = '$containerPath/image_layers/$formattedLayerName.png';
+        print("Saving image layer to: $filePath");
+
+        final file = File(filePath);
+        await file.create(recursive: true);
+
+        final totalBytes = request.contentLength ?? 0;
+        var bytesWritten = 0;
+
+        final sink = file.openWrite();
+
+        await for (final chunk in request.stream) {
+          sink.add(chunk);
+          bytesWritten += chunk.length;
+
+          if (totalBytes > 0) {
+            final progress = bytesWritten / totalBytes;
+            // Update progress every 5%
+            if ((progress * 100).round() % 5 == 0) {
+              if (mounted) {
+                setState(() {
+                  imageLayerProgress[layerName] = progress;
+                });
+              }
+            }
+          }
+        }
+
+        await sink.close();
+        print("Successfully saved image layer $layerName");
+
+        if (mounted) {
+          setState(() {
+            imageLayerProgress[layerName] = 1.0;
+          });
+        }
+      } else {
+        print("Failed to download $layerName. Status code: ${request.statusCode}");
+        throw Exception(
+            'Failed to download $layerName. Status code: ${request.statusCode}');
+      }
+    } catch (e) {
+      print('Error downloading image layer $layerName: $e');
+      if (mounted) {
+        setState(() {
+          imageLayerProgress[layerName] = -1.0;
+        });
+      }
+      rethrow;
+    }
   }
 
   Future<List<Map<String, String>>> getLayers(
@@ -89,8 +532,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       }
 
       try {
-        await downloadVectorLayer(
-            layer['name']!, layer['geoserverPath']!, container);
+        await downloadVectorLayer(layer['name']!, layer['geoserverPath']!, container);
         print("Successfully downloaded layer: ${layer['name']}");
       } catch (e) {
         print("Error downloading layer ${layer['name']}: $e");
@@ -106,11 +548,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
     return layerName.toLowerCase().replaceAll(' ', '_');
   }
 
-  Future<void> downloadVectorLayer(String layerName, String geoserverPath,
-      OfflineContainer container) async {
+  Future<void> downloadVectorLayer(String layerName, String geoserverPath, OfflineContainer container) async {
     try {
-      print(
-          "Starting download of vector layer: $layerName for container: ${container.name}");
+      print("Starting download of vector layer: $layerName for container: ${container.name}");
       if (layerCancelled[layerName] == true) {
         if (mounted) {
           setState(() {
@@ -120,8 +560,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         return;
       }
 
-      final url =
-          '${geoserverUrl}geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=$geoserverPath&outputFormat=application/json';
+      final url = '${geoserverUrl}geoserver/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=$geoserverPath&outputFormat=application/json';
       print("Downloading from URL: $url");
 
       final request =
@@ -201,17 +640,23 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
 
     try {
       double radiusKm = 3.0;
-      await baseMapDownloader.downloadBaseMap(
-          container.latitude, container.longitude, radiusKm, container.name);
+      await baseMapDownloader.downloadBaseMap(container.latitude, container.longitude, radiusKm, container.name);
       await downloadVectorLayers(container);
+      await downloadImageLayers(container);
+      await downloadS3JsonFiles(container);
+      
+      await downloadWebappFiles();
 
       final directory = await getApplicationDocumentsDirectory();
-      final containerDir = Directory(
-          '${directory.path}/persistent_offline_data/containers/${container.name}');
+      final containerDir = Directory('${directory.path}/persistent_offline_data/containers/${container.name}');
       final vectorLayersDir = Directory('${containerDir.path}/vector_layers');
+      final imageLayersDir = Directory('${containerDir.path}/image_layers');
       final baseMapTilesDir = Directory('${containerDir.path}/base_map_tiles');
+      final s3DataDir = Directory('${containerDir.path}/s3_data');
 
-      if (await vectorLayersDir.exists() && await baseMapTilesDir.exists()) {
+      final webappDir = Directory('${directory.path}/assets/offline_data/webapp');
+
+      if (await vectorLayersDir.exists() && await imageLayersDir.exists() && await baseMapTilesDir.exists() && await s3DataDir.exists() && await webappDir.exists()) {
         print("Offline data verified successfully");
 
         await ContainerManager.updateContainerDownloadStatus(
@@ -495,12 +940,14 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                       int completedLayers = 0;
                       int totalLayers = 0;
 
+                      // Base map progress
                       if (baseMapProgress >= 0) {
                         totalProgress += baseMapProgress;
                       }
                       if (baseMapProgress == 1.0) completedLayers++;
                       totalLayers++;
 
+                      // Non-plan layers progress
                       List<Map<String, String>> nonPlanLayers = snapshot.data!
                           .where((layer) => !_isPlanLayer(layer['name']!))
                           .toList();
@@ -515,6 +962,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                         totalLayers++;
                       }
 
+                      // Plan layers progress
                       if (_getTotalPlanLayersCount(snapshot.data!) > 0) {
                         double planLayersProgress =
                             _calculatePlanLayersProgress(snapshot.data!);
@@ -522,6 +970,33 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                         if (planLayersProgress == 1.0) completedLayers++;
                         totalLayers++;
                       }
+
+                      // S3 JSON files progress
+                      s3JsonProgress.forEach((fileName, progress) {
+                        if (progress >= 0) {
+                          totalProgress += progress;
+                          if (progress == 1.0) completedLayers++;
+                        }
+                        totalLayers++;
+                      });
+
+                      // Image layers progress - ADD THIS
+                      imageLayerProgress.forEach((fileName, progress) {
+                        if (progress >= 0) {
+                          totalProgress += progress;
+                          if (progress == 1.0) completedLayers++;
+                        }
+                        totalLayers++;
+                      });
+
+                      // Webapp files progress
+                      webappProgress.forEach((fileName, progress) {
+                        if (progress >= 0) {
+                          totalProgress += progress;
+                          if (progress == 1.0) completedLayers++;
+                        }
+                        totalLayers++;
+                      });
 
                       double overallProgress =
                           totalLayers > 0 ? totalProgress / totalLayers : 0.0;
@@ -700,6 +1175,372 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                       strokeWidth: 2,
                                     ),
                                   )
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                      // * IMAGE LAYERS SECTION
+                      if (imageLayerProgress.isNotEmpty) {
+                        int imageCompletedCount = imageLayerProgress.values
+                            .where((progress) => progress == 1.0)
+                            .length;
+                        
+                        items.add(
+                          Container(
+                            margin: const EdgeInsets.only(top: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFECEBE0),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            "Image Layers (GeoTIFF)",
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF592941),
+                                            ),
+                                          ),
+                                          Text(
+                                            "$imageCompletedCount of ${imageLayerProgress.length} completed",
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              color: Color(0xFF592941),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (imageCompletedCount == imageLayerProgress.length &&
+                                        imageLayerProgress.isNotEmpty)
+                                      const Icon(Icons.check_circle,
+                                          color: Colors.green)
+                                    else if (imageCompletedCount > 0)
+                                      const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                const Divider(
+                                  color: Color(0xFFD6D5C9),
+                                  thickness: 1,
+                                ),
+                                const SizedBox(height: 4),
+                                ...imageLayerProgress.entries.map((entry) {
+                                  final fileName = entry.key;
+                                  final progress = entry.value;
+                                  
+                                  // Format display name
+                                  String displayName = fileName;
+                                  if (fileName.startsWith('clart_')) {
+                                    displayName = 'CLART Layer';
+                                  } else if (fileName.startsWith('lulc_')) {
+                                    final year = fileName.split('_')[1];
+                                    displayName = 'LULC 20$year';
+                                  }
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 6),
+                                    child: Row(
+                                      children: [
+                                        const SizedBox(width: 8),
+                                        const Icon(
+                                          Icons.satellite_alt,
+                                          size: 16,
+                                          color: Color(0xFF592941),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            displayName,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Color(0xFF592941),
+                                            ),
+                                          ),
+                                        ),
+                                        if (progress == 1.0)
+                                          const Icon(Icons.check_circle,
+                                              color: Colors.green, size: 18)
+                                        else if (progress > 0 && progress < 1)
+                                          const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        else if (progress < 0)
+                                          const Icon(Icons.error,
+                                              color: Colors.red, size: 18)
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+
+                      // * S3 JSON FILES SECTION
+                      if (s3JsonProgress.isNotEmpty) {
+                        int s3CompletedCount = s3JsonProgress.values
+                            .where((progress) => progress == 1.0)
+                            .length;
+                        
+                        items.add(
+                          Container(
+                            margin: const EdgeInsets.only(top: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFECEBE0),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            "Form Data Files",
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF592941),
+                                            ),
+                                          ),
+                                          Text(
+                                            "$s3CompletedCount of ${s3JsonProgress.length} completed",
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              color: Color(0xFF592941),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (s3CompletedCount == s3JsonProgress.length &&
+                                        s3JsonProgress.isNotEmpty)
+                                      const Icon(Icons.check_circle,
+                                          color: Colors.green)
+                                    else if (s3CompletedCount > 0)
+                                      const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                const Divider(
+                                  color: Color(0xFFD6D5C9),
+                                  thickness: 1,
+                                ),
+                                const SizedBox(height: 4),
+                                ...s3JsonProgress.entries.map((entry) {
+                                  final fileName = entry.key;
+                                  final progress = entry.value;
+                                  
+                                  // Format display name nicely
+                                  String displayName = fileName
+                                      .replaceAll('add_', '')
+                                      .replaceAll('.json', '')
+                                      .replaceAll('_', ' ');
+                                  displayName = displayName
+                                      .split(' ')
+                                      .map((word) => word.isEmpty
+                                          ? ''
+                                          : word[0].toUpperCase() +
+                                              word.substring(1))
+                                      .join(' ');
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 6),
+                                    child: Row(
+                                      children: [
+                                        const SizedBox(width: 8),
+                                        const Icon(
+                                          Icons.description,
+                                          size: 16,
+                                          color: Color(0xFF592941),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            displayName,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Color(0xFF592941),
+                                            ),
+                                          ),
+                                        ),
+                                        if (progress == 1.0)
+                                          const Icon(Icons.check_circle,
+                                              color: Colors.green, size: 18)
+                                        else if (progress > 0 && progress < 1)
+                                          const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        else if (progress < 0)
+                                          const Icon(Icons.error,
+                                              color: Colors.red, size: 18)
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      //* WEBAPP FILES SECTION
+                      if (webappProgress.isNotEmpty) {
+                        int webappCompletedCount = webappProgress.values
+                            .where((progress) => progress == 1.0)
+                            .length;
+                        
+                        items.add(
+                          Container(
+                            margin: const EdgeInsets.only(top: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFECEBE0),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            "Web App Files",
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF592941),
+                                            ),
+                                          ),
+                                          Text(
+                                            "$webappCompletedCount of ${webappProgress.length} completed",
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              color: Color(0xFF592941),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (webappCompletedCount == webappProgress.length &&
+                                        webappProgress.isNotEmpty)
+                                      const Icon(Icons.check_circle,
+                                          color: Colors.green)
+                                    else if (webappCompletedCount > 0)
+                                      const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                const Divider(
+                                  color: Color(0xFFD6D5C9),
+                                  thickness: 1,
+                                ),
+                                const SizedBox(height: 4),
+                                ...webappProgress.entries.map((entry) {
+                                  final fileName = entry.key;
+                                  final progress = entry.value;
+                                  
+                                  // Format display name
+                                  String displayName = fileName.split('/').last;
+                                  if (displayName.length > 30) {
+                                    displayName = displayName.substring(0, 27) + '...';
+                                  }
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 6),
+                                    child: Row(
+                                      children: [
+                                        const SizedBox(width: 8),
+                                        Icon(
+                                          fileName.endsWith('.html') ? Icons.html : 
+                                          fileName.endsWith('.js') ? Icons.javascript :
+                                          fileName.endsWith('.css') ? Icons.style :
+                                          fileName.endsWith('.svg') ? Icons.image :
+                                          Icons.insert_drive_file,
+                                          size: 16,
+                                          color: const Color(0xFF592941),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            displayName,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Color(0xFF592941),
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (progress == 1.0)
+                                          const Icon(Icons.check_circle,
+                                              color: Colors.green, size: 18)
+                                        else if (progress > 0 && progress < 1)
+                                          const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        else if (progress < 0)
+                                          const Icon(Icons.error,
+                                              color: Colors.red, size: 18)
+                                      ],
+                                    ),
+                                  );
+                                }),
                               ],
                             ),
                           ),
