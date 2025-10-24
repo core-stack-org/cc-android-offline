@@ -21,7 +21,7 @@ class _WebViewState extends State<WebViewApp> {
   InAppWebViewController? webViewController;
   double loadingProgress = 0.0;
   String webviewTitle = 'Commons Connect';
-  final LoginService _loginService = LoginService(); // Add this
+  final LoginService _loginService = LoginService();
   final GlobalKey _optionsButtonKey = GlobalKey();
 
   @override

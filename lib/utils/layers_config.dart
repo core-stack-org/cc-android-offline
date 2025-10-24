@@ -1,4 +1,5 @@
 import 'package:nrmflutter/db/plans_db.dart';
+import 'package:nrmflutter/utils/utility.dart';
 
 class LayersConfig {
   static Future<List<Map<String, String>>> getLayers(
@@ -7,8 +8,8 @@ class LayersConfig {
     print(
         "LayersConfig.getLayers called with district: $district, block: $block, blockId: $blockId");
 
-    String formattedBlock = formatName(block);
-    String formattedDistrict = formatName(district);
+    String formattedBlock = formatNameForGeoServer(block!);
+    String formattedDistrict = formatNameForGeoServer(district!);
     print(
         "Formatted names - district: $formattedDistrict, block: $formattedBlock");
 
@@ -93,14 +94,5 @@ class LayersConfig {
 
     print("Total layers generated: ${layers.length}");
     return layers;
-  }
-
-  static String formatName(String? name) {
-    if (name == null) return '';
-    return name
-        .toLowerCase()
-        .replaceAll(RegExp(r'\s*\([^)]*\)'), '')
-        .replaceAll(RegExp(r'[-\s]+'), '_')
-        .trim();
   }
 }

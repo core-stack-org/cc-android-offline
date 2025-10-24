@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:http/http.dart' as http;
+import 'package:nrmflutter/config/api_config.dart';
 
 class PlansDatabase {
   static final PlansDatabase instance = PlansDatabase._init();
@@ -21,8 +22,8 @@ class PlansDatabase {
     return await openDatabase(path, version: 1, onCreate: _createDB);
   }
 
-Future<void> _createDB(Database db, int version) async {
-  await db.execute('''
+  Future<void> _createDB(Database db, int version) async {
+    await db.execute('''
     CREATE TABLE plans(
       id INTEGER PRIMARY KEY,
       plan TEXT,
@@ -47,46 +48,46 @@ Future<void> _createDB(Database db, int version) async {
       is_dpr_approved INTEGER NOT NULL DEFAULT 0 CHECK (is_dpr_approved IN (0,1))
     )
   ''');
-}
+  }
 
-Future<void> insertPlansData(List<Map<String, dynamic>> plans) async {
-  final db = await database;
-  await db.transaction((txn) async {
-    // Clear existing data
-    await txn.delete('plans');
+  Future<void> insertPlansData(List<Map<String, dynamic>> plans) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      // Clear existing data
+      await txn.delete('plans');
 
-    // Insert new data
-    for (var plan in plans) {
-      await txn.insert(
-        'plans',
-        {
-          'id': plan['id'],
-          'plan': plan['plan'],
-          'state': plan['state']?.toString(),
-          'district': plan['district'],
-          'block': plan['block'],
-          'village_name': plan['village_name'],
-          'gram_panchayat': plan['gram_panchayat'],
-          'facilitator_name': plan['facilitator_name'],
-          'organization': plan['organization'],
-          'organization_name': plan['organization_name'],
-          'project': plan['project'],
-          'project_name': plan['project_name'],
-          'created_by': plan['created_by'],
-          'created_by_name': plan['created_by_name'],
-          'created_at': plan['created_at'],
-          'updated_at': plan['updated_at'],
-          'enabled': (plan['enabled'] == true) ? 1 : 0,
-          'is_completed': (plan['is_completed'] == true) ? 1 : 0,
-          'is_dpr_generated': (plan['is_dpr_generated'] == true) ? 1 : 0,
-          'is_dpr_reviewed': (plan['is_dpr_reviewed'] == true) ? 1 : 0,
-          'is_dpr_approved': (plan['is_dpr_approved'] == true) ? 1 : 0,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-    }
-  });
-}
+      // Insert new data
+      for (var plan in plans) {
+        await txn.insert(
+          'plans',
+          {
+            'id': plan['id'],
+            'plan': plan['plan'],
+            'state': plan['state']?.toString(),
+            'district': plan['district'],
+            'block': plan['block'],
+            'village_name': plan['village_name'],
+            'gram_panchayat': plan['gram_panchayat'],
+            'facilitator_name': plan['facilitator_name'],
+            'organization': plan['organization'],
+            'organization_name': plan['organization_name'],
+            'project': plan['project'],
+            'project_name': plan['project_name'],
+            'created_by': plan['created_by'],
+            'created_by_name': plan['created_by_name'],
+            'created_at': plan['created_at'],
+            'updated_at': plan['updated_at'],
+            'enabled': (plan['enabled'] == true) ? 1 : 0,
+            'is_completed': (plan['is_completed'] == true) ? 1 : 0,
+            'is_dpr_generated': (plan['is_dpr_generated'] == true) ? 1 : 0,
+            'is_dpr_reviewed': (plan['is_dpr_reviewed'] == true) ? 1 : 0,
+            'is_dpr_approved': (plan['is_dpr_approved'] == true) ? 1 : 0,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
 
   Future<List<Map<String, dynamic>>> getPlansForBlock(int blockId) async {
     final db = await database;
@@ -109,7 +110,7 @@ Future<void> insertPlansData(List<Map<String, dynamic>> plans) async {
         Uri.parse('https://geoserver.core-stack.org/api/v1/watershed/plans'),
         headers: {
           "Content-Type": "application/json",
-          'X-API-Key': 'xxxxx',
+          'X-API-Key': apiKey,
         },
       );
 

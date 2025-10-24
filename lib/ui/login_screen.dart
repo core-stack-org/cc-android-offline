@@ -24,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
   bool _isFormValid = false;
   String _selectedLanguage = 'hi';
+  bool _obscurePassword = true;
 
   @override
   void initState() {
@@ -300,6 +301,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: AppLocalizations.of(context)!.password,
                     hintText: AppLocalizations.of(context)!.passwordHint,
                     prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.0),
                     ),
@@ -311,7 +324,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.7),
                   ),
-                  obscureText: true,
+                  obscureText: _obscurePassword,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return AppLocalizations.of(context)!.pleaseEnterPassword;
