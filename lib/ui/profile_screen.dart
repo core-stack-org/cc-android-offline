@@ -559,7 +559,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'All your refresh tokens have been invalidated. You will be logged out now.',
+                        'All your refresh tokens have been invalidated. You will be logged out now. Please login again to continue.',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.orange.shade900,

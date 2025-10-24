@@ -54,6 +54,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
   bool isFormDataExpanded = false;
   bool isWebAppExpanded = false;
 
+  Map<String, String> downloadErrors = {};
+  bool hasAnyFailures = false;
+
   @override
   void initState() {
     super.initState();
@@ -126,6 +129,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         });
       }
 
+      List<String> failedWebappFiles = [];
+
       for (final fileKey in files) {
         if (layerCancelled[fileKey] == true) continue;
 
@@ -138,7 +143,15 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           print("Downloaded: $fileKey");
         } catch (e) {
           print("Error downloading $fileKey: $e");
+          downloadErrors[fileKey] = e.toString();
+          hasAnyFailures = true;
+          failedWebappFiles.add(fileKey);
         }
+      }
+
+      if (failedWebappFiles.isNotEmpty) {
+        throw Exception(
+            'Failed to download ${failedWebappFiles.length} webapp file(s): ${failedWebappFiles.join(", ")}');
       }
 
       print("Finished downloadWebappFiles");
@@ -324,6 +337,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       'water_structure.json': 'water_structure.json'
     };
 
+    List<String> failedFiles = [];
+
     for (var entry in s3Files.entries) {
       final s3ObjectKey = entry.key;
       final localFileName = entry.value;
@@ -344,7 +359,15 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         print("Successfully downloaded S3 JSON: $localFileName");
       } catch (e) {
         print("Error downloading S3 JSON $localFileName: $e");
+        downloadErrors[localFileName] = e.toString();
+        hasAnyFailures = true;
+        failedFiles.add(localFileName);
       }
+    }
+
+    if (failedFiles.isNotEmpty) {
+      throw Exception(
+          'Failed to download ${failedFiles.length} S3 JSON file(s): ${failedFiles.join(", ")}');
     }
 
     print("Finished downloadS3JsonFiles");
@@ -372,6 +395,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         await getLayers(widget.selectedDistrict, widget.selectedBlock);
     print("Retrieved ${layers.length} layers to download");
 
+    List<String> failedLayers = [];
+
     for (var layer in layers) {
       print(
           "Processing layer: ${layer['name']} with path: ${layer['geoserverPath']}");
@@ -392,12 +417,20 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         print("Successfully downloaded layer: ${layer['name']}");
       } catch (e) {
         print("Error downloading layer ${layer['name']}: $e");
+        downloadErrors[layer['name']!] = e.toString();
+        hasAnyFailures = true;
+        failedLayers.add(layer['name']!);
       }
     }
 
     print("Copying assets to persistent storage");
     await OfflineAssetsManager.copyOfflineAssets(forceUpdate: true);
     print("Finished downloadVectorLayers");
+
+    if (failedLayers.isNotEmpty) {
+      throw Exception(
+          'Failed to download ${failedLayers.length} vector layer(s): ${failedLayers.join(", ")}');
+    }
   }
 
   String formatLayerName(String layerName) {
@@ -494,8 +527,11 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         vectorLayerProgress.clear();
         layerCancelled.clear();
         isDownloadComplete = false;
+        downloadErrors.clear();
+        hasAnyFailures = false;
 
         s3JsonProgress.clear();
+        // MARK: S3 JSON files to download
         final s3Files = [
           'add_settlements.json',
           'add_well.json',
@@ -541,34 +577,50 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       final webappDir =
           Directory('${directory.path}/assets/offline_data/webapp');
 
-      if (await vectorLayersDir.exists() &&
-          // await imageLayersDir.exists() &&
-          await baseMapTilesDir.exists() &&
-          await s3DataDir.exists() &&
-          await webappDir.exists()) {
-        print("Offline data verified successfully");
+      print("Verifying directory existence...");
+      if (!await vectorLayersDir.exists()) {
+        throw Exception("Vector layers directory does not exist");
+      }
+      if (!await baseMapTilesDir.exists()) {
+        throw Exception("Base map tiles directory does not exist");
+      }
+      if (!await s3DataDir.exists()) {
+        throw Exception("S3 data directory does not exist");
+      }
+      if (!await webappDir.exists()) {
+        throw Exception("Webapp directory does not exist");
+      }
 
-        await ContainerManager.updateContainerDownloadStatus(
-            container.name, true);
-        print("Container ${container.name} marked as downloaded");
-
-        if (mounted) {
-          setState(() {
-            isDownloading = false;
-            isDownloadComplete = true;
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  'Successfully downloaded data for the region: ${container.name}'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } else {
+      print("Verifying all downloads are complete...");
+      if (!_verifyAllDownloadsComplete()) {
         throw Exception(
-            "Offline data verification failed - missing directories.");
+            "Download verification failed - not all items completed successfully");
+      }
+
+      if (hasAnyFailures) {
+        throw Exception(
+            "Download completed with failures: ${downloadErrors.keys.join(", ")}");
+      }
+
+      print("Offline data verified successfully");
+
+      await ContainerManager.updateContainerDownloadStatus(
+          container.name, true);
+      print("Container ${container.name} marked as downloaded");
+
+      if (mounted) {
+        setState(() {
+          isDownloading = false;
+          isDownloadComplete = true;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Successfully downloaded data for the region: ${container.name}'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (e) {
       print("Error during layer download: $e");
@@ -586,6 +638,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           SnackBar(
             content: Text('Failed to download data: ${e.toString()}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -637,6 +690,46 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         );
       }
     }
+  }
+
+  bool _verifyAllDownloadsComplete() {
+    if (baseMapProgress != 1.0) {
+      print("Base map not complete: $baseMapProgress");
+      return false;
+    }
+
+    for (var entry in vectorLayerProgress.entries) {
+      if (entry.value != 1.0) {
+        print("Vector layer ${entry.key} not complete: ${entry.value}");
+        return false;
+      }
+    }
+
+    for (var entry in s3JsonProgress.entries) {
+      if (entry.value != 1.0) {
+        print("S3 JSON file ${entry.key} not complete: ${entry.value}");
+        return false;
+      }
+    }
+
+    for (var entry in webappProgress.entries) {
+      if (entry.value != 1.0) {
+        print("Webapp file ${entry.key} not complete: ${entry.value}");
+        return false;
+      }
+    }
+
+    if (imageLayerProgress.isNotEmpty) {
+      for (var entry in imageLayerProgress.entries) {
+        if (entry.value != 1.0) {
+          print("Image layer ${entry.key} not complete: ${entry.value}");
+          return false;
+        }
+      }
+    }
+
+    print("All downloads verified as complete");
+    return true;
   }
 
   bool _isPlanLayer(String layerName) {
@@ -714,7 +807,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: TextButton(
-              onPressed: isDownloadComplete
+              onPressed: (isDownloadComplete &&
+                      _verifyAllDownloadsComplete() &&
+                      !hasAnyFailures)
                   ? () {
                       Navigator.pop(context);
                       showDialog(
