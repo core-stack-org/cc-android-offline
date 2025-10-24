@@ -6,3 +6,4 @@ const ccUrl = "https://master.d1rx3d0dyjc5v7.amplifyapp.com/maps"; // for uat
 // const ccUrl ="http://192.168.29.33:5173/maps"; // for local development on android emulator
 // const ccUrl = "http://10.194.181.19:5173/maps"; // for local development on android device
 
+const baseMapTileUrl = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}";

@@ -32,16 +32,24 @@ Need to update the API keys before running app in Following files
 1. plans_db.dart
 2. location_selection.dart
 
-TODOs
-=====
-[ ] raster layers
-[ ] exclusive containers
-[ ] fix the issues with Android 10
-[x] temp mapping of a feature
-[x] sync layer data to the backend and then to the ODK server
-[x] fetch new layer of the resources marked
-[x] location access inside the webview
-[x] download layer state fix
+S3 secret key and API key
+=========================
+In lib/config/aws_config.dart
+```
+class AWSConfig {
+  static const String accessKey = 'XXXXXXXXXXXXXXXXXX';
+  static const String secretKey = 'XXXXXXXXXXXXXXXXXX/XXXXXXXXXXXXXXXXXX';
+  static const String region = 'XXXXXXXXXXXXXXXXXX';
+  static const String bucketName = 'XXXXXXXXXXXXXXXXXX';
+}
+```
+
+In lib/config/api_config.dart
+```
+
+```
+
+
 
 
 TEST URL for WebView

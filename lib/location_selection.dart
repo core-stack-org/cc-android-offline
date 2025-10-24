@@ -13,6 +13,7 @@ import 'dart:ui' as ui;
 import 'webview.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
+import 'package:nrmflutter/config/api_config.dart';
 import 'package:nrmflutter/db/plans_db.dart';
 import 'package:nrmflutter/db/location_db.dart';
 import 'package:nrmflutter/utils/constants.dart';
@@ -317,7 +318,7 @@ class _LocationSelectionState extends State<LocationSelection> {
         Uri.parse('$serverUrl/api/v1/watershed/plans/?block=$selectedBlockID'),
         headers: {
           "Content-Type": "application/json",
-          'X-API-Key': 'xxxx',
+          'X-API-Key': apiKey,
         },
       );
 

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart';
+import 'package:nrmflutter/utils/utility.dart';
 //import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../l10n/app_localizations.dart';
 
@@ -42,18 +43,9 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
     fetchPanchayatBoundary();
   }
 
-  /// Formats district/block names for GeoServer layer naming convention
-  String _formatNameForGeoServer(String name) {
-    return name
-        .toLowerCase()
-        .replaceAll(RegExp(r'\s*\([^)]*\)'), '')
-        .replaceAll(RegExp(r'[-\s]+'), '_')
-        .trim();
-  }
-
   Future<void> fetchPanchayatBoundary() async {
-    final formattedDistrict = _formatNameForGeoServer(widget.districtName);
-    final formattedBlock = _formatNameForGeoServer(widget.blockName);
+    final formattedDistrict = formatNameForGeoServer(widget.districtName);
+    final formattedBlock = formatNameForGeoServer(widget.blockName);
 
     final url = Uri.parse(
         '${widget.geoserverUrl}geoserver/panchayat_boundaries/ows?'

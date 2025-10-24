@@ -11,6 +11,7 @@
 migrate_working_dir/
 assets/offline_data/
 lib/config/aws_config.dart
+lib/config/api_config.dart
 
 # IntelliJ related
 *.iml

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:nrmflutter/utils/constants.dart';
 
 class BaseMapDownloader {
   bool cancelBaseMapDownload = false;
@@ -98,22 +99,45 @@ class BaseMapDownloader {
   }
 
   Future<void> downloadTile(int x, int y, int z, String basePath) async {
-    String url = 'https://mt1.google.com/vt/lyrs=s&x=$x&y=$y&z=$z';
+    const int maxRetries = 3;
+    const Duration timeout = Duration(seconds: 90);
 
-    var response = await http.get(Uri.parse(url));
-    if (response.statusCode == 200) {
-      final file = File('$basePath/$z/$x/$y.png');
-      await file.create(recursive: true);
-      await file.writeAsBytes(response.bodyBytes);
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        String url = baseMapTileUrl
+            .replaceAll('{x}', x.toString())
+            .replaceAll('{y}', y.toString())
+            .replaceAll('{z}', z.toString());
 
-      // Print every 100th tile download
-      if ((x + y + z) % 100 == 0) {
-        print("Downloaded tile: x=$x, y=$y, z=$z");
+        var response = await http.get(Uri.parse(url)).timeout(timeout);
+
+        if (response.statusCode == 200) {
+          final file = File('$basePath/$z/$x/$y.png');
+          await file.create(recursive: true);
+          await file.writeAsBytes(response.bodyBytes);
+
+          if ((x + y + z) % 100 == 0) {
+            print("Downloaded tile: x=$x, y=$y, z=$z");
+          }
+          return; // Success
+        } else if (response.statusCode == 429) {
+          // Rate limited - wait before retry
+          await Future.delayed(Duration(seconds: math.pow(2, attempt).toInt()));
+        } else {
+          print(
+              "Failed to download tile: x=$x, y=$y, z=$z. Status: ${response.statusCode}");
+        }
+      } catch (e) {
+        print(
+            "Error downloading tile (attempt ${attempt + 1}/$maxRetries): x=$x, y=$y, z=$z - $e");
+        if (attempt < maxRetries - 1) {
+          await Future.delayed(Duration(seconds: math.pow(2, attempt).toInt()));
+        }
       }
-    } else {
-      print(
-          "Failed to download tile: x=$x, y=$y, z=$z.saveTileInfo Status code: ${response.statusCode}");
     }
+
+    throw Exception(
+        'Failed to download tile after $maxRetries attempts: x=$x, y=$y, z=$z');
   }
 
   int lon2tile(double lon, int z) {
