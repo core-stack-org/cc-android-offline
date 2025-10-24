@@ -37,10 +37,79 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
   bool _isSatelliteView = false;
   bool _isGettingLocation = false;
 
+  List<({String name, List<LatLng> boundary, LatLng center})> villages = [];
+  final TextEditingController _searchController = TextEditingController();
+  List<({String name, List<LatLng> boundary, LatLng center})>
+      _filteredVillages = [];
+  bool _showSearchResults = false;
+
   @override
   void initState() {
     super.initState();
     fetchPanchayatBoundary();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase().trim();
+    if (query.isEmpty) {
+      setState(() {
+        _filteredVillages = [];
+        _showSearchResults = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _filteredVillages = villages
+          .where((village) => village.name.toLowerCase().contains(query))
+          .toList();
+      _showSearchResults = true;
+    });
+  }
+
+  void _selectVillage(
+      ({String name, List<LatLng> boundary, LatLng center}) village) {
+    double minLat = double.infinity;
+    double maxLat = -double.infinity;
+    double minLon = double.infinity;
+    double maxLon = -double.infinity;
+
+    for (var point in village.boundary) {
+      minLat = math.min(minLat, point.latitude);
+      maxLat = math.max(maxLat, point.latitude);
+      minLon = math.min(minLon, point.longitude);
+      maxLon = math.max(maxLon, point.longitude);
+    }
+
+    final latDiff = maxLat - minLat;
+    final lonDiff = maxLon - minLon;
+    final maxDiff = math.max(latDiff, lonDiff);
+
+    double zoom = 13.0;
+    if (maxDiff < 0.01) {
+      zoom = 15.0;
+    } else if (maxDiff < 0.05) {
+      zoom = 14.0;
+    } else if (maxDiff < 0.1) {
+      zoom = 13.0;
+    } else {
+      zoom = 12.0;
+    }
+
+    mapController.move(village.center, zoom);
+
+    setState(() {
+      _showSearchResults = false;
+      _searchController.clear();
+    });
   }
 
   Future<void> fetchPanchayatBoundary() async {
@@ -61,19 +130,25 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
 
         if (geojson['features'] != null && geojson['features'].isNotEmpty) {
           List<List<LatLng>> polygonsFromAllFeatures = [];
+          List<({String name, List<LatLng> boundary, LatLng center})>
+              villageList = [];
 
           for (var feature in geojson['features']) {
             final geometry = feature['geometry'];
             final geomType = geometry['type'];
             final coords = geometry['coordinates'];
+            final properties = feature['properties'];
+            final villageName =
+                properties?['vill_name']?.toString() ?? 'Unknown';
+
+            List<LatLng> currentPolygonPoints = [];
 
             if (geomType == 'Polygon') {
-              List<LatLng> polygonPoints = [];
               for (var coord in coords[0]) {
-                polygonPoints
+                currentPolygonPoints
                     .add(LatLng(coord[1].toDouble(), coord[0].toDouble()));
               }
-              polygonsFromAllFeatures.add(polygonPoints);
+              polygonsFromAllFeatures.add(currentPolygonPoints);
             } else if (geomType == 'MultiPolygon') {
               for (var polygon in coords) {
                 List<LatLng> polygonPoints = [];
@@ -81,13 +156,14 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                   for (var coord in ring) {
                     polygonPoints
                         .add(LatLng(coord[1].toDouble(), coord[0].toDouble()));
+                    currentPolygonPoints
+                        .add(LatLng(coord[1].toDouble(), coord[0].toDouble()));
                   }
                 }
                 polygonsFromAllFeatures.add(polygonPoints);
               }
             }
 
-            // Calculate center point for the village name
             double centerLat = 0;
             double centerLon = 0;
             int pointCount = 0;
@@ -109,6 +185,16 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                 }
               }
             }
+
+            if (pointCount > 0 && currentPolygonPoints.isNotEmpty) {
+              final center =
+                  LatLng(centerLat / pointCount, centerLon / pointCount);
+              villageList.add((
+                name: villageName,
+                boundary: currentPolygonPoints,
+                center: center,
+              ));
+            }
           }
 
           // Calculate bounding box for all polygons
@@ -128,6 +214,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
 
           setState(() {
             allPolygons = polygonsFromAllFeatures;
+            villages = villageList;
             isLoading = false;
           });
 
@@ -433,12 +520,150 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                 ),
             ],
           ),
+          Positioned(
+            left: 16,
+            top: 16,
+            right: 80,
+            child: GestureDetector(
+              onTap: () {
+                FocusScope.of(context).unfocus();
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search village...',
+                        prefixIcon:
+                            const Icon(Icons.search, color: Color(0xFF592941)),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear,
+                                    color: Color(0xFF592941)),
+                                onPressed: () {
+                                  _searchController.clear();
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (_showSearchResults && _filteredVillages.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      constraints: const BoxConstraints(maxHeight: 200),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _filteredVillages.length,
+                        itemBuilder: (context, index) {
+                          final village = _filteredVillages[index];
+                          return ListTile(
+                            title: Text(
+                              village.name,
+                              style: const TextStyle(
+                                color: Color(0xFF592941),
+                                fontSize: 14,
+                              ),
+                            ),
+                            onTap: () => _selectVillage(village),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
           // Zoom controls and layer button
           Positioned(
             right: 16,
             top: 16,
             child: Column(
               children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD6D5C9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFFD6D5C9),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.add, color: const Color(0xFF592941)),
+                        onPressed: () {
+                          final newZoom = _currentZoom + 1;
+                          mapController.move(
+                            selectedLocation ?? mapController.camera.center,
+                            newZoom,
+                          );
+                          setState(() {
+                            _currentZoom = newZoom;
+                          });
+                        },
+                        tooltip: AppLocalizations.of(context)!.zoomIn,
+                      ),
+                      Container(
+                        height: 1,
+                        color: const Color(0xFF592941),
+                      ),
+                      IconButton(
+                        icon:
+                            Icon(Icons.remove, color: const Color(0xFF592941)),
+                        onPressed: () {
+                          final newZoom = _currentZoom - 1;
+                          mapController.move(
+                            selectedLocation ?? mapController.camera.center,
+                            newZoom,
+                          );
+                          setState(() {
+                            _currentZoom = newZoom;
+                          });
+                        },
+                        tooltip: AppLocalizations.of(context)!.zoomOut,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFFD6D5C9),
@@ -537,61 +762,6 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                             color: const Color(0xFF592941)),
                     onPressed: _isGettingLocation ? null : _getCurrentLocation,
                     tooltip: AppLocalizations.of(context)!.goToCurrentLocation,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD6D5C9),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFFD6D5C9),
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.add, color: const Color(0xFF592941)),
-                        onPressed: () {
-                          final newZoom = _currentZoom + 1;
-                          mapController.move(
-                            selectedLocation ?? mapController.camera.center,
-                            newZoom,
-                          );
-                          setState(() {
-                            _currentZoom = newZoom;
-                          });
-                        },
-                        tooltip: AppLocalizations.of(context)!.zoomIn,
-                      ),
-                      Container(
-                        height: 1,
-                        color: const Color(0xFF592941),
-                      ),
-                      IconButton(
-                        icon:
-                            Icon(Icons.remove, color: const Color(0xFF592941)),
-                        onPressed: () {
-                          final newZoom = _currentZoom - 1;
-                          mapController.move(
-                            selectedLocation ?? mapController.camera.center,
-                            newZoom,
-                          );
-                          setState(() {
-                            _currentZoom = newZoom;
-                          });
-                        },
-                        tooltip: AppLocalizations.of(context)!.zoomOut,
-                      ),
-                    ],
                   ),
                 ),
               ],
