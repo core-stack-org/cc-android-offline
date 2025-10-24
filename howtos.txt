@@ -46,6 +46,7 @@ class AWSConfig {
 
 In lib/config/api_config.dart
 ```
+const apiKey = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 
 ```
 
