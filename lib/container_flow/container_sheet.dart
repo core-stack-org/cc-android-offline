@@ -27,14 +27,21 @@ class ContainerSheets {
     double? selectedLon;
     bool locationSelected = false;
 
+    bool _isValidRegionName(String name) {
+      if (name.isEmpty) return false;
+      if (name.contains(' ')) return false;
+      if (name.contains('-')) return false;
+      return true;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
-      builder: (BuildContext context) {
-        final localizations = AppLocalizations.of(context)!;
+      builder: (BuildContext sheetContext) {
+        final localizations = AppLocalizations.of(sheetContext)!;
 
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
@@ -106,56 +113,100 @@ class ContainerSheets {
                     const SizedBox(height: 20),
 
                     // Step 2: Container Name (disabled until location is selected)
-                    Container(
-                      decoration: BoxDecoration(
-                        color: locationSelected
-                            ? const Color(0xFFD6D5C9)
-                            : const Color(0xFFddd8e0),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: TextField(
-                        controller: containerNameController,
-                        enabled: locationSelected,
-                        style: const TextStyle(
-                          color: Color(0xFF592941),
-                        ),
-                        decoration: InputDecoration(
-                          hintText: localizations.nameYourRegion,
-                          hintStyle: const TextStyle(
-                            color: Color(0xFF592941),
-                            fontSize: 16,
-                          ),
-                          border: OutlineInputBorder(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: locationSelected
+                                ? const Color(0xFFD6D5C9)
+                                : const Color(0xFFddd8e0),
                             borderRadius: BorderRadius.circular(20),
-                            borderSide: BorderSide.none,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 15,
+                          child: TextField(
+                            controller: containerNameController,
+                            enabled: locationSelected,
+                            style: const TextStyle(
+                              color: Color(0xFF592941),
+                            ),
+                            decoration: InputDecoration(
+                              hintText: localizations.nameYourRegion,
+                              hintStyle: const TextStyle(
+                                color: Color(0xFF592941),
+                                fontSize: 16,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 15,
+                              ),
+                              enabled: locationSelected,
+                            ),
+                            onChanged: (value) {
+                              setState(() {});
+                            },
                           ),
-                          enabled: locationSelected,
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (containerNameController.text.isNotEmpty &&
+                                  !_isValidRegionName(
+                                      containerNameController.text))
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Text(
+                                    containerNameController.text.contains(' ')
+                                        ? '⚠ Name cannot contain spaces'
+                                        : containerNameController.text
+                                                .contains('-')
+                                            ? '⚠ Name cannot contain dashes'
+                                            : '⚠ Invalid name format',
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              Text(
+                                'Examples: Sidpahari, Belpahari, Amra_Kamat',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Use underscores only (no spaces or dashes)',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
 
                     const SizedBox(height: 20),
                     Center(
                       child: ElevatedButton(
                         onPressed: locationSelected &&
-                                containerNameController.text.isNotEmpty
+                                _isValidRegionName(containerNameController.text)
                             ? () async {
-                                if (containerNameController.text.isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text(localizations
-                                            .pleaseEnterRegionName)),
-                                  );
-                                  return;
-                                }
+                                final regionName = containerNameController.text;
 
                                 try {
                                   final container = OfflineContainer(
-                                    name: containerNameController.text,
+                                    name: regionName,
                                     state: selectedState,
                                     district: selectedDistrict,
                                     block: selectedBlock,
@@ -169,8 +220,20 @@ class ContainerSheets {
                                   Navigator.pop(context);
                                   onContainerCreated(container);
                                 } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(e.toString())),
+                                  ScaffoldMessenger.of(sheetContext)
+                                      .showSnackBar(
+                                    SnackBar(
+                                      content: Text(e.toString()),
+                                      behavior: SnackBarBehavior.floating,
+                                      margin: EdgeInsets.only(
+                                        bottom: MediaQuery.of(sheetContext)
+                                                .size
+                                                .height -
+                                            100,
+                                        left: 10,
+                                        right: 10,
+                                      ),
+                                    ),
                                   );
                                 }
                               }
@@ -386,6 +449,15 @@ class ContainerSheets {
                                                 .regionDeleted(container.name)),
                                             backgroundColor:
                                                 const Color(0xFFFF4D6D),
+                                            behavior: SnackBarBehavior.floating,
+                                            margin: EdgeInsets.only(
+                                              bottom: MediaQuery.of(context)
+                                                      .size
+                                                      .height -
+                                                  100,
+                                              left: 10,
+                                              right: 10,
+                                            ),
                                           ),
                                         );
                                         setState(() {
@@ -608,8 +680,15 @@ class ContainerSheets {
         await _getBlockId(container.state, container.district, container.block);
     if (blockId == null) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(localizations.couldNotFindBlockInfo)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(localizations.couldNotFindBlockInfo),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).size.height - 100,
+            left: 10,
+            right: 10,
+          ),
+        ));
       }
       return;
     }
@@ -634,7 +713,13 @@ class ContainerSheets {
   static Future<void> _handleRefresh(
       BuildContext context, OfflineContainer container) async {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Refreshing plan data for ${container.name}...')));
+        content: Text('Refreshing plan data for ${container.name}...'),
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height - 100,
+          left: 10,
+          right: 10,
+        )));
     await _refreshPlanLayers(context, container);
   }
 
@@ -643,14 +728,26 @@ class ContainerSheets {
     final localizations = AppLocalizations.of(context)!;
 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(localizations.refreshingPlanData(container.name))));
+        content: Text(localizations.refreshingPlanData(container.name)),
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height - 100,
+          left: 10,
+          right: 10,
+        )));
 
     final blockId =
         await _getBlockId(container.state, container.district, container.block);
     if (blockId == null) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(localizations.couldNotFindBlockInfoRefresh)));
+            content: Text(localizations.couldNotFindBlockInfoRefresh),
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(
+              bottom: MediaQuery.of(context).size.height - 100,
+              left: 10,
+              right: 10,
+            )));
       }
       return;
     }
@@ -676,8 +773,14 @@ class ContainerSheets {
 
       if (planLayers.isEmpty) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(localizations.noPlanLayersToRefresh)));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(localizations.noPlanLayersToRefresh),
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.only(
+                bottom: MediaQuery.of(context).size.height - 100,
+                left: 10,
+                right: 10,
+              )));
         }
         return;
       }
@@ -690,13 +793,25 @@ class ContainerSheets {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(
                 localizations.successfullyRefreshedPlanData(container.name)),
-            backgroundColor: Colors.green));
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(
+              bottom: MediaQuery.of(context).size.height - 100,
+              left: 10,
+              right: 10,
+            )));
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(localizations.errorRefreshingData(e.toString())),
-            backgroundColor: Colors.red));
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(
+              bottom: MediaQuery.of(context).size.height - 100,
+              left: 10,
+              right: 10,
+            )));
       }
     }
   }
