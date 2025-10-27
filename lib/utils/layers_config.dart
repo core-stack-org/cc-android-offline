@@ -68,7 +68,7 @@ class LayersConfig {
       final worksLayers = ['main_swb', 'plan_agri', 'plan_gw', 'livelihood'];
 
       for (var plan in plans) {
-        final planId = plan['plan_id'];
+        final planId = plan['id'];
 
         // Add resource layers
         for (var resourceType in resourceLayers) {

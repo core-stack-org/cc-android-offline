@@ -57,6 +57,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
   Map<String, String> downloadErrors = {};
   bool hasAnyFailures = false;
 
+  bool isRetrying = false;
+
   @override
   void initState() {
     super.initState();
@@ -681,6 +683,337 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
     }
   }
 
+  Future<void> retryBaseMap() async {
+    if (isRetrying) return;
+
+    setState(() {
+      isRetrying = true;
+      baseMapProgress = 0.0;
+      downloadErrors.remove('base_map');
+    });
+
+    try {
+      double radiusKm = 3.0;
+      await baseMapDownloader.downloadBaseMap(widget.container.latitude,
+          widget.container.longitude, radiusKm, widget.container.name);
+
+      if (mounted) {
+        setState(() {
+          isRetrying = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Base map downloaded successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print("Error retrying base map: $e");
+      if (mounted) {
+        setState(() {
+          isRetrying = false;
+          baseMapProgress = -1.0;
+          downloadErrors['base_map'] = e.toString();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to retry base map: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> retryVectorLayers() async {
+    if (isRetrying) return;
+
+    setState(() {
+      isRetrying = true;
+    });
+
+    try {
+      final layers =
+          await getLayers(widget.selectedDistrict, widget.selectedBlock);
+
+      List<Map<String, String>> nonPlanLayers =
+          layers.where((layer) => !_isPlanLayer(layer['name']!)).toList();
+
+      List<Map<String, String>> failedLayers = nonPlanLayers
+          .where((layer) =>
+              (vectorLayerProgress[layer['name']] ?? 0.0) < 0 ||
+              downloadErrors.containsKey(layer['name']))
+          .toList();
+
+      if (failedLayers.isEmpty) {
+        failedLayers = nonPlanLayers;
+      }
+
+      for (var layer in failedLayers) {
+        if (mounted) {
+          setState(() {
+            vectorLayerProgress[layer['name']!] = 0.0;
+            downloadErrors.remove(layer['name']);
+          });
+        }
+
+        try {
+          await downloadVectorLayer(
+              layer['name']!, layer['geoserverPath']!, widget.container);
+        } catch (e) {
+          print("Error retrying vector layer ${layer['name']}: $e");
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          isRetrying = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Vector layers retry completed'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print("Error retrying vector layers: $e");
+      if (mounted) {
+        setState(() {
+          isRetrying = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to retry vector layers: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> retryPlanLayers() async {
+    if (isRetrying) return;
+
+    setState(() {
+      isRetrying = true;
+    });
+
+    try {
+      final layers =
+          await getLayers(widget.selectedDistrict, widget.selectedBlock);
+
+      List<Map<String, String>> planLayers =
+          layers.where((layer) => _isPlanLayer(layer['name']!)).toList();
+
+      List<Map<String, String>> failedLayers = planLayers
+          .where((layer) =>
+              (vectorLayerProgress[layer['name']] ?? 0.0) < 0 ||
+              downloadErrors.containsKey(layer['name']))
+          .toList();
+
+      if (failedLayers.isEmpty) {
+        failedLayers = planLayers;
+      }
+
+      for (var layer in failedLayers) {
+        if (mounted) {
+          setState(() {
+            vectorLayerProgress[layer['name']!] = 0.0;
+            downloadErrors.remove(layer['name']);
+          });
+        }
+
+        try {
+          await downloadVectorLayer(
+              layer['name']!, layer['geoserverPath']!, widget.container);
+        } catch (e) {
+          print("Error retrying plan layer ${layer['name']}: $e");
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          isRetrying = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Plan layers retry completed'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print("Error retrying plan layers: $e");
+      if (mounted) {
+        setState(() {
+          isRetrying = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to retry plan layers: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> retryFormData() async {
+    if (isRetrying) return;
+
+    setState(() {
+      isRetrying = true;
+    });
+
+    try {
+      List<String> failedFiles = s3JsonProgress.entries
+          .where((entry) =>
+              entry.value < 0 || downloadErrors.containsKey(entry.key))
+          .map((entry) => entry.key)
+          .toList();
+
+      if (failedFiles.isEmpty) {
+        failedFiles = s3JsonProgress.keys.toList();
+      }
+
+      final s3Files = {
+        'add_settlements.json': 'add_settlements.json',
+        'add_well.json': 'add_well.json',
+        'cropping_pattern.json': 'cropping_pattern.json',
+        'feedback_Agri.json': 'feedback_Agri.json',
+        'feedback_Groundwater.json': 'feedback_Groundwater.json',
+        'feedback_surfacewaterbodies.json': 'feedback_surfacewaterbodies.json',
+        'irrigation_work.json': 'irrigation_work.json',
+        'livelihood.json': 'livelihood.json',
+        'maintenance_irr.json': 'maintenance_irr.json',
+        'maintenance_recharge_st.json': 'maintenance_recharge_st.json',
+        'maintenance_rs_swb.json': 'maintenance_rs_swb.json',
+        'maintenance_water_structures.json':
+            'maintenance_water_structures.json',
+        'recharge_structure.json': 'recharge_structure.json',
+        'water_structure.json': 'water_structure.json'
+      };
+
+      for (var fileName in failedFiles) {
+        if (s3Files.containsKey(fileName)) {
+          if (mounted) {
+            setState(() {
+              s3JsonProgress[fileName] = 0.0;
+              downloadErrors.remove(fileName);
+            });
+          }
+
+          try {
+            await downloadS3Json(
+              s3ObjectKey: fileName,
+              localFileName: fileName,
+              container: widget.container,
+            );
+          } catch (e) {
+            print("Error retrying S3 JSON $fileName: $e");
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          isRetrying = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Form data retry completed'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print("Error retrying form data: $e");
+      if (mounted) {
+        setState(() {
+          isRetrying = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to retry form data: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> retryWebApp() async {
+    if (isRetrying) return;
+
+    setState(() {
+      isRetrying = true;
+    });
+
+    try {
+      List<String> failedFiles = webappProgress.entries
+          .where((entry) =>
+              entry.value < 0 || downloadErrors.containsKey(entry.key))
+          .map((entry) => entry.key)
+          .toList();
+
+      if (failedFiles.isEmpty || failedFiles.contains('webapp_manifest')) {
+        await downloadWebappFiles();
+      } else {
+        final directory = await getApplicationDocumentsDirectory();
+        final webappDir =
+            Directory('${directory.path}/persistent_offline_data/webapp');
+
+        for (var fileName in failedFiles) {
+          if (fileName != 'webapp_manifest') {
+            if (mounted) {
+              setState(() {
+                webappProgress[fileName] = 0.0;
+                downloadErrors.remove(fileName);
+              });
+            }
+
+            try {
+              await downloadWebappFile(
+                s3ObjectKey: fileName,
+                localFilePath: fileName,
+                webappDir: webappDir,
+              );
+            } catch (e) {
+              print("Error retrying webapp file $fileName: $e");
+            }
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          isRetrying = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Web app files retry completed'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print("Error retrying web app: $e");
+      if (mounted) {
+        setState(() {
+          isRetrying = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to retry web app: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _cancelAllDownloads() async {
     if (!isDownloading || isDownloadComplete) return;
 
@@ -1136,7 +1469,28 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                   ),
                                 )
                               else if (baseMapProgress < 0)
-                                const Icon(Icons.error, color: Colors.red)
+                                Row(
+                                  children: [
+                                    const Icon(Icons.error, color: Colors.red),
+                                    const SizedBox(width: 8),
+                                    TextButton.icon(
+                                      onPressed:
+                                          isRetrying ? null : retryBaseMap,
+                                      icon: const Icon(Icons.refresh, size: 16),
+                                      label: const Text('Retry'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.white,
+                                        backgroundColor:
+                                            const Color(0xFF592941),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                    ),
+                                  ],
+                                )
                             ],
                           ),
                         ),
@@ -1226,6 +1580,39 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                             child: CircularProgressIndicator(
                                               strokeWidth: 2,
                                             ),
+                                          )
+                                        else if (nonPlanLayers.any((layer) =>
+                                            (vectorLayerProgress[
+                                                    layer['name']] ??
+                                                0.0) <
+                                            0))
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.error,
+                                                  color: Colors.red),
+                                              const SizedBox(width: 8),
+                                              TextButton.icon(
+                                                onPressed: isRetrying
+                                                    ? null
+                                                    : retryVectorLayers,
+                                                icon: const Icon(Icons.refresh,
+                                                    size: 16),
+                                                label: const Text('Retry'),
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor: Colors.white,
+                                                  backgroundColor:
+                                                      const Color(0xFF592941),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4),
+                                                  minimumSize: Size.zero,
+                                                  tapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                ),
+                                              ),
+                                            ],
                                           )
                                       ],
                                     ),
@@ -1376,6 +1763,39 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                             child: CircularProgressIndicator(
                                               strokeWidth: 2,
                                             ),
+                                          )
+                                        else if (planLayers.any((layer) =>
+                                            (vectorLayerProgress[
+                                                    layer['name']] ??
+                                                0.0) <
+                                            0))
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.error,
+                                                  color: Colors.red),
+                                              const SizedBox(width: 8),
+                                              TextButton.icon(
+                                                onPressed: isRetrying
+                                                    ? null
+                                                    : retryPlanLayers,
+                                                icon: const Icon(Icons.refresh,
+                                                    size: 16),
+                                                label: const Text('Retry'),
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor: Colors.white,
+                                                  backgroundColor:
+                                                      const Color(0xFF592941),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4),
+                                                  minimumSize: Size.zero,
+                                                  tapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                ),
+                                              ),
+                                            ],
                                           )
                                       ],
                                     ),
@@ -1678,6 +2098,36 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                               strokeWidth: 2,
                                             ),
                                           )
+                                        else if (s3JsonProgress.values
+                                            .any((progress) => progress < 0))
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.error,
+                                                  color: Colors.red),
+                                              const SizedBox(width: 8),
+                                              TextButton.icon(
+                                                onPressed: isRetrying
+                                                    ? null
+                                                    : retryFormData,
+                                                icon: const Icon(Icons.refresh,
+                                                    size: 16),
+                                                label: const Text('Retry'),
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor: Colors.white,
+                                                  backgroundColor:
+                                                      const Color(0xFF592941),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4),
+                                                  minimumSize: Size.zero,
+                                                  tapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                ),
+                                              ),
+                                            ],
+                                          )
                                       ],
                                     ),
                                   ),
@@ -1835,6 +2285,36 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                             child: CircularProgressIndicator(
                                               strokeWidth: 2,
                                             ),
+                                          )
+                                        else if (webappProgress.values
+                                            .any((progress) => progress < 0))
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.error,
+                                                  color: Colors.red),
+                                              const SizedBox(width: 8),
+                                              TextButton.icon(
+                                                onPressed: isRetrying
+                                                    ? null
+                                                    : retryWebApp,
+                                                icon: const Icon(Icons.refresh,
+                                                    size: 16),
+                                                label: const Text('Retry'),
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor: Colors.white,
+                                                  backgroundColor:
+                                                      const Color(0xFF592941),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4),
+                                                  minimumSize: Size.zero,
+                                                  tapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                ),
+                                              ),
+                                            ],
                                           )
                                       ],
                                     ),
