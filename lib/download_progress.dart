@@ -531,7 +531,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         hasAnyFailures = false;
 
         s3JsonProgress.clear();
-        // MARK: S3 JSON files to download
         final s3Files = [
           'add_settlements.json',
           'add_well.json',
@@ -561,11 +560,28 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       double radiusKm = 3.0;
       await baseMapDownloader.downloadBaseMap(
           container.latitude, container.longitude, radiusKm, container.name);
+
+      if (!isDownloading) {
+        throw Exception("Download cancelled by user");
+      }
+
       await downloadVectorLayers(container);
-      // await downloadImageLayers(container); // TODO: Uncomment this when image layers are ready
+
+      if (!isDownloading) {
+        throw Exception("Download cancelled by user");
+      }
+
       await downloadS3JsonFiles(container);
 
+      if (!isDownloading) {
+        throw Exception("Download cancelled by user");
+      }
+
       await downloadWebappFiles();
+
+      if (!isDownloading) {
+        throw Exception("Download cancelled by user");
+      }
 
       final directory = await getApplicationDocumentsDirectory();
       final containerDir = Directory(
@@ -575,7 +591,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       final s3DataDir = Directory('${containerDir.path}/s3_data');
 
       final webappDir =
-          Directory('${directory.path}/assets/offline_data/webapp');
+          Directory('${directory.path}/persistent_offline_data/webapp');
 
       print("Verifying directory existence...");
       if (!await vectorLayersDir.exists()) {
@@ -625,6 +641,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
     } catch (e) {
       print("Error during layer download: $e");
 
+      final isCancelled = e.toString().contains("cancelled by user");
+
       await ContainerManager.updateContainerDownloadStatus(
           container.name, false);
 
@@ -634,15 +652,20 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isDownloadComplete = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to download data: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
+        if (!isCancelled) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to download data: ${e.toString()}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
       }
-      rethrow;
+
+      if (!isCancelled) {
+        rethrow;
+      }
     }
   }
 
@@ -680,6 +703,40 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       } catch (e) {
         print("Error getting layers for cancellation: $e");
       }
+
+      final s3Files = [
+        'add_settlements.json',
+        'add_well.json',
+        'cropping_pattern.json',
+        'feedback_Agri.json',
+        'feedback_Groundwater.json',
+        'feedback_surfacewaterbodies.json',
+        'irrigation_work.json',
+        'livelihood.json',
+        'maintenance_irr.json',
+        'maintenance_recharge_st.json',
+        'maintenance_rs_swb.json',
+        'maintenance_water_structures.json',
+        'recharge_structure.json',
+        'water_structure.json'
+      ];
+
+      for (var file in s3Files) {
+        if (mounted) {
+          setState(() {
+            layerCancelled[file] = true;
+          });
+        }
+      }
+
+      for (var fileKey in webappProgress.keys) {
+        if (mounted) {
+          setState(() {
+            layerCancelled[fileKey] = true;
+          });
+        }
+      }
+
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
