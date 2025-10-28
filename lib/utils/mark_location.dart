@@ -34,7 +34,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
   bool isLoading = true;
   double _currentZoom = 11.0;
   final MapController mapController = MapController();
-  bool _isSatelliteView = false;
+  bool _isSatelliteView = true;
   bool _isGettingLocation = false;
 
   List<({String name, List<LatLng> boundary, LatLng center})> villages = [];
@@ -54,6 +54,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    mapController.dispose();
     super.dispose();
   }
 
@@ -124,7 +125,12 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
     print("geoserver url: $url");
 
     try {
-      final response = await http.get(url);
+      final response = await http.get(url).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Request timeout - please check your connection');
+        },
+      );
       if (response.statusCode == 200) {
         final geojson = jsonDecode(response.body);
 
@@ -132,6 +138,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
           List<List<LatLng>> polygonsFromAllFeatures = [];
           List<({String name, List<LatLng> boundary, LatLng center})>
               villageList = [];
+          List<({LatLng point, String name})> markers = [];
 
           for (var feature in geojson['features']) {
             final geometry = feature['geometry'];
@@ -194,6 +201,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                 boundary: currentPolygonPoints,
                 center: center,
               ));
+              markers.add((point: center, name: villageName));
             }
           }
 
@@ -215,6 +223,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
           setState(() {
             allPolygons = polygonsFromAllFeatures;
             villages = villageList;
+            villageMarkers = markers;
             isLoading = false;
           });
 
@@ -229,18 +238,45 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
           setState(() {
             isLoading = false;
           });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    'No boundary data found for ${widget.blockName}, ${widget.districtName}'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
         }
       } else {
         print('Failed to fetch panchayat boundary: ${response.statusCode}');
         setState(() {
           isLoading = false;
         });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text('Failed to load boundary data: ${response.statusCode}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       print('Error fetching panchayat boundary: $e');
       setState(() {
         isLoading = false;
       });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading boundary: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     }
   }
 
@@ -456,8 +492,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
       final currentLocation = LatLng(position.latitude, position.longitude);
       const newZoom = 15.0;
 
-      // Animate map movement and update state afterward
-      await mapController.move(currentLocation, newZoom);
+      mapController.move(currentLocation, newZoom);
 
       if (mounted) {
         setState(() {
@@ -514,6 +549,8 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
               },
               initialCenter: LatLng(20.5937, 78.9629),
               initialZoom: 5.0,
+              minZoom: 2.0,
+              maxZoom: 18.0,
               onTap: (tapPosition, point) {
                 setState(() {
                   selectedLocation = point;
@@ -523,8 +560,8 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
             children: [
               TileLayer(
                 urlTemplate: _isSatelliteView
-                    ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-                    : 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+                    ? 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+                    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               ),
               if (allPolygons.isNotEmpty)
                 PolygonLayer(
@@ -536,31 +573,6 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                       borderStrokeWidth: 2,
                     );
                   }).toList(),
-                ),
-              if (_currentZoom >= 13)
-                MarkerLayer(
-                  markers: villageMarkers
-                      .map((marker) => Marker(
-                            point: marker.point,
-                            width: 150,
-                            height: 30,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                marker.name,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ))
-                      .toList(),
                 ),
               if (selectedLocation != null)
                 MarkerLayer(
@@ -602,27 +614,32 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                         ),
                       ],
                     ),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search village...',
-                        prefixIcon:
-                            const Icon(Icons.search, color: Color(0xFF592941)),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear,
-                                    color: Color(0xFF592941)),
-                                onPressed: () {
-                                  _searchController.clear();
-                                },
-                              )
-                            : null,
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                      ),
+                    child: ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _searchController,
+                      builder: (context, value, child) {
+                        return TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Search village...',
+                            prefixIcon: const Icon(Icons.search,
+                                color: Color(0xFF592941)),
+                            suffixIcon: value.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear,
+                                        color: Color(0xFF592941)),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                    },
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                   if (_showSearchResults && _filteredVillages.isNotEmpty)
@@ -713,7 +730,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                       IconButton(
                         icon: Icon(Icons.add, color: const Color(0xFF592941)),
                         onPressed: () {
-                          final newZoom = _currentZoom + 1;
+                          final newZoom = (_currentZoom + 1).clamp(2.0, 18.0);
                           mapController.move(
                             selectedLocation ?? mapController.camera.center,
                             newZoom,
@@ -732,7 +749,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                         icon:
                             Icon(Icons.remove, color: const Color(0xFF592941)),
                         onPressed: () {
-                          final newZoom = _currentZoom - 1;
+                          final newZoom = (_currentZoom - 1).clamp(2.0, 18.0);
                           mapController.move(
                             selectedLocation ?? mapController.camera.center,
                             newZoom,
@@ -777,7 +794,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                               children: [
                                 ListTile(
                                   title: Text(AppLocalizations.of(context)!
-                                      .defaultLayer),
+                                      .openStreetMapLayer),
                                   leading: Radio<bool>(
                                     value: false,
                                     groupValue: _isSatelliteView,
@@ -791,7 +808,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                                 ),
                                 ListTile(
                                   title: Text(AppLocalizations.of(context)!
-                                      .openStreetMapLayer),
+                                      .defaultLayer),
                                   leading: Radio<bool>(
                                     value: true,
                                     groupValue: _isSatelliteView,
