@@ -11,7 +11,7 @@ import 'location_selection.dart';
 import './ui/login_screen.dart';
 import './utils/offline_asset.dart';
 import './server/local_server.dart';
-
+import './services/language_service.dart';
 
 // Global variable to store the server URL
 String? globalServerUrl;
@@ -48,6 +48,11 @@ Future<void> checkLocationPermission(BuildContext context) async {
 Future<void> initializeApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   //await OfflineAssetsManager.copyOfflineAssets();
+
+  // Load saved language preference
+  final languageService = LanguageService();
+  final savedLanguage = await languageService.getLanguage();
+  localeNotifier.value = Locale(savedLanguage);
 
   // Get the persistent offline data path
   final directory = await getApplicationDocumentsDirectory();

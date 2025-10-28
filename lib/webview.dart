@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import './l10n/app_localizations.dart';
 import 'dart:convert';
 import '../services/login_service.dart';
 import 'package:flutter/services.dart';
@@ -44,7 +42,7 @@ class _WebViewState extends State<WebViewApp> {
               heading: ${position.heading},
               speed: ${position.speed}
             },
-            timestamp: ${position.timestamp?.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch}
+            timestamp: ${position.timestamp.millisecondsSinceEpoch}
           });
         };
       ''');
@@ -204,13 +202,14 @@ class _WebViewState extends State<WebViewApp> {
   }
 
   String getLocalizedText(BuildContext context, String key) {
+    final currentLocale = Localizations.localeOf(context).languageCode;
     switch (key) {
       case 'returnToLocationSelection':
-        return widget.selectedLanguage == 'hi'
+        return currentLocale == 'hi'
             ? 'स्थान चयन पर वापस जाएं'
             : 'Return to Location Selection';
       case 'returnToPlanSelection':
-        return widget.selectedLanguage == 'hi'
+        return currentLocale == 'hi'
             ? 'योजना चयन पर वापस जाएं'
             : 'Return to Plan Selection';
       default:
@@ -317,7 +316,7 @@ class _WebViewState extends State<WebViewApp> {
                         ),
                       ),
                       Text(
-                        widget.selectedLanguage == 'hi'
+                        Localizations.localeOf(context).languageCode == 'hi'
                             ? 'स्थान चुनें'
                             : 'Helps Choose Location',
                         style: TextStyle(
@@ -363,7 +362,7 @@ class _WebViewState extends State<WebViewApp> {
                         ),
                       ),
                       Text(
-                        widget.selectedLanguage == 'hi'
+                        Localizations.localeOf(context).languageCode == 'hi'
                             ? 'योजना चुनें'
                             : 'Helps Choose Plans',
                         style: TextStyle(

@@ -25,6 +25,7 @@ import './container_flow/container_sheet.dart';
 import './download_progress.dart';
 import './ui/profile_screen.dart';
 import './services/logout.dart';
+import './services/language_service.dart';
 
 //import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import './l10n/app_localizations.dart';
@@ -53,6 +54,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   String _appVersion = '';
   String _deviceInfo = 'Unknown';
   late String _selectedLanguage;
+  final LanguageService _languageService = LanguageService();
 
   List<Map<String, dynamic>> states = [];
   List<Map<String, dynamic>> districts = [];
@@ -64,15 +66,20 @@ class _LocationSelectionState extends State<LocationSelection> {
   @override
   void initState() {
     super.initState();
-    _selectedLanguage = widget.selectedLanguage ?? 'hi';
-
-    localeNotifier.value = Locale(_selectedLanguage);
-
+    _loadSavedLanguage();
     _loadInfo();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       fetchLocationData();
     });
+  }
+
+  Future<void> _loadSavedLanguage() async {
+    final savedLanguage = await _languageService.getLanguage();
+    setState(() {
+      _selectedLanguage = savedLanguage;
+    });
+    localeNotifier.value = Locale(savedLanguage);
   }
 
   List<Map<String, dynamic>> sortLocationData(List<Map<String, dynamic>> data) {
@@ -733,6 +740,7 @@ class _LocationSelectionState extends State<LocationSelection> {
           // Update the global locale
           localeNotifier.value = Locale(selected);
         });
+        await _languageService.saveLanguage(selected);
       }
     } catch (e) {
       debugPrint('Error showing language menu: $e');

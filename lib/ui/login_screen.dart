@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../l10n/app_localizations.dart';
 import '../location_selection.dart';
 import '../services/login_service.dart';
+import '../services/language_service.dart';
 import '../main.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final LoginService _loginService = LoginService();
+  final LanguageService _languageService = LanguageService();
   bool _isLoading = false;
   String? _errorMessage;
   bool _isFormValid = false;
@@ -29,7 +31,16 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    _loadSavedLanguage();
     _setupFormValidation();
+  }
+
+  Future<void> _loadSavedLanguage() async {
+    final savedLanguage = await _languageService.getLanguage();
+    setState(() {
+      _selectedLanguage = savedLanguage;
+    });
+    localeNotifier.value = Locale(savedLanguage);
   }
 
   void _setupFormValidation() {
@@ -177,12 +188,13 @@ class _LoginScreenState extends State<LoginScreen> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedLanguage,
-          onChanged: (String? newValue) {
+          onChanged: (String? newValue) async {
             if (newValue != null) {
               setState(() {
                 _selectedLanguage = newValue;
               });
               localeNotifier.value = Locale(newValue);
+              await _languageService.saveLanguage(newValue);
               HapticFeedback.lightImpact();
             }
           },
