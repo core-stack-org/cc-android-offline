@@ -110,25 +110,38 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (success == true) {
           print('=== LOGIN SUCCESSFUL - NAVIGATING ===');
-          // Navigate to LocationSelectionScreen with slide animation
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(
               pageBuilder: (context, animation, secondaryAnimation) =>
                   LocationSelection(selectedLanguage: _selectedLanguage),
-              transitionDuration: const Duration(milliseconds: 300),
+              transitionDuration: const Duration(milliseconds: 400),
+              reverseTransitionDuration: const Duration(milliseconds: 300),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
-                const begin = Offset(1.0, 0.0);
-                const end = Offset.zero;
-                const curve = Curves.ease;
+                const curve = Curves.easeInOutCubic;
 
-                var tween = Tween(begin: begin, end: end).chain(
-                  CurveTween(curve: curve),
-                );
+                final fadeAnimation = Tween<double>(
+                  begin: 0.0,
+                  end: 1.0,
+                ).animate(CurvedAnimation(
+                  parent: animation,
+                  curve: curve,
+                ));
 
-                return SlideTransition(
-                  position: animation.drive(tween),
-                  child: child,
+                final slideAnimation = Tween<Offset>(
+                  begin: const Offset(0.05, 0.0),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(
+                  parent: animation,
+                  curve: curve,
+                ));
+
+                return FadeTransition(
+                  opacity: fadeAnimation,
+                  child: SlideTransition(
+                    position: slideAnimation,
+                    child: child,
+                  ),
                 );
               },
             ),

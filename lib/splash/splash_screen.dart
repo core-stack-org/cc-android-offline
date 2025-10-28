@@ -36,27 +36,86 @@ class SplashScreenState extends State<SplashScreen> {
         print('User already logged in, navigating to location selection');
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => const LocationSelection(),
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const LocationSelection(),
+            transitionDuration: const Duration(milliseconds: 400),
+            reverseTransitionDuration: const Duration(milliseconds: 300),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              const curve = Curves.easeInOutCubic;
+
+              final fadeAnimation = Tween<double>(
+                begin: 0.0,
+                end: 1.0,
+              ).animate(CurvedAnimation(
+                parent: animation,
+                curve: curve,
+              ));
+
+              return FadeTransition(
+                opacity: fadeAnimation,
+                child: child,
+              );
+            },
           ),
         );
       } else {
         print('User not logged in, navigating to login screen');
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => const LoginScreen(),
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const LoginScreen(),
+            transitionDuration: const Duration(milliseconds: 400),
+            reverseTransitionDuration: const Duration(milliseconds: 300),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              const curve = Curves.easeInOutCubic;
+
+              final fadeAnimation = Tween<double>(
+                begin: 0.0,
+                end: 1.0,
+              ).animate(CurvedAnimation(
+                parent: animation,
+                curve: curve,
+              ));
+
+              return FadeTransition(
+                opacity: fadeAnimation,
+                child: child,
+              );
+            },
           ),
         );
       }
     } catch (e) {
       print('Error checking login status: $e');
-      // On error, navigate to login screen
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (context) => const LoginScreen(),
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const LoginScreen(),
+            transitionDuration: const Duration(milliseconds: 400),
+            reverseTransitionDuration: const Duration(milliseconds: 300),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              const curve = Curves.easeInOutCubic;
+
+              final fadeAnimation = Tween<double>(
+                begin: 0.0,
+                end: 1.0,
+              ).animate(CurvedAnimation(
+                parent: animation,
+                curve: curve,
+              ));
+
+              return FadeTransition(
+                opacity: fadeAnimation,
+                child: child,
+              );
+            },
           ),
         );
       }

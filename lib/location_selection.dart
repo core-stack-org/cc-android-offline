@@ -66,13 +66,13 @@ class _LocationSelectionState extends State<LocationSelection> {
     super.initState();
     _selectedLanguage = widget.selectedLanguage ?? 'hi';
 
-    // Set the locale BEFORE any UI builds
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      localeNotifier.value = Locale(_selectedLanguage);
-    });
+    localeNotifier.value = Locale(_selectedLanguage);
 
     _loadInfo();
-    fetchLocationData();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fetchLocationData();
+    });
   }
 
   List<Map<String, dynamic>> sortLocationData(List<Map<String, dynamic>> data) {
@@ -909,7 +909,6 @@ class _LocationSelectionState extends State<LocationSelection> {
 
   @override
   Widget build(BuildContext context) {
-    // Use ValueListenableBuilder to ensure we rebuild when locale changes
     return ValueListenableBuilder<Locale>(
       valueListenable: localeNotifier,
       builder: (context, locale, child) {
@@ -956,7 +955,6 @@ class _LocationSelectionState extends State<LocationSelection> {
                 ),
               ),
               Center(
-                // ... rest of your existing body content ...
                 child:
                     _buildLocationSelectionContent(localizations, customGrey),
               ),
