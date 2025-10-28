@@ -251,83 +251,157 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
 
     return showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.enterCoordinates),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: latController,
-                  decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context)!.latitude),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return AppLocalizations.of(context)!.pleaseEnterLatitude;
-                    }
-                    final lat = double.tryParse(value);
-                    if (lat == null) {
-                      return AppLocalizations.of(context)!
-                          .pleaseEnterValidNumber;
-                    }
-                    if (lat < -90 || lat > 90) {
-                      return AppLocalizations.of(context)!
-                          .latitudeMustBeBetween;
-                    }
-                    return null;
-                  },
-                ),
-                TextFormField(
-                  controller: lonController,
-                  decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context)!.longitude),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return AppLocalizations.of(context)!.pleaseEnterLongitude;
-                    }
-                    final lon = double.tryParse(value);
-                    if (lon == null) {
-                      return AppLocalizations.of(context)!
-                          .pleaseEnterValidNumber;
-                    }
-                    if (lon < -180 || lon > 180) {
-                      return AppLocalizations.of(context)!
-                          .longitudeMustBeBetween;
-                    }
-                    return null;
-                  },
-                ),
-              ],
+        return Dialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.85,
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.enterCoordinates,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: latController,
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.latitude,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return AppLocalizations.of(context)!
+                            .pleaseEnterLatitude;
+                      }
+                      final lat = double.tryParse(value);
+                      if (lat == null) {
+                        return AppLocalizations.of(context)!
+                            .pleaseEnterValidNumber;
+                      }
+                      if (lat < -90 || lat > 90) {
+                        return AppLocalizations.of(context)!
+                            .latitudeMustBeBetween;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: lonController,
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.longitude,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return AppLocalizations.of(context)!
+                            .pleaseEnterLongitude;
+                      }
+                      final lon = double.tryParse(value);
+                      if (lon == null) {
+                        return AppLocalizations.of(context)!
+                            .pleaseEnterValidNumber;
+                      }
+                      if (lon < -180 || lon > 180) {
+                        return AppLocalizations.of(context)!
+                            .longitudeMustBeBetween;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.grey[300],
+                            foregroundColor: Colors.black87,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25.0),
+                            ),
+                          ),
+                          child: Text(
+                            AppLocalizations.of(context)!.cancel,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            backgroundColor: const Color(0xFF592941),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25.0),
+                            ),
+                          ),
+                          child: Text(
+                            AppLocalizations.of(context)!.done,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          onPressed: () {
+                            if (formKey.currentState!.validate()) {
+                              final lat = double.parse(latController.text);
+                              final lon = double.parse(lonController.text);
+                              setState(() {
+                                selectedLocation = LatLng(lat, lon);
+                              });
+                              mapController.move(
+                                  LatLng(lat, lon), _currentZoom);
+                              Navigator.of(context).pop();
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-          actions: [
-            TextButton(
-              child: Text(AppLocalizations.of(context)!.cancel),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text(AppLocalizations.of(context)!.done),
-              onPressed: () {
-                if (formKey.currentState!.validate()) {
-                  final lat = double.parse(latController.text);
-                  final lon = double.parse(lonController.text);
-                  setState(() {
-                    selectedLocation = LatLng(lat, lon);
-                  });
-                  mapController.move(LatLng(lat, lon), _currentZoom);
-                  Navigator.of(context).pop();
-                }
-              },
-            ),
-          ],
         );
       },
     );
@@ -418,28 +492,13 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
+        centerTitle: true,
         title: Text(
           AppLocalizations.of(context)!.placeYourMarker,
           style: const TextStyle(
             color: Colors.white,
           ),
         ),
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onSelected: (value) {
-              if (value == 'add_lat_lon') {
-                _showLatLonDialog();
-              }
-            },
-            itemBuilder: (BuildContext context) => [
-              PopupMenuItem<String>(
-                value: 'add_lat_lon',
-                child: Text(AppLocalizations.of(context)!.addLatLon),
-              ),
-            ],
-          ),
-        ],
       ),
       body: Stack(
         children: [
@@ -534,7 +593,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.2),
@@ -612,7 +671,31 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                 Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFFD6D5C9),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: const Color(0xFFD6D5C9),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.edit_location_alt,
+                        color: const Color(0xFF592941)),
+                    onPressed: _showLatLonDialog,
+                    tooltip: AppLocalizations.of(context)!.addLatLon,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD6D5C9),
+                    borderRadius: BorderRadius.circular(24),
                     border: Border.all(
                       color: const Color(0xFFD6D5C9),
                       width: 2,
@@ -667,7 +750,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                 Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFFD6D5C9),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(24),
                     border: Border.all(
                       color: const Color(0xFFD6D5C9),
                       width: 2,
@@ -733,7 +816,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                 Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFFD6D5C9),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(24),
                     border: Border.all(
                       color: const Color(0xFFD6D5C9),
                       width: 2,
