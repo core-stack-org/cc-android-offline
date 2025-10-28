@@ -53,7 +53,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   bool _isSubmitEnabled = false;
   String _appVersion = '';
   String _deviceInfo = 'Unknown';
-  late String _selectedLanguage;
+  String _selectedLanguage = 'en';
   final LanguageService _languageService = LanguageService();
 
   List<Map<String, dynamic>> states = [];
@@ -1166,7 +1166,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                 padding: const EdgeInsets.all(14.0),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade400.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12.0),
+                  borderRadius: BorderRadius.circular(20.0),
                 ),
                 child: Text(
                   localizations.betaOfflineNote,

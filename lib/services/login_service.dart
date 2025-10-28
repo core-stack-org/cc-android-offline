@@ -188,7 +188,7 @@ class LoginService {
       print('Refreshing access token...');
 
       final response = await http.post(
-        Uri.parse('${apiUrl}auth/refresh/'),
+        Uri.parse('${apiUrl}auth/token/refresh/'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
