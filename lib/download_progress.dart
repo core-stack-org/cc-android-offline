@@ -6,8 +6,10 @@ import 'package:nrmflutter/container_flow/container_manager.dart';
 //import 'package:nrmflutter/container_flow/container_sheet.dart';
 import 'package:nrmflutter/utils/constants.dart';
 import 'package:nrmflutter/utils/download_base_map.dart';
+import 'package:nrmflutter/utils/download_raster_layer.dart';
 import 'package:nrmflutter/utils/layers_config.dart';
 import 'package:nrmflutter/utils/offline_asset.dart';
+import 'package:nrmflutter/utils/utility.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
@@ -40,6 +42,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
   Map<String, double> imageLayerProgress = {};
   Map<String, bool> layerCancelled = {};
   late BaseMapDownloader baseMapDownloader;
+  late RasterLayerDownloader rasterLayerDownloader;
   Future<List<Map<String, String>>>? _cachedLayers;
   bool _isLoadingLayers = false;
 
@@ -79,6 +82,17 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         }
       },
     );
+
+    rasterLayerDownloader = RasterLayerDownloader(
+      onProgressUpdate: (layerName, progress) {
+        if (mounted) {
+          setState(() {
+            imageLayerProgress[layerName] = progress;
+          });
+        }
+      },
+    );
+
     downloadAllLayers(widget.container);
   }
 
@@ -532,6 +546,27 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         downloadErrors.clear();
         hasAnyFailures = false;
 
+        imageLayerProgress.clear();
+        final districtFormatted =
+            formatNameForGeoServer(widget.selectedDistrict ?? '');
+        final blockFormatted =
+            formatNameForGeoServer(widget.selectedBlock ?? '');
+
+        imageLayerProgress['clart_${districtFormatted}_${blockFormatted}'] =
+            0.0;
+        final yearDataLulc = [
+          "17_18",
+          "18_19",
+          "19_20",
+          "20_21",
+          "21_22",
+          "22_23",
+          "23_24"
+        ];
+        for (var year in yearDataLulc) {
+          imageLayerProgress['lulc_${year}_${blockFormatted}'] = 0.0;
+        }
+
         s3JsonProgress.clear();
         final s3Files = [
           'add_settlements.json',
@@ -573,6 +608,16 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         throw Exception("Download cancelled by user");
       }
 
+      await rasterLayerDownloader.downloadImageLayers(
+        container: container,
+        district: widget.selectedDistrict,
+        block: widget.selectedBlock,
+      );
+
+      if (!isDownloading) {
+        throw Exception("Download cancelled by user");
+      }
+
       await downloadS3JsonFiles(container);
 
       if (!isDownloading) {
@@ -589,6 +634,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       final containerDir = Directory(
           '${directory.path}/persistent_offline_data/containers/${container.name}');
       final vectorLayersDir = Directory('${containerDir.path}/vector_layers');
+      final imageLayersDir = Directory('${containerDir.path}/image_layers');
       final baseMapTilesDir = Directory('${containerDir.path}/base_map_tiles');
       final s3DataDir = Directory('${containerDir.path}/s3_data');
 
@@ -598,6 +644,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       print("Verifying directory existence...");
       if (!await vectorLayersDir.exists()) {
         throw Exception("Vector layers directory does not exist");
+      }
+      if (!await imageLayersDir.exists()) {
+        throw Exception("Image layers directory does not exist");
       }
       if (!await baseMapTilesDir.exists()) {
         throw Exception("Base map tiles directory does not exist");
@@ -690,10 +739,12 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       isRetrying = true;
       baseMapProgress = 0.0;
       downloadErrors.remove('base_map');
+      hasAnyFailures = false;
     });
 
     try {
       double radiusKm = 3.0;
+      baseMapDownloader.cancelBaseMapDownload = false;
       await baseMapDownloader.downloadBaseMap(widget.container.latitude,
           widget.container.longitude, radiusKm, widget.container.name);
 
@@ -715,6 +766,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
           baseMapProgress = -1.0;
           downloadErrors['base_map'] = e.toString();
+          hasAnyFailures = true;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -944,6 +996,91 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
     }
   }
 
+  Future<void> retryImageLayers() async {
+    if (isRetrying) return;
+
+    setState(() {
+      isRetrying = true;
+    });
+
+    try {
+      List<String> failedLayers = imageLayerProgress.entries
+          .where((entry) =>
+              entry.value < 0 ||
+              (entry.value >= 0 &&
+                  entry.value < 1.0 &&
+                  downloadErrors.containsKey(entry.key)))
+          .map((entry) => entry.key)
+          .toList();
+
+      for (var layerName in failedLayers) {
+        if (mounted) {
+          setState(() {
+            imageLayerProgress[layerName] = 0.0;
+            downloadErrors.remove(layerName);
+            rasterLayerDownloader.layerCancelled[layerName] = false;
+          });
+        }
+      }
+
+      if (failedLayers.isEmpty) {
+        await rasterLayerDownloader.downloadImageLayers(
+          container: widget.container,
+          district: widget.selectedDistrict,
+          block: widget.selectedBlock,
+        );
+      } else {
+        await rasterLayerDownloader.downloadImageLayers(
+          container: widget.container,
+          district: widget.selectedDistrict,
+          block: widget.selectedBlock,
+        );
+      }
+
+      bool anyFailed = imageLayerProgress.values.any((v) => v < 0);
+
+      if (mounted) {
+        setState(() {
+          isRetrying = false;
+          if (anyFailed) {
+            hasAnyFailures = true;
+          }
+        });
+
+        if (!anyFailed) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Image layers downloaded successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Some image layers failed. Check individual statuses.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print("Error retrying image layers: $e");
+      if (mounted) {
+        setState(() {
+          isRetrying = false;
+          hasAnyFailures = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to retry image layers: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> retryWebApp() async {
     if (isRetrying) return;
 
@@ -1070,6 +1207,15 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         }
       }
 
+      for (var layerKey in imageLayerProgress.keys) {
+        if (mounted) {
+          setState(() {
+            layerCancelled[layerKey] = true;
+            rasterLayerDownloader.cancelDownload(layerKey);
+          });
+        }
+      }
+
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1177,14 +1323,16 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
         leadingWidth: 100,
-        leading: (isDownloading && !isDownloadComplete)
+        leading: !isDownloadComplete
             ? Center(
                 child: TextButton(
-                  onPressed: _cancelAllDownloads,
+                  onPressed: isRetrying ? null : _cancelAllDownloads,
                   style: TextButton.styleFrom(
-                    backgroundColor: Colors.red,
+                    backgroundColor: isRetrying ? Colors.grey : Colors.red,
                     foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.red, width: 1.5),
+                    side: BorderSide(
+                        color: isRetrying ? Colors.grey : Colors.red,
+                        width: 1.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
@@ -1197,60 +1345,120 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: TextButton(
-              onPressed: (isDownloadComplete &&
-                      _verifyAllDownloadsComplete() &&
-                      !hasAnyFailures)
+              onPressed: (isDownloadComplete || (!isDownloading && !isRetrying))
                   ? () {
-                      Navigator.pop(context);
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            title: const Text(
-                              'Download Complete',
-                              style: TextStyle(
-                                color: Color(0xFF592941),
-                                fontWeight: FontWeight.bold,
+                      if (isDownloadComplete &&
+                          _verifyAllDownloadsComplete() &&
+                          !hasAnyFailures) {
+                        Navigator.pop(context);
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
                               ),
-                            ),
-                            content: const Text(
-                              'All layers have been downloaded successfully. You can now access this region offline.',
-                              style: TextStyle(
-                                color: Color(0xFF592941),
-                              ),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
-                                child: const Text(
-                                  'OK',
-                                  style: TextStyle(
-                                    color: Color(0xFF592941),
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              title: const Text(
+                                'Download Complete',
+                                style: TextStyle(
+                                  color: Color(0xFF592941),
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ],
-                          );
-                        },
-                      );
+                              content: const Text(
+                                'All layers have been downloaded successfully. You can now access this region offline.',
+                                style: TextStyle(
+                                  color: Color(0xFF592941),
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text(
+                                    'OK',
+                                    style: TextStyle(
+                                      color: Color(0xFF592941),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      } else if (hasAnyFailures ||
+                          !_verifyAllDownloadsComplete()) {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              title: const Text(
+                                'Download Incomplete',
+                                style: TextStyle(
+                                  color: Colors.orange,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              content: const Text(
+                                'Some layers failed to download. You can retry failed layers or exit. The container will not be marked as complete.',
+                                style: TextStyle(
+                                  color: Color(0xFF592941),
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text(
+                                    'Retry',
+                                    style: TextStyle(
+                                      color: Color(0xFF592941),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text(
+                                    'Exit Anyway',
+                                    style: TextStyle(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      } else {
+                        Navigator.pop(context);
+                      }
                     }
                   : null,
               style: TextButton.styleFrom(
                 foregroundColor:
-                    isDownloadComplete ? Colors.white : Colors.grey.shade700,
+                    (isDownloadComplete || (!isDownloading && !isRetrying))
+                        ? Colors.white
+                        : Colors.grey.shade700,
                 backgroundColor:
-                    isDownloadComplete ? Colors.blue : Colors.grey.shade400,
+                    (isDownloadComplete || (!isDownloading && !isRetrying))
+                        ? (hasAnyFailures ? Colors.orange : Colors.blue)
+                        : Colors.grey.shade400,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15),
                 ),
               ),
-              child: const Text('Done'),
+              child: Text(hasAnyFailures ? 'Exit' : 'Done'),
             ),
           )
         ],
@@ -1313,62 +1521,93 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                   builder: (context, snapshot) {
                     if (snapshot.hasData) {
                       double totalProgress = 0;
-                      int totalLayers = 0;
+                      int totalSections = 0;
 
-                      // Base map progress
+                      // Base map progress (1 section)
                       if (baseMapProgress >= 0) {
                         totalProgress += baseMapProgress;
                       }
-                      totalLayers++;
+                      totalSections++;
 
-                      // Non-plan layers progress
+                      // Non-plan vector layers progress (1 section)
                       List<Map<String, String>> nonPlanLayers = snapshot.data!
                           .where((layer) => !_isPlanLayer(layer['name']!))
                           .toList();
 
-                      for (var layer in nonPlanLayers) {
-                        double layerProgress =
-                            vectorLayerProgress[layer['name']] ?? 0.0;
-                        if (layerProgress >= 0) {
-                          totalProgress += layerProgress;
+                      if (nonPlanLayers.isNotEmpty) {
+                        double vectorProgress = 0;
+                        int vectorCount = 0;
+                        for (var layer in nonPlanLayers) {
+                          double layerProgress =
+                              vectorLayerProgress[layer['name']] ?? 0.0;
+                          if (layerProgress >= 0) {
+                            vectorProgress += layerProgress;
+                          }
+                          vectorCount++;
                         }
-                        totalLayers++;
+                        totalProgress += (vectorCount > 0
+                            ? vectorProgress / vectorCount
+                            : 0.0);
+                        totalSections++;
                       }
 
-                      // Plan layers progress
+                      // Plan layers progress (1 section)
                       if (_getTotalPlanLayersCount(snapshot.data!) > 0) {
                         double planLayersProgress =
                             _calculatePlanLayersProgress(snapshot.data!);
                         totalProgress += planLayersProgress;
-                        totalLayers++;
+                        totalSections++;
                       }
 
-                      // S3 JSON files progress
-                      s3JsonProgress.forEach((fileName, progress) {
-                        if (progress >= 0) {
-                          totalProgress += progress;
-                        }
-                        totalLayers++;
-                      });
+                      // Image/Raster layers progress (1 section)
+                      if (imageLayerProgress.isNotEmpty) {
+                        double imageProgress = 0;
+                        int imageCount = 0;
+                        imageLayerProgress.forEach((fileName, progress) {
+                          if (progress >= 0) {
+                            imageProgress += progress;
+                          }
+                          imageCount++;
+                        });
+                        totalProgress +=
+                            (imageCount > 0 ? imageProgress / imageCount : 0.0);
+                        totalSections++;
+                      }
 
-                      // Image layers progress
-                      imageLayerProgress.forEach((fileName, progress) {
-                        if (progress >= 0) {
-                          totalProgress += progress;
-                        }
-                        totalLayers++;
-                      });
+                      // S3 JSON files progress (1 section)
+                      if (s3JsonProgress.isNotEmpty) {
+                        double s3Progress = 0;
+                        int s3Count = 0;
+                        s3JsonProgress.forEach((fileName, progress) {
+                          if (progress >= 0) {
+                            s3Progress += progress;
+                          }
+                          s3Count++;
+                        });
+                        totalProgress +=
+                            (s3Count > 0 ? s3Progress / s3Count : 0.0);
+                        totalSections++;
+                      }
 
-                      // Webapp files progress
-                      webappProgress.forEach((fileName, progress) {
-                        if (progress >= 0) {
-                          totalProgress += progress;
-                        }
-                        totalLayers++;
-                      });
+                      // Webapp files progress (1 section)
+                      if (webappProgress.isNotEmpty) {
+                        double webappProgressTotal = 0;
+                        int webappCount = 0;
+                        webappProgress.forEach((fileName, progress) {
+                          if (progress >= 0) {
+                            webappProgressTotal += progress;
+                          }
+                          webappCount++;
+                        });
+                        totalProgress += (webappCount > 0
+                            ? webappProgressTotal / webappCount
+                            : 0.0);
+                        totalSections++;
+                      }
 
-                      double overallProgress =
-                          totalLayers > 0 ? totalProgress / totalLayers : 0.0;
+                      double overallProgress = totalSections > 0
+                          ? totalProgress / totalSections
+                          : 0.0;
 
                       return Column(
                         children: [
@@ -1872,7 +2111,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                           ),
                         );
                       }
-                      // * IMAGE LAYERS SECTION
+                      // * RASTER LAYERS SECTION
                       if (imageLayerProgress.isNotEmpty) {
                         int imageCompletedCount = imageLayerProgress.values
                             .where((progress) => progress == 1.0)
@@ -1913,7 +2152,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               const Text(
-                                                "Image Layers (GeoTIFF)",
+                                                "Raster Layers (GeoTIFF)",
                                                 style: TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
@@ -1942,6 +2181,36 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                             child: CircularProgressIndicator(
                                               strokeWidth: 2,
                                             ),
+                                          )
+                                        else if (imageLayerProgress.values
+                                            .any((progress) => progress < 0))
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.error,
+                                                  color: Colors.red),
+                                              const SizedBox(width: 8),
+                                              TextButton.icon(
+                                                onPressed: isRetrying
+                                                    ? null
+                                                    : retryImageLayers,
+                                                icon: const Icon(Icons.refresh,
+                                                    size: 16),
+                                                label: const Text('Retry'),
+                                                style: TextButton.styleFrom(
+                                                  foregroundColor: Colors.white,
+                                                  backgroundColor:
+                                                      const Color(0xFF592941),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4),
+                                                  minimumSize: Size.zero,
+                                                  tapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                ),
+                                              ),
+                                            ],
                                           )
                                       ],
                                     ),

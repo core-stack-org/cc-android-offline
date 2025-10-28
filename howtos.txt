@@ -4,7 +4,7 @@ Making it work
 Remove existing data
 ====================
 1. adb shell
-2. run-as run-as com.corestack.commonsconnect
+2. run-as com.corestack.commonsconnect
 3. cd app_flutter/assets/offline_data 
    rm -rf *
 4. cd app_flutter/persistent_offline_data
