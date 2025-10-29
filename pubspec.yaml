@@ -58,6 +58,8 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: any
+  wakelock_plus: ^1.2.8
+  flutter_local_notifications: ^17.2.3
 
 dev_dependencies:
   flutter_test:

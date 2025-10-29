@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:nrmflutter/container_flow/container_manager.dart';
-//import 'package:nrmflutter/container_flow/container_sheet.dart';
 import 'package:nrmflutter/utils/constants.dart';
 import 'package:nrmflutter/utils/download_base_map.dart';
 import 'package:nrmflutter/utils/download_raster_layer.dart';
@@ -12,6 +11,8 @@ import 'package:nrmflutter/utils/offline_asset.dart';
 import 'package:nrmflutter/utils/utility.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import './utils/s3_helper.dart';
 import './config/aws_config.dart';
@@ -62,9 +63,16 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
 
   bool isRetrying = false;
 
+  final FlutterLocalNotificationsPlugin _notificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+  static const int _notificationId = 1001;
+
   @override
   void initState() {
     super.initState();
+
+    _initializeNotifications();
+    _enableWakelock();
 
     s3Helper = S3Helper(
       accessKey: AWSConfig.accessKey,
@@ -94,6 +102,98 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
     );
 
     downloadAllLayers(widget.container);
+  }
+
+  @override
+  void dispose() {
+    _disableWakelock();
+    _cancelNotification();
+    super.dispose();
+  }
+
+  Future<void> _initializeNotifications() async {
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings();
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
+    await _notificationsPlugin.initialize(initSettings);
+  }
+
+  Future<void> _enableWakelock() async {
+    try {
+      await WakelockPlus.enable();
+      print('Wakelock enabled - screen will stay on during download');
+    } catch (e) {
+      print('Failed to enable wakelock: $e');
+    }
+  }
+
+  Future<void> _disableWakelock() async {
+    try {
+      await WakelockPlus.disable();
+      print('Wakelock disabled');
+    } catch (e) {
+      print('Failed to disable wakelock: $e');
+    }
+  }
+
+  Future<void> _showDownloadNotification() async {
+    const androidDetails = AndroidNotificationDetails(
+      'download_channel',
+      'Downloads',
+      channelDescription: 'Offline data download progress',
+      importance: Importance.low,
+      priority: Priority.low,
+      ongoing: true,
+      autoCancel: false,
+      showProgress: true,
+      maxProgress: 100,
+      progress: 0,
+    );
+    const iosDetails = DarwinNotificationDetails();
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _notificationsPlugin.show(
+      _notificationId,
+      'Downloading Offline Data',
+      'Preparing to download ${widget.container.name}',
+      details,
+    );
+  }
+
+  Future<void> _updateDownloadNotification(int progress) async {
+    final androidDetails = AndroidNotificationDetails(
+      'download_channel',
+      'Downloads',
+      channelDescription: 'Offline data download progress',
+      importance: Importance.low,
+      priority: Priority.low,
+      ongoing: true,
+      autoCancel: false,
+      showProgress: true,
+      maxProgress: 100,
+      progress: progress,
+    );
+    final details = NotificationDetails(
+      android: androidDetails,
+    );
+
+    await _notificationsPlugin.show(
+      _notificationId,
+      'Downloading Offline Data',
+      'Downloaded $progress% for ${widget.container.name}',
+      details,
+    );
+  }
+
+  Future<void> _cancelNotification() async {
+    await _notificationsPlugin.cancel(_notificationId);
   }
 
   // *c Downloads webapp static files from S3 and replaces existing files
@@ -536,6 +636,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
 
   Future<void> downloadAllLayers(OfflineContainer container) async {
     print("Starting to download the layers for container: ${container.name}");
+
+    await _showDownloadNotification();
+
     if (mounted) {
       setState(() {
         isDownloading = true;
@@ -675,6 +778,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           container.name, true);
       print("Container ${container.name} marked as downloaded");
 
+      await _disableWakelock();
+      await _cancelNotification();
+
       if (mounted) {
         setState(() {
           isDownloading = false;
@@ -696,6 +802,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
 
       await ContainerManager.updateContainerDownloadStatus(
           container.name, false);
+
+      await _disableWakelock();
+      await _cancelNotification();
 
       if (mounted) {
         setState(() {
@@ -1154,6 +1263,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
   Future<void> _cancelAllDownloads() async {
     if (!isDownloading || isDownloadComplete) return;
 
+    await _disableWakelock();
+    await _cancelNotification();
+
     if (mounted) {
       setState(() {
         isDownloading = false;
@@ -1608,6 +1720,11 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                       double overallProgress = totalSections > 0
                           ? totalProgress / totalSections
                           : 0.0;
+
+                      if (isDownloading) {
+                        _updateDownloadNotification(
+                            (overallProgress * 100).toInt());
+                      }
 
                       return Column(
                         children: [
