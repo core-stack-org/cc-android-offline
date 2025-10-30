@@ -191,10 +191,32 @@ class RasterLayerDownloader {
               r'<gml:upperCorner>\s*([\d\.-]+)\s+([\d\.-]+)\s*</gml:upperCorner>')
           .firstMatch(body);
       if (lowerMatch == null || upperMatch == null) return null;
-      final minx = double.parse(lowerMatch.group(1)!);
-      final miny = double.parse(lowerMatch.group(2)!);
-      final maxx = double.parse(upperMatch.group(1)!);
-      final maxy = double.parse(upperMatch.group(2)!);
+
+      final coord1 = double.parse(lowerMatch.group(1)!);
+      final coord2 = double.parse(lowerMatch.group(2)!);
+      final coord3 = double.parse(upperMatch.group(1)!);
+      final coord4 = double.parse(upperMatch.group(2)!);
+
+      // GeoServer may return coordinates in lat,lon order (EPSG:4326 axis order)
+      // We need lon,lat for WMS bbox. Check if we need to swap.
+      // Longitude ranges: 85-87, Latitude ranges: 24-25 for this region
+      // If first coordinate is < 50, it's likely latitude, so swap
+      double minx, miny, maxx, maxy;
+      if (coord1 < 50) {
+        // Coordinates are in lat,lon order - swap them
+        minx = coord2;
+        miny = coord1;
+        maxx = coord4;
+        maxy = coord3;
+        print('Swapped coordinates from lat,lon to lon,lat');
+      } else {
+        // Coordinates are already in lon,lat order
+        minx = coord1;
+        miny = coord2;
+        maxx = coord3;
+        maxy = coord4;
+      }
+
       return [minx, miny, maxx, maxy];
     } catch (_) {
       return null;
@@ -215,6 +237,10 @@ class RasterLayerDownloader {
       return;
     }
 
+    print('Downloading PNG for layer: $layerOutName');
+    print(
+        'BBox: ${bbox4326[0]}, ${bbox4326[1]}, ${bbox4326[2]}, ${bbox4326[3]}');
+
     final wmsUrl = Uri.parse('${geoserverUrl}geoserver/wms').replace(
       queryParameters: {
         'service': 'WMS',
@@ -227,39 +253,70 @@ class RasterLayerDownloader {
         'width': width.toString(),
         'height': height.toString(),
         'format': 'image/png',
-        'transparent': 'true',
+        'transparent': 'false',
         'tiled': 'false',
       },
     );
 
+    print('WMS URL: $wmsUrl');
+
     final client = http.Client();
     try {
+      onProgressUpdate(layerOutName, 0.1);
+
       final resp = await client.get(wmsUrl).timeout(const Duration(minutes: 2));
+
       if (resp.statusCode != 200) {
+        print('WMS GetMap failed with status: ${resp.statusCode}');
+        print(
+            'Response body: ${resp.body.substring(0, resp.body.length > 200 ? 200 : resp.body.length)}');
         throw Exception('WMS GetMap failed: ${resp.statusCode}');
       }
+
+      onProgressUpdate(layerOutName, 0.5);
+
       final directory = await getApplicationDocumentsDirectory();
       final formattedLayerName = formatLayerName(layerOutName);
       final containerPath =
           '${directory.path}/persistent_offline_data/containers/${container.name}';
-      final pngPath = '$containerPath/image_layers/$formattedLayerName.png';
-      final jsonPath = '$containerPath/image_layers/$formattedLayerName.json';
+      final imageLayersDir = '$containerPath/image_layers';
+      final pngPath = '$imageLayersDir/$formattedLayerName.png';
+      final jsonPath = '$imageLayersDir/$formattedLayerName.json';
+
+      await Directory(imageLayersDir).create(recursive: true);
 
       final pngFile = File(pngPath);
-      await pngFile.create(recursive: true);
       await pngFile.writeAsBytes(resp.bodyBytes);
 
+      print('PNG saved to: $pngPath (${resp.bodyBytes.length} bytes)');
+
+      onProgressUpdate(layerOutName, 0.8);
+
+      // Ensure bbox is in correct lon,lat order for OpenLayers
+      // bbox4326 should already be [minLon, minLat, maxLon, maxLat] after the swap
       final sidecar = {
+        'layerName': layerOutName,
+        'qualifiedLayerName': qualifiedLayerName,
         'bbox': bbox4326,
         'crs': 'EPSG:4326',
         'width': width,
         'height': height,
-        'layer': qualifiedLayerName,
         'style': styleName,
+        'imageExtent': bbox4326,
+        'projection': 'EPSG:4326',
+        'format': 'png',
+        'downloadedAt': DateTime.now().toIso8601String(),
       };
+
       final jsonFile = File(jsonPath);
-      await jsonFile.create(recursive: true);
       await jsonFile.writeAsString(json.encode(sidecar));
+
+      print('Metadata saved to: $jsonPath');
+      onProgressUpdate(layerOutName, 1.0);
+    } catch (e) {
+      print('Error downloading PNG layer $layerOutName: $e');
+      onProgressUpdate(layerOutName, -1.0);
+      rethrow;
     } finally {
       client.close();
     }

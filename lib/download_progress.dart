@@ -41,9 +41,11 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
   double baseMapProgress = 0.0;
   Map<String, double> vectorLayerProgress = {};
   Map<String, double> imageLayerProgress = {};
+  Map<String, double> pngLayerProgress = {};
   Map<String, bool> layerCancelled = {};
   late BaseMapDownloader baseMapDownloader;
   late RasterLayerDownloader rasterLayerDownloader;
+  late RasterLayerDownloader pngLayerDownloader;
   Future<List<Map<String, String>>>? _cachedLayers;
   bool _isLoadingLayers = false;
 
@@ -96,6 +98,16 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         if (mounted) {
           setState(() {
             imageLayerProgress[layerName] = progress;
+          });
+        }
+      },
+    );
+
+    pngLayerDownloader = RasterLayerDownloader(
+      onProgressUpdate: (layerName, progress) {
+        if (mounted) {
+          setState(() {
+            pngLayerProgress['${layerName}_png'] = progress;
           });
         }
       },
@@ -650,12 +662,15 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         hasAnyFailures = false;
 
         imageLayerProgress.clear();
+        pngLayerProgress.clear();
         final districtFormatted =
             formatNameForGeoServer(widget.selectedDistrict ?? '');
         final blockFormatted =
             formatNameForGeoServer(widget.selectedBlock ?? '');
 
         imageLayerProgress['clart_${districtFormatted}_${blockFormatted}'] =
+            0.0;
+        pngLayerProgress['clart_${districtFormatted}_${blockFormatted}_png'] =
             0.0;
         final yearDataLulc = [
           "17_18",
@@ -668,6 +683,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         ];
         for (var year in yearDataLulc) {
           imageLayerProgress['lulc_${year}_${blockFormatted}'] = 0.0;
+          pngLayerProgress['lulc_${year}_${blockFormatted}_png'] = 0.0;
         }
 
         s3JsonProgress.clear();
@@ -717,8 +733,11 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         block: widget.selectedBlock,
       );
 
-      // Also fetch server-styled PNGs for simple rendering
-      await rasterLayerDownloader.downloadImageLayersAsPng(
+      if (!isDownloading) {
+        throw Exception("Download cancelled by user");
+      }
+
+      await pngLayerDownloader.downloadImageLayersAsPng(
         container: container,
         district: widget.selectedDistrict,
         block: widget.selectedBlock,
@@ -1120,7 +1139,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
     });
 
     try {
-      List<String> failedLayers = imageLayerProgress.entries
+      List<String> failedGeoTiffLayers = imageLayerProgress.entries
           .where((entry) =>
               entry.value < 0 ||
               (entry.value >= 0 &&
@@ -1129,7 +1148,16 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           .map((entry) => entry.key)
           .toList();
 
-      for (var layerName in failedLayers) {
+      List<String> failedPngLayers = pngLayerProgress.entries
+          .where((entry) =>
+              entry.value < 0 ||
+              (entry.value >= 0 &&
+                  entry.value < 1.0 &&
+                  downloadErrors.containsKey(entry.key)))
+          .map((entry) => entry.key)
+          .toList();
+
+      for (var layerName in failedGeoTiffLayers) {
         if (mounted) {
           setState(() {
             imageLayerProgress[layerName] = 0.0;
@@ -1139,21 +1167,30 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         }
       }
 
-      if (failedLayers.isEmpty) {
-        await rasterLayerDownloader.downloadImageLayers(
-          container: widget.container,
-          district: widget.selectedDistrict,
-          block: widget.selectedBlock,
-        );
-      } else {
-        await rasterLayerDownloader.downloadImageLayers(
-          container: widget.container,
-          district: widget.selectedDistrict,
-          block: widget.selectedBlock,
-        );
+      for (var layerName in failedPngLayers) {
+        if (mounted) {
+          setState(() {
+            pngLayerProgress[layerName] = 0.0;
+            downloadErrors.remove(layerName);
+            pngLayerDownloader.layerCancelled[layerName] = false;
+          });
+        }
       }
 
-      bool anyFailed = imageLayerProgress.values.any((v) => v < 0);
+      await rasterLayerDownloader.downloadImageLayers(
+        container: widget.container,
+        district: widget.selectedDistrict,
+        block: widget.selectedBlock,
+      );
+
+      await pngLayerDownloader.downloadImageLayersAsPng(
+        container: widget.container,
+        district: widget.selectedDistrict,
+        block: widget.selectedBlock,
+      );
+
+      bool anyFailed = imageLayerProgress.values.any((v) => v < 0) ||
+          pngLayerProgress.values.any((v) => v < 0);
 
       if (mounted) {
         setState(() {
@@ -1335,6 +1372,15 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         }
       }
 
+      for (var layerKey in pngLayerProgress.keys) {
+        if (mounted) {
+          setState(() {
+            layerCancelled[layerKey] = true;
+            pngLayerDownloader.cancelDownload(layerKey);
+          });
+        }
+      }
+
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1378,6 +1424,15 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       for (var entry in imageLayerProgress.entries) {
         if (entry.value != 1.0) {
           print("Image layer ${entry.key} not complete: ${entry.value}");
+          return false;
+        }
+      }
+    }
+
+    if (pngLayerProgress.isNotEmpty) {
+      for (var entry in pngLayerProgress.entries) {
+        if (entry.value != 1.0) {
+          print("PNG layer ${entry.key} not complete: ${entry.value}");
           return false;
         }
       }
@@ -1603,7 +1658,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
             padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
             decoration: BoxDecoration(
               color: const Color(0xFFD6D5C9),
-              border: Border.all(color: const Color(0xFF592941), width: 1),
               borderRadius: BorderRadius.circular(15),
             ),
             child: Text(
@@ -1620,7 +1674,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: const Color(0xFFD6D5C9),
-              border: Border.all(color: const Color(0xFF592941), width: 1),
               borderRadius: BorderRadius.circular(15),
             ),
             child: Column(
@@ -1678,16 +1731,26 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                         totalSections++;
                       }
 
-                      // Image/Raster layers progress (1 section)
-                      if (imageLayerProgress.isNotEmpty) {
+                      // Image/Raster layers progress (GeoTIFF + PNG = 2 subsections counted as 1 section)
+                      if (imageLayerProgress.isNotEmpty ||
+                          pngLayerProgress.isNotEmpty) {
                         double imageProgress = 0;
                         int imageCount = 0;
+
                         imageLayerProgress.forEach((fileName, progress) {
                           if (progress >= 0) {
                             imageProgress += progress;
                           }
                           imageCount++;
                         });
+
+                        pngLayerProgress.forEach((fileName, progress) {
+                          if (progress >= 0) {
+                            imageProgress += progress;
+                          }
+                          imageCount++;
+                        });
+
                         totalProgress +=
                             (imageCount > 0 ? imageProgress / imageCount : 0.0);
                         totalSections++;
@@ -1767,8 +1830,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFF592941), width: 1),
               borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: const Color(0xFF592941), width: 1),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2236,10 +2299,18 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                         );
                       }
                       // * RASTER LAYERS SECTION
-                      if (imageLayerProgress.isNotEmpty) {
+                      if (imageLayerProgress.isNotEmpty ||
+                          pngLayerProgress.isNotEmpty) {
                         int imageCompletedCount = imageLayerProgress.values
                             .where((progress) => progress == 1.0)
                             .length;
+                        int pngCompletedCount = pngLayerProgress.values
+                            .where((progress) => progress == 1.0)
+                            .length;
+                        int totalRasterLayers =
+                            imageLayerProgress.length + pngLayerProgress.length;
+                        int totalCompleted =
+                            imageCompletedCount + pngCompletedCount;
 
                         items.add(
                           Container(
@@ -2276,7 +2347,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               const Text(
-                                                "Raster Layers (GeoTIFF)",
+                                                "Raster Layers (GeoTIFF + PNG)",
                                                 style: TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
@@ -2284,7 +2355,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                                 ),
                                               ),
                                               Text(
-                                                "$imageCompletedCount of ${imageLayerProgress.length} completed",
+                                                "$totalCompleted of $totalRasterLayers completed",
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   color: Color(0xFF592941),
@@ -2293,12 +2364,12 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                             ],
                                           ),
                                         ),
-                                        if (imageCompletedCount ==
-                                                imageLayerProgress.length &&
-                                            imageLayerProgress.isNotEmpty)
+                                        if (totalCompleted ==
+                                                totalRasterLayers &&
+                                            totalRasterLayers > 0)
                                           const Icon(Icons.check_circle,
                                               color: Colors.green)
-                                        else if (imageCompletedCount > 0)
+                                        else if (totalCompleted > 0)
                                           const SizedBox(
                                             width: 20,
                                             height: 20,
@@ -2306,8 +2377,10 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                               strokeWidth: 2,
                                             ),
                                           )
-                                        else if (imageLayerProgress.values
-                                            .any((progress) => progress < 0))
+                                        else if (imageLayerProgress.values.any(
+                                                (progress) => progress < 0) ||
+                                            pngLayerProgress.values.any(
+                                                (progress) => progress < 0))
                                           Row(
                                             children: [
                                               const Icon(Icons.error,
@@ -2355,63 +2428,128 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                     padding: const EdgeInsets.only(
                                         left: 12, right: 12, bottom: 8),
                                     child: Column(
-                                      children: imageLayerProgress.entries
-                                          .map((entry) {
-                                        final fileName = entry.key;
-                                        final progress = entry.value;
+                                      children: [
+                                        ...imageLayerProgress.entries
+                                            .map((entry) {
+                                          final fileName = entry.key;
+                                          final progress = entry.value;
 
-                                        // Format display name
-                                        String displayName = fileName;
-                                        if (fileName.startsWith('clart_')) {
-                                          displayName = 'CLART Layer';
-                                        } else if (fileName
-                                            .startsWith('lulc_')) {
-                                          final year = fileName.split('_')[1];
-                                          displayName = 'LULC 20$year';
-                                        }
+                                          String displayName = fileName;
+                                          if (fileName.startsWith('clart_')) {
+                                            displayName =
+                                                'CLART Layer (GeoTIFF)';
+                                          } else if (fileName
+                                              .startsWith('lulc_')) {
+                                            final year = fileName.split('_')[1];
+                                            displayName =
+                                                'LULC 20$year (GeoTIFF)';
+                                          }
 
-                                        return Padding(
-                                          padding:
-                                              const EdgeInsets.only(bottom: 6),
-                                          child: Row(
-                                            children: [
-                                              const SizedBox(width: 8),
-                                              const Icon(
-                                                Icons.satellite_alt,
-                                                size: 16,
-                                                color: Color(0xFF592941),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Text(
-                                                  displayName,
-                                                  style: const TextStyle(
-                                                    fontSize: 14,
-                                                    color: Color(0xFF592941),
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                                bottom: 6),
+                                            child: Row(
+                                              children: [
+                                                const SizedBox(width: 8),
+                                                const Icon(
+                                                  Icons.satellite_alt,
+                                                  size: 16,
+                                                  color: Color(0xFF592941),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    displayName,
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      color: Color(0xFF592941),
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                              if (progress == 1.0)
-                                                const Icon(Icons.check_circle,
-                                                    color: Colors.green,
-                                                    size: 18)
-                                              else if (progress > 0 &&
-                                                  progress < 1)
-                                                const SizedBox(
-                                                  width: 16,
-                                                  height: 16,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                    strokeWidth: 2,
+                                                if (progress == 1.0)
+                                                  const Icon(Icons.check_circle,
+                                                      color: Colors.green,
+                                                      size: 18)
+                                                else if (progress > 0 &&
+                                                    progress < 1)
+                                                  const SizedBox(
+                                                    width: 16,
+                                                    height: 16,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                                  )
+                                                else if (progress < 0)
+                                                  const Icon(Icons.error,
+                                                      color: Colors.red,
+                                                      size: 18)
+                                              ],
+                                            ),
+                                          );
+                                        }).toList(),
+                                        ...pngLayerProgress.entries
+                                            .map((entry) {
+                                          final fileName = entry.key;
+                                          final progress = entry.value;
+
+                                          String displayName = fileName;
+                                          if (fileName.contains('clart_')) {
+                                            displayName = 'CLART Layer (PNG)';
+                                          } else if (fileName
+                                              .contains('lulc_')) {
+                                            final parts = fileName.split('_');
+                                            if (parts.length > 1) {
+                                              final year = parts[1];
+                                              displayName =
+                                                  'LULC 20$year (PNG)';
+                                            }
+                                          }
+
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                                bottom: 6),
+                                            child: Row(
+                                              children: [
+                                                const SizedBox(width: 8),
+                                                const Icon(
+                                                  Icons.image,
+                                                  size: 16,
+                                                  color: Color(0xFF592941),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    displayName,
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      color: Color(0xFF592941),
+                                                    ),
                                                   ),
-                                                )
-                                              else if (progress < 0)
-                                                const Icon(Icons.error,
-                                                    color: Colors.red, size: 18)
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
+                                                ),
+                                                if (progress == 1.0)
+                                                  const Icon(Icons.check_circle,
+                                                      color: Colors.green,
+                                                      size: 18)
+                                                else if (progress > 0 &&
+                                                    progress < 1)
+                                                  const SizedBox(
+                                                    width: 16,
+                                                    height: 16,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                                  )
+                                                else if (progress < 0)
+                                                  const Icon(Icons.error,
+                                                      color: Colors.red,
+                                                      size: 18)
+                                              ],
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ],
                                     ),
                                   ),
                                 ],

@@ -176,6 +176,90 @@ class LocalServer {
     }
   }
 
+  Future<shelf.Response> _handleImageLayersRequest() async {
+    print("Handling image layers list request");
+
+    try {
+      final imageLayersDir = Directory(path.join(_basePath, IMAGE_LAYERS_PATH));
+
+      if (!await imageLayersDir.exists()) {
+        return shelf.Response.ok(
+          json.encode({'layers': [], 'count': 0}),
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*',
+          },
+        );
+      }
+
+      final pngFiles = await imageLayersDir
+          .list()
+          .where((entity) => entity is File && entity.path.endsWith('.png'))
+          .toList();
+
+      final layers = <Map<String, dynamic>>[];
+
+      for (final pngFile in pngFiles) {
+        final baseName = path.basenameWithoutExtension(pngFile.path);
+        final jsonPath = path.join(imageLayersDir.path, '$baseName.json');
+        final jsonFile = File(jsonPath);
+
+        if (await jsonFile.exists()) {
+          try {
+            final metadataContent = await jsonFile.readAsString();
+            final metadata =
+                json.decode(metadataContent) as Map<String, dynamic>;
+
+            final relativeImagePath = containerName != null
+                ? 'containers/$containerName/$IMAGE_LAYERS_PATH/$baseName.png'
+                : '$IMAGE_LAYERS_PATH/$baseName.png';
+
+            layers.add({
+              'id': baseName,
+              'name': metadata['layerName'] ?? baseName,
+              'imagePath': relativeImagePath,
+              'bbox': metadata['bbox'],
+              'crs': metadata['crs'] ?? 'EPSG:4326',
+              'projection': metadata['projection'] ?? 'EPSG:4326',
+              'imageExtent': metadata['imageExtent'] ?? metadata['bbox'],
+              'width': metadata['width'],
+              'height': metadata['height'],
+              'format': metadata['format'] ?? 'png',
+              'downloadedAt': metadata['downloadedAt'],
+            });
+          } catch (e) {
+            print('Error parsing metadata for $baseName: $e');
+          }
+        } else {
+          final relativeImagePath = containerName != null
+              ? 'containers/$containerName/$IMAGE_LAYERS_PATH/$baseName.png'
+              : '$IMAGE_LAYERS_PATH/$baseName.png';
+
+          layers.add({
+            'id': baseName,
+            'name': baseName,
+            'imagePath': relativeImagePath,
+            'format': 'png',
+          });
+        }
+      }
+
+      return shelf.Response.ok(
+        json.encode({'layers': layers, 'count': layers.length}),
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-cache',
+        },
+      );
+    } catch (e) {
+      print('Error serving image layers list: $e');
+      return shelf.Response.internalServerError(
+          body: json.encode({'error': e.toString()}),
+          headers: {'Content-Type': 'application/json; charset=utf-8'});
+    }
+  }
+
   Future<shelf.Response> _handleRequest(shelf.Request request) async {
     final requestPath = request.url.path;
     print('Handling request for path: $requestPath');
@@ -205,6 +289,11 @@ class LocalServer {
           formName = pathSegments[formIndex + 1];
         }
         return await _handleS3DataRequest(formName);
+      }
+
+      // Handle image layers API
+      if (normalizedPath.startsWith('api/v1/image_layers')) {
+        return await _handleImageLayersRequest();
       }
 
       // FIX: Handle container-specific requests (image layers, vector layers, etc.)
