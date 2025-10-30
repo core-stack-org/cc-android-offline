@@ -238,7 +238,7 @@ class LocalServer {
     }
   }
 
-  // NEW: Specialized handler for image layers with Range support
+  // NEW: Specialized handler for image layers with correct MIME and Range support only for TIFF
   Future<shelf.Response> _serveImageLayer(
       shelf.Request request, String requestPath) async {
     final filePath = path.join(persistentOfflineDataDirectory, requestPath);
@@ -251,26 +251,69 @@ class LocalServer {
         return shelf.Response.notFound('Image layer not found');
       }
 
+      final ext = path.extension(filePath).toLowerCase();
+      final isTiff = ext == '.tif' || ext == '.tiff';
+      final isPng = ext == '.png';
+      final isJson = ext == '.json';
+
       final fileLength = await file.length();
       final rangeHeader = request.headers['range'];
 
       print('File size: $fileLength bytes');
       print('Range header: $rangeHeader');
 
-      // Handle range requests for GeoTIFF streaming
-      if (rangeHeader != null && rangeHeader.startsWith('bytes=')) {
-        return await _serveRangeRequest(file, fileLength, rangeHeader);
+      if (isTiff) {
+        // Handle range requests for GeoTIFF streaming
+        if (rangeHeader != null && rangeHeader.startsWith('bytes=')) {
+          return await _serveRangeRequest(file, fileLength, rangeHeader);
+        }
+
+        final bytes = await file.readAsBytes();
+        return shelf.Response.ok(
+          bytes,
+          headers: {
+            'Content-Type': 'image/tiff',
+            'Content-Length': fileLength.toString(),
+            'Accept-Ranges': 'bytes',
+            'Cache-Control': 'max-age=3600',
+            'Access-Control-Allow-Origin': '*',
+          },
+        );
       }
 
-      // Serve full file
+      if (isPng) {
+        final bytes = await file.readAsBytes();
+        return shelf.Response.ok(
+          bytes,
+          headers: {
+            'Content-Type': 'image/png',
+            'Content-Length': fileLength.toString(),
+            'Cache-Control': 'max-age=3600',
+            'Access-Control-Allow-Origin': '*',
+          },
+        );
+      }
+
+      if (isJson) {
+        final content = await file.readAsString();
+        return shelf.Response.ok(
+          content,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Cache-Control': 'max-age=3600',
+            'Access-Control-Allow-Origin': '*',
+          },
+        );
+      }
+
+      // Fallback: serve with detected MIME
       final bytes = await file.readAsBytes();
       return shelf.Response.ok(
         bytes,
         headers: {
-          'Content-Type': 'image/tiff',
+          'Content-Type':
+              lookupMimeType(filePath) ?? 'application/octet-stream',
           'Content-Length': fileLength.toString(),
-          'Accept-Ranges':
-              'bytes', // CRITICAL: Tell client we support range requests
           'Cache-Control': 'max-age=3600',
           'Access-Control-Allow-Origin': '*',
         },
