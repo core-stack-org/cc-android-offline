@@ -60,7 +60,9 @@ Future<void> initializeApp() async {
       path.join(directory.path, 'persistent_offline_data');
   print('Persistent offline path in main: $persistentOfflineDataPath');
 
-  await OfflineAssetsManager.copyOfflineAssets();
+  // Force copy to ensure tiff_test.html is included
+  await OfflineAssetsManager.copyOfflineAssets(forceUpdate: true);
+  print('Finished copying offline assets with forceUpdate');
 
   // Start the local server
   final localServer = LocalServer(persistentOfflineDataPath);

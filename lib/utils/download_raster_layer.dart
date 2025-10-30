@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:nrmflutter/container_flow/container_manager.dart';
@@ -91,6 +92,177 @@ class RasterLayerDownloader {
     }
 
     print("Finished downloadImageLayers");
+  }
+
+  // PNG (WMS) alternative: render server-side styled PNG and save with bbox sidecar
+  Future<void> downloadImageLayersAsPng({
+    required OfflineContainer container,
+    required String? district,
+    required String? block,
+  }) async {
+    final districtFormatted = formatNameForGeoServer(district ?? '');
+    final blockFormatted = formatNameForGeoServer(block ?? '');
+
+    // CLART
+    final clartLayerBase = '${districtFormatted}_${blockFormatted}_clart';
+    final clartWorkspace = 'clart';
+    final clartLayerQualified = '$clartWorkspace:$clartLayerBase';
+    final clartOutName = 'clart_${districtFormatted}_${blockFormatted}';
+
+    try {
+      final clartBbox = await _fetchCoverageBBox(clartLayerQualified);
+      if (clartBbox != null) {
+        await _downloadStyledPng(
+          container: container,
+          layerOutName: clartOutName,
+          qualifiedLayerName: clartLayerQualified,
+          styleName: 'testClart',
+          bbox4326: clartBbox,
+          width: 2048,
+          height: 2048,
+        );
+        onProgressUpdate(clartOutName, 1.0);
+      } else {
+        onProgressUpdate(clartOutName, -1.0);
+      }
+    } catch (e) {
+      onProgressUpdate(clartOutName, -1.0);
+    }
+
+    // LULC years
+    final yearDataLulc = [
+      "17_18",
+      "18_19",
+      "19_20",
+      "20_21",
+      "21_22",
+      "22_23",
+      "23_24"
+    ];
+
+    for (final yearValue in yearDataLulc) {
+      final lulcLayerBase = 'LULC_${yearValue}_${blockFormatted}_level_3';
+      final lulcWorkspace = 'LULC_level_3';
+      final lulcLayerQualified = '$lulcWorkspace:$lulcLayerBase';
+      final lulcOutName = 'lulc_${yearValue}_${blockFormatted}';
+
+      if (layerCancelled[lulcOutName] == true ||
+          layerCancelled['lulc_$yearValue'] == true) {
+        onProgressUpdate(lulcOutName, -1.0);
+        continue;
+      }
+
+      try {
+        final lulcBbox = await _fetchCoverageBBox(lulcLayerQualified);
+        if (lulcBbox != null) {
+          await _downloadStyledPng(
+            container: container,
+            layerOutName: lulcOutName,
+            qualifiedLayerName: lulcLayerQualified,
+            styleName: 'lulc_level_3_style',
+            bbox4326: lulcBbox,
+            width: 2048,
+            height: 2048,
+          );
+          onProgressUpdate(lulcOutName, 1.0);
+        } else {
+          onProgressUpdate(lulcOutName, -1.0);
+        }
+      } catch (_) {
+        onProgressUpdate(lulcOutName, -1.0);
+      }
+    }
+  }
+
+  Future<List<double>?> _fetchCoverageBBox(String qualifiedCoverageId) async {
+    // WCS DescribeCoverage to get bbox (EPSG:4326)
+    try {
+      final uri = Uri.parse(
+          '${geoserverUrl}geoserver/wcs?service=WCS&version=2.0.1&request=DescribeCoverage&coverageId=${Uri.encodeComponent(qualifiedCoverageId)}');
+      final resp = await http.get(uri).timeout(const Duration(seconds: 30));
+      if (resp.statusCode != 200) return null;
+      final body = resp.body;
+
+      // naive parse for lowerCorner/upperCorner
+      final lowerMatch = RegExp(
+              r'<gml:lowerCorner>\s*([\d\.-]+)\s+([\d\.-]+)\s*</gml:lowerCorner>')
+          .firstMatch(body);
+      final upperMatch = RegExp(
+              r'<gml:upperCorner>\s*([\d\.-]+)\s+([\d\.-]+)\s*</gml:upperCorner>')
+          .firstMatch(body);
+      if (lowerMatch == null || upperMatch == null) return null;
+      final minx = double.parse(lowerMatch.group(1)!);
+      final miny = double.parse(lowerMatch.group(2)!);
+      final maxx = double.parse(upperMatch.group(1)!);
+      final maxy = double.parse(upperMatch.group(2)!);
+      return [minx, miny, maxx, maxy];
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _downloadStyledPng({
+    required OfflineContainer container,
+    required String layerOutName,
+    required String qualifiedLayerName,
+    required String styleName,
+    required List<double> bbox4326,
+    required int width,
+    required int height,
+  }) async {
+    if (layerCancelled[layerOutName] == true) {
+      onProgressUpdate(layerOutName, -1.0);
+      return;
+    }
+
+    final wmsUrl = Uri.parse('${geoserverUrl}geoserver/wms').replace(
+      queryParameters: {
+        'service': 'WMS',
+        'version': '1.1.1',
+        'request': 'GetMap',
+        'layers': qualifiedLayerName,
+        'styles': styleName,
+        'srs': 'EPSG:4326',
+        'bbox': '${bbox4326[0]},${bbox4326[1]},${bbox4326[2]},${bbox4326[3]}',
+        'width': width.toString(),
+        'height': height.toString(),
+        'format': 'image/png',
+        'transparent': 'true',
+        'tiled': 'false',
+      },
+    );
+
+    final client = http.Client();
+    try {
+      final resp = await client.get(wmsUrl).timeout(const Duration(minutes: 2));
+      if (resp.statusCode != 200) {
+        throw Exception('WMS GetMap failed: ${resp.statusCode}');
+      }
+      final directory = await getApplicationDocumentsDirectory();
+      final formattedLayerName = formatLayerName(layerOutName);
+      final containerPath =
+          '${directory.path}/persistent_offline_data/containers/${container.name}';
+      final pngPath = '$containerPath/image_layers/$formattedLayerName.png';
+      final jsonPath = '$containerPath/image_layers/$formattedLayerName.json';
+
+      final pngFile = File(pngPath);
+      await pngFile.create(recursive: true);
+      await pngFile.writeAsBytes(resp.bodyBytes);
+
+      final sidecar = {
+        'bbox': bbox4326,
+        'crs': 'EPSG:4326',
+        'width': width,
+        'height': height,
+        'layer': qualifiedLayerName,
+        'style': styleName,
+      };
+      final jsonFile = File(jsonPath);
+      await jsonFile.create(recursive: true);
+      await jsonFile.writeAsString(json.encode(sidecar));
+    } finally {
+      client.close();
+    }
   }
 
   Future<void> downloadImageLayer({

@@ -717,6 +717,13 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         block: widget.selectedBlock,
       );
 
+      // Also fetch server-styled PNGs for simple rendering
+      await rasterLayerDownloader.downloadImageLayersAsPng(
+        container: container,
+        district: widget.selectedDistrict,
+        block: widget.selectedBlock,
+      );
+
       if (!isDownloading) {
         throw Exception("Download cancelled by user");
       }
