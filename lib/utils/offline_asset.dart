@@ -188,4 +188,5 @@ class OfflineAssetsManager {
       print('Error clearing offline data.');
     }
   }
+
 }

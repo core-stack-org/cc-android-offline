@@ -6,6 +6,8 @@ import 'package:path/path.dart' as path;
 import 'package:mime/mime.dart';
 import 'package:nrmflutter/db/plans_db.dart';
 
+import 'package:geolocator/geolocator.dart';
+
 class LocalServer {
   HttpServer? _server;
   final String persistentOfflineDataDirectory;
@@ -28,6 +30,28 @@ class LocalServer {
       ? path.join(
           persistentOfflineDataDirectory, CONTAINERS_PATH, containerName!)
       : persistentOfflineDataDirectory;
+
+  Future<void> debugImageLayers() async {
+    final imageLayersDir = Directory(path.join(_basePath, IMAGE_LAYERS_PATH));
+    print('\n========== IMAGE LAYERS DEBUG ==========');
+    print('Base path: $_basePath');
+    print('Image layers directory: ${imageLayersDir.path}');
+    print('Directory exists: ${await imageLayersDir.exists()}');
+    
+    if (await imageLayersDir.exists()) {
+      print('Files found:');
+      await for (var entity in imageLayersDir.list()) {
+        if (entity is File) {
+          final stat = await entity.stat();
+          final fileName = path.basename(entity.path);
+          print('  - $fileName (${(stat.size / 1024 / 1024).toStringAsFixed(2)} MB)');
+        }
+      }
+    } else {
+      print('⚠️ Directory does not exist!');
+    }
+    print('======================================\n');
+  }
 
   Future<void> _validateOfflineData() async {
     final vectorLayersDir = Directory(path.join(_basePath, VECTOR_LAYERS_PATH));
@@ -74,6 +98,7 @@ class LocalServer {
     try {
       _server = await io.serve(handler, 'localhost', 3000, shared: true);
       print('Server running on localhost:${_server!.port}');
+      await debugImageLayers();
       return 'http://localhost:${_server!.port}';
     } catch (e) {
       print('Failed to start server on port 3000: $e');
@@ -95,6 +120,100 @@ class LocalServer {
       });
     },
   );
+
+  Future<shelf.Response> _handleLocationRequest() async {
+    print("Handling GPS location request");
+    
+    try {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return shelf.Response.ok(
+          json.encode({
+            'error': 'Location services are disabled',
+            'serviceEnabled': false,
+            'location': null
+          }),
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*',
+          },
+        );
+      }
+
+      // Check location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return shelf.Response.ok(
+            json.encode({
+              'error': 'Location permissions are denied',
+              'permissionStatus': 'denied',
+              'location': null
+            }),
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Access-Control-Allow-Origin': '*',
+            },
+          );
+        }
+      }
+      
+      if (permission == LocationPermission.deniedForever) {
+        return shelf.Response.ok(
+          json.encode({
+            'error': 'Location permissions are permanently denied',
+            'permissionStatus': 'deniedForever',
+            'location': null
+          }),
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Access-Control-Allow-Origin': '*',
+          },
+        );
+      }
+
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+
+      final locationData = {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'altitude': position.altitude,
+        'accuracy': position.accuracy,
+        'heading': position.heading,
+        'speed': position.speed,
+        'speedAccuracy': position.speedAccuracy,
+        'timestamp': position.timestamp?.toIso8601String(),
+        'serviceEnabled': true,
+        'permissionStatus': 'granted'
+      };
+
+      print('Location retrieved: Lat ${position.latitude}, Lon ${position.longitude}');
+      
+      return shelf.Response.ok(
+        json.encode(locationData),
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-cache', // Don't cache location data
+        },
+      );
+    } catch (e) {
+      print('Error getting location: $e');
+      return shelf.Response.internalServerError(
+        body: json.encode({
+          'error': 'Failed to get location: ${e.toString()}',
+          'location': null
+        }),
+        headers: {'Content-Type': 'application/json; charset=utf-8'}
+      );
+    }
+  }
 
   Future<shelf.Response> _handlePlansRequest(String blockId) async {
     print("Handling plans request for block ID: $blockId");
@@ -296,6 +415,12 @@ class LocalServer {
         return await _handleImageLayersRequest();
       }
 
+      // Handle GPS location
+      if (normalizedPath == 'api/v1/location' || normalizedPath == 'api/v1/gps') {
+        return await _handleLocationRequest();
+      }
+
+
       // FIX: Handle container-specific requests (image layers, vector layers, etc.)
       if (requestPath.startsWith('containers/')) {
         print('Container-specific request: $requestPath');
@@ -329,14 +454,21 @@ class LocalServer {
 
   // NEW: Specialized handler for image layers with correct MIME and Range support only for TIFF
   Future<shelf.Response> _serveImageLayer(
-      shelf.Request request, String requestPath) async {
+    shelf.Request request, String requestPath) async {
     final filePath = path.join(persistentOfflineDataDirectory, requestPath);
-    print('Serving image layer from: $filePath');
+    
+    print('=== IMAGE LAYER REQUEST ===');
+    print('Request path: $requestPath');
+    print('Full file path: $filePath');
+    print('Request method: ${request.method}');
+    print('Request headers: ${request.headers}');
 
     try {
       final file = File(filePath);
-      if (!await file.exists()) {
-        print('Image layer not found: $filePath');
+      final exists = await file.exists();
+      
+      if (!exists) {
+        print('❌ Image layer not found: $filePath');
         return shelf.Response.notFound('Image layer not found');
       }
 
@@ -348,8 +480,9 @@ class LocalServer {
       final fileLength = await file.length();
       final rangeHeader = request.headers['range'];
 
-      print('File size: $fileLength bytes');
-      print('Range header: $rangeHeader');
+      print('✓ File exists');
+      print('✓ File size: $fileLength bytes');
+      print('Range header: ${rangeHeader ?? "none"}');
 
       if (isTiff) {
         // Handle range requests for GeoTIFF streaming
@@ -397,6 +530,7 @@ class LocalServer {
 
       // Fallback: serve with detected MIME
       final bytes = await file.readAsBytes();
+      
       return shelf.Response.ok(
         bytes,
         headers: {
@@ -405,47 +539,89 @@ class LocalServer {
           'Content-Length': fileLength.toString(),
           'Cache-Control': 'max-age=3600',
           'Access-Control-Allow-Origin': '*',
+          'Access-Control-Expose-Headers': 'Accept-Ranges, Content-Length, Content-Range',
         },
       );
-    } catch (e) {
-      print('Error serving image layer: $e');
+    } catch (e, stackTrace) {
+      print('❌ Error serving image layer: $e');
+      print('Stack trace: $stackTrace');
       return shelf.Response.internalServerError(
           body: 'Error serving image layer: ${e.toString()}');
     }
   }
 
+
   // NEW: Handle HTTP Range requests
   Future<shelf.Response> _serveRangeRequest(
-      File file, int fileLength, String rangeHeader) async {
+    File file, int fileLength, String rangeHeader) async {
     try {
-      // Parse range header: "bytes=0-1023" or "bytes=1024-"
-      final rangeMatch = RegExp(r'bytes=(\d+)-(\d*)').firstMatch(rangeHeader);
+      print('=== RANGE REQUEST DEBUG ===');
+      print('Range header: $rangeHeader');
+      print('File length: $fileLength');
+
+      // Parse range header: "bytes=0-1023" or "bytes=1024-" or "bytes=-500"
+      final rangeMatch = RegExp(r'bytes=(\d*)-(\d*)').firstMatch(rangeHeader);
 
       if (rangeMatch == null) {
-        return shelf.Response(416, body: 'Invalid range header');
+        print('❌ Invalid range header format');
+        return shelf.Response(416, 
+          headers: {'Content-Range': 'bytes */$fileLength'},
+          body: 'Invalid range header'
+        );
       }
 
-      final start = int.parse(rangeMatch.group(1)!);
+      final startStr = rangeMatch.group(1);
       final endStr = rangeMatch.group(2);
-      final end = endStr != null && endStr.isNotEmpty
-          ? int.parse(endStr)
-          : fileLength - 1;
 
-      if (start >= fileLength || end >= fileLength || start > end) {
-        return shelf.Response(416,
+      // Handle different range formats
+      int start;
+      int end;
+
+      if (startStr == null || startStr.isEmpty) {
+        // Suffix range: "bytes=-500" (last 500 bytes)
+        if (endStr == null || endStr.isEmpty) {
+          print('❌ Invalid range: both start and end empty');
+          return shelf.Response(416,
             headers: {'Content-Range': 'bytes */$fileLength'},
-            body: 'Range not satisfiable');
+            body: 'Invalid range'
+          );
+        }
+        final suffixLength = int.parse(endStr);
+        start = fileLength - suffixLength;
+        end = fileLength - 1;
+      } else {
+        start = int.parse(startStr);
+        if (endStr == null || endStr.isEmpty) {
+          // Open-ended range: "bytes=1024-"
+          end = fileLength - 1;
+        } else {
+          end = int.parse(endStr);
+        }
+      }
+
+      // Validate range
+      if (start < 0) start = 0;
+      if (end >= fileLength) end = fileLength - 1;
+      
+      if (start > end || start >= fileLength) {
+        print('❌ Range not satisfiable: start=$start, end=$end, fileLength=$fileLength');
+        return shelf.Response(416,
+          headers: {'Content-Range': 'bytes */$fileLength'},
+          body: 'Range not satisfiable'
+        );
       }
 
       final length = end - start + 1;
 
+      print('✓ Serving range: $start-$end/$fileLength ($length bytes)');
+
       // Read only the requested byte range
-      final randomAccessFile = await file.open();
+      final randomAccessFile = await file.open(mode: FileMode.read);
       await randomAccessFile.setPosition(start);
       final bytes = await randomAccessFile.read(length);
       await randomAccessFile.close();
 
-      print('Serving range: $start-$end/$fileLength ($length bytes)');
+      print('✓ Read $length bytes successfully');
 
       return shelf.Response(
         206, // 206 Partial Content
@@ -456,15 +632,19 @@ class LocalServer {
           'Content-Range': 'bytes $start-$end/$fileLength',
           'Accept-Ranges': 'bytes',
           'Access-Control-Allow-Origin': '*',
+          'Access-Control-Expose-Headers': 'Accept-Ranges, Content-Length, Content-Range',
+          'Cache-Control': 'public, max-age=3600',
         },
       );
-    } catch (e) {
-      print('Error serving range request: $e');
+    } catch (e, stackTrace) {
+      print('❌ Error serving range request: $e');
+      print('Stack trace: $stackTrace');
       return shelf.Response.internalServerError(
           body: 'Error serving range: ${e.toString()}');
     }
   }
 
+  
   Future<shelf.Response> _serveFile(String sanitizedPath,
       {bool isWebApp = false}) async {
     if (sanitizedPath.contains('..')) {
