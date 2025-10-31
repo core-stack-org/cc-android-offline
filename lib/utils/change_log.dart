@@ -95,19 +95,23 @@ class _ChangelogBottomSheetState extends State<ChangelogBottomSheet> {
                   _buildVersionSection(
                     'Version $_appVersion',
                     [
-                      "Introducing login",
-                      "Users can now login to the app to access their account.",
-                      "They can see the plans respective to their projects and organizations.",
-                      "Bug fixes and improvements."
+                      "Mark Location in offline mode now includes a search village option that automatically zooms to the specified village.",
+                      "Introduced remote equivalent ODK forms download for offline mode forms using s3 storage",
+                      "Enabled remote download of Webview, allowing updates without requiring a full app release",
+                      "Raster layers are now available in offline mode",
+                      "Fixed download progress issues where it previously got stuck at 98.2%.",
+                      "Improved base map downloading with a proper retry mechanism and clear messaging.",
+                      "Added a manual retry button for layer downloads in case of failure.",
+                      "Integrated Wake Plus to keep the screen awake during download progress.",
+                      "Made various UX improvements around marking location for offline use and language selection in the app.",
+                      "Resolved GPS location issues",
+                      "Fixed forms and the synchronization of questionnaires between online and offline forms.",
+                      "Added a naming convention for regions to prevent path issues in certain Android OEMs.",
+                      "Ensured asset information across the application shows correct details.",
+                      "Added a 'Change Password' option in the profile section.",
+                      "Included a 'Cache data removal' option in the profile section.",
                     ],
                   ),
-                  // const SizedBox(height: 20),
-                  // _buildVersionSection(
-                  //   'In Previous Version',
-                  //   [
-
-                  //   ],
-                  // ),
                 ],
               ),
             ),

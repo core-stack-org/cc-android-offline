@@ -57,7 +57,8 @@ class RasterLayerDownloader {
       //   url: clartUrl,
       //   container: container,
       // );
-      final clartTifContent = await s3Helper.downloadFileBytes('clart_theni_periyakulam_clart.tif');
+      final clartTifContent =
+          await s3Helper.downloadFileBytes('clart_theni_periyakulam_clart.tif');
 
       if (clartTifContent != null && clartTifContent.isNotEmpty) {
         // Save the downloaded file
@@ -73,23 +74,17 @@ class RasterLayerDownloader {
         final file = File(filePath);
         await file.create(recursive: true);
 
-        // Write the bytes to file
         await file.writeAsBytes(clartTifContent);
 
         final fileSize = await file.length();
-        print("Successfully saved CLART layer: $clartLayerName");
-        print("File size: ${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB");
-        
+
         // Verify file was written correctly
         if (await file.exists()) {
-          print("✅ File verification: CLART file exists at $filePath");
           onProgressUpdate(clartLayerName, 1.0);
         } else {
-          print("❌ File verification failed: CLART file does not exist");
           onProgressUpdate(clartLayerName, -1.0);
         }
       } else {
-        print("❌ Failed to download CLART from S3: received null or empty content");
         onProgressUpdate(clartLayerName, -1.0);
       }
 

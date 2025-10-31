@@ -76,3 +76,9 @@ persistent_offline_data/
     webapp/
         index.html
         static
+
+
+App Localization
+================
+
+flutter gen-l10n

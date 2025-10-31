@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/login_service.dart';
 import '../services/cache_service.dart';
 import '../ui/login_screen.dart';
+import '../l10n/app_localizations.dart';
 
 class ProfileStatsScreen extends StatefulWidget {
   const ProfileStatsScreen({Key? key}) : super(key: key);
@@ -83,7 +84,9 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                   ),
                   const SizedBox(height: 4.0),
                   Text(
-                    value.isNotEmpty ? value : 'Not specified',
+                    value.isNotEmpty
+                        ? value
+                        : AppLocalizations.of(context)!.notSpecified,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -158,25 +161,27 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
   }
 
   String _getProjectsText() {
-    if (_userData == null) return 'No projects';
+    if (_userData == null)
+      return AppLocalizations.of(context)!.noProjectsAssigned;
 
     final projectDetails = _userData!['project_details'] as List?;
     if (projectDetails == null || projectDetails.isEmpty) {
-      return 'No projects assigned';
+      return AppLocalizations.of(context)!.noProjectsAssigned;
     }
 
     return projectDetails
         .map((project) =>
-            project['project_name'] as String? ?? 'Unknown Project')
+            project['project_name'] as String? ??
+            AppLocalizations.of(context)!.unknownProject)
         .join(', ');
   }
 
   String _getRolesText() {
-    if (_userData == null) return 'No roles';
+    if (_userData == null) return AppLocalizations.of(context)!.noRolesAssigned;
 
     final groups = _userData!['groups'] as List?;
     if (groups == null || groups.isEmpty) {
-      return 'No roles assigned';
+      return AppLocalizations.of(context)!.noRolesAssigned;
     }
 
     return groups.map((group) => group['name']).join(', ');
@@ -215,9 +220,9 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const Text(
-                          'Change Password',
-                          style: TextStyle(
+                        Text(
+                          AppLocalizations.of(context)!.changePassword,
+                          style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w600,
                             color: Colors.black,
@@ -241,7 +246,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'You will be logged out from all devices',
+                                  AppLocalizations.of(context)!
+                                      .youWillBeLoggedOut,
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.orange.shade900,
@@ -256,7 +262,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                           controller: oldPasswordController,
                           obscureText: obscureOldPassword,
                           decoration: InputDecoration(
-                            labelText: 'Current Password',
+                            labelText:
+                                AppLocalizations.of(context)!.currentPassword,
                             prefixIcon: const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
                               icon: Icon(
@@ -280,7 +287,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                           controller: newPasswordController,
                           obscureText: obscureNewPassword,
                           decoration: InputDecoration(
-                            labelText: 'New Password',
+                            labelText:
+                                AppLocalizations.of(context)!.newPassword,
                             prefixIcon: const Icon(Icons.lock),
                             suffixIcon: IconButton(
                               icon: Icon(
@@ -297,9 +305,9 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            helperText:
-                                'Min 8 chars, alphanumeric, special symbols',
-                            helperStyle: TextStyle(fontSize: 11),
+                            helperText: AppLocalizations.of(context)!
+                                .minPasswordRequirements,
+                            helperStyle: const TextStyle(fontSize: 11),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -307,7 +315,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                           controller: confirmPasswordController,
                           obscureText: obscureConfirmPassword,
                           decoration: InputDecoration(
-                            labelText: 'Confirm New Password',
+                            labelText: AppLocalizations.of(context)!
+                                .confirmNewPassword,
                             prefixIcon: const Icon(Icons.lock),
                             suffixIcon: IconButton(
                               icon: Icon(
@@ -380,9 +389,9 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                     : () {
                                         Navigator.of(dialogContext).pop();
                                       },
-                                child: const Text(
-                                  'Cancel',
-                                  style: TextStyle(
+                                child: Text(
+                                  AppLocalizations.of(context)!.cancel,
+                                  style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -421,7 +430,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                             confirmPassword.isEmpty) {
                                           setState(() {
                                             errorMessage =
-                                                'All fields are required';
+                                                AppLocalizations.of(context)!
+                                                    .allFieldsRequired;
                                             isLoading = false;
                                           });
                                           return;
@@ -430,7 +440,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                         if (newPassword != confirmPassword) {
                                           setState(() {
                                             errorMessage =
-                                                'New passwords do not match';
+                                                AppLocalizations.of(context)!
+                                                    .newPasswordsDoNotMatch;
                                             isLoading = false;
                                           });
                                           return;
@@ -439,7 +450,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                         if (newPassword.length < 8) {
                                           setState(() {
                                             errorMessage =
-                                                'Password must be at least 8 characters';
+                                                AppLocalizations.of(context)!
+                                                    .passwordMustBeAtLeast8;
                                             isLoading = false;
                                           });
                                           return;
@@ -449,8 +461,9 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                                 r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])')
                                             .hasMatch(newPassword)) {
                                           setState(() {
-                                            errorMessage =
-                                                'Password must contain letters, numbers, and special characters';
+                                            errorMessage = AppLocalizations.of(
+                                                    context)!
+                                                .passwordMustContainLettersNumbersSpecial;
                                             isLoading = false;
                                           });
                                           return;
@@ -472,7 +485,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                           if (response == null) {
                                             setState(() {
                                               errorMessage =
-                                                  'Network error occurred';
+                                                  AppLocalizations.of(context)!
+                                                      .networkErrorOccurred;
                                               isLoading = false;
                                             });
                                             return;
@@ -485,20 +499,23 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                               400) {
                                             setState(() {
                                               errorMessage =
-                                                  'Invalid current password or password requirements not met';
+                                                  AppLocalizations.of(context)!
+                                                      .invalidCurrentPassword;
                                               isLoading = false;
                                             });
                                           } else if (response.statusCode ==
                                               401) {
                                             setState(() {
                                               errorMessage =
-                                                  'Current password is incorrect';
+                                                  AppLocalizations.of(context)!
+                                                      .currentPasswordIncorrect;
                                               isLoading = false;
                                             });
                                           } else {
                                             setState(() {
                                               errorMessage =
-                                                  'Failed to change password. Please try again.';
+                                                  AppLocalizations.of(context)!
+                                                      .failedToChangePassword;
                                               isLoading = false;
                                             });
                                           }
@@ -521,9 +538,10 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                                   Colors.white),
                                         ),
                                       )
-                                    : const Text(
-                                        'Change Password',
-                                        style: TextStyle(
+                                    : Text(
+                                        AppLocalizations.of(context)!
+                                            .changePassword,
+                                        style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -572,18 +590,18 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                   size: 48,
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Password Changed',
-                  style: TextStyle(
+                Text(
+                  AppLocalizations.of(context)!.passwordChanged,
+                  style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'Your password has been updated successfully.',
-                  style: TextStyle(
+                Text(
+                  AppLocalizations.of(context)!.passwordUpdatedSuccessfully,
+                  style: const TextStyle(
                     fontSize: 16,
                     color: Colors.black87,
                   ),
@@ -607,7 +625,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'You will be logged out. Please login again.',
+                          AppLocalizations.of(context)!
+                              .youWillBeLoggedOutPleaseLogin,
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.orange.shade900,
@@ -640,9 +659,9 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                         );
                       }
                     },
-                    child: const Text(
-                      'OK',
-                      style: TextStyle(
+                    child: Text(
+                      AppLocalizations.of(context)!.ok,
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -681,18 +700,18 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'Clear Cache',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context)!.clearCacheTitle,
+                        style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w600,
                           color: Colors.black,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      const Text(
-                        'This will clear all WebView cache and cookies. The app may need to reload data.',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context)!.clearCacheMessage,
+                        style: const TextStyle(
                           fontSize: 16,
                           color: Colors.black87,
                         ),
@@ -716,7 +735,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'This action cannot be undone',
+                                AppLocalizations.of(context)!
+                                    .thisActionCannotBeUndone,
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.orange.shade900,
@@ -749,9 +769,9 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                   : () {
                                       Navigator.of(dialogContext).pop();
                                     },
-                              child: const Text(
-                                'Cancel',
-                                style: TextStyle(
+                              child: Text(
+                                AppLocalizations.of(context)!.cancel,
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -787,17 +807,19 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                             ScaffoldMessenger.of(context)
                                                 .showSnackBar(
                                               SnackBar(
-                                                content: const Row(
+                                                content: Row(
                                                   children: [
-                                                    Icon(
+                                                    const Icon(
                                                       Icons.check_circle,
                                                       color: Colors.white,
                                                     ),
-                                                    SizedBox(width: 12),
+                                                    const SizedBox(width: 12),
                                                     Expanded(
                                                       child: Text(
-                                                        'Cache cleared successfully!',
-                                                        style: TextStyle(
+                                                        AppLocalizations.of(
+                                                                context)!
+                                                            .cacheClearedSuccessfully,
+                                                        style: const TextStyle(
                                                           fontSize: 15,
                                                           fontWeight:
                                                               FontWeight.w500,
@@ -826,17 +848,19 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                             ScaffoldMessenger.of(context)
                                                 .showSnackBar(
                                               SnackBar(
-                                                content: const Row(
+                                                content: Row(
                                                   children: [
-                                                    Icon(
+                                                    const Icon(
                                                       Icons.error_outline,
                                                       color: Colors.white,
                                                     ),
-                                                    SizedBox(width: 12),
+                                                    const SizedBox(width: 12),
                                                     Expanded(
                                                       child: Text(
-                                                        'Failed to clear cache',
-                                                        style: TextStyle(
+                                                        AppLocalizations.of(
+                                                                context)!
+                                                            .failedToClearCache,
+                                                        style: const TextStyle(
                                                           fontSize: 15,
                                                           fontWeight:
                                                               FontWeight.w500,
@@ -910,9 +934,9 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                                 Colors.white),
                                       ),
                                     )
-                                  : const Text(
-                                      'Clear Cache',
-                                      style: TextStyle(
+                                  : Text(
+                                      AppLocalizations.of(context)!.clearCache,
+                                      style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -940,9 +964,9 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         centerTitle: true,
-        title: const Text(
-          'Profile',
-          style: TextStyle(
+        title: Text(
+          AppLocalizations.of(context)!.profile,
+          style: const TextStyle(
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -974,7 +998,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Unable to load profile data',
+                        AppLocalizations.of(context)!.unableToLoadProfile,
                         style: TextStyle(
                           fontSize: 18,
                           color: Colors.grey[600],
@@ -997,7 +1021,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: const Text('Retry'),
+                        child: Text(AppLocalizations.of(context)!.retry),
                       ),
                     ],
                   ),
@@ -1008,7 +1032,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Center(child: _buildNameCard()),
-                      _buildSectionTitle('Personal Information'),
+                      _buildSectionTitle(
+                          AppLocalizations.of(context)!.personalInformation),
                       Card(
                         elevation: 0,
                         color: const Color.fromARGB(255, 238, 238, 238),
@@ -1020,24 +1045,25 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                           child: Column(
                             children: [
                               _buildInfoCard(
-                                title: 'Username',
+                                title: AppLocalizations.of(context)!.username,
                                 value: _userData!['username'] as String? ?? '',
                                 icon: Icons.alternate_email,
                               ),
                               _buildInfoCard(
-                                title: 'Email',
+                                title: AppLocalizations.of(context)!.email,
                                 value: _userData!['email'] as String? ?? '',
                                 icon: Icons.email_outlined,
                               ),
                               _buildInfoCard(
-                                title: 'Contact Number',
+                                title:
+                                    AppLocalizations.of(context)!.contactNumber,
                                 value:
                                     _userData!['contact_number'] as String? ??
                                         '',
                                 icon: Icons.phone_outlined,
                               ),
                               _buildInfoCard(
-                                title: 'User ID',
+                                title: AppLocalizations.of(context)!.userId,
                                 value: _userData!['id']?.toString() ?? '',
                                 icon: Icons.badge_outlined,
                               ),
@@ -1052,7 +1078,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                           endIndent: 16,
                           color: Colors.grey.withOpacity(0.3)),
                       const SizedBox(height: 16.0),
-                      _buildSectionTitle('Organization & Role'),
+                      _buildSectionTitle(
+                          AppLocalizations.of(context)!.organizationAndRole),
                       Card(
                         elevation: 0,
                         color: const Color.fromARGB(255, 238, 238, 238),
@@ -1064,25 +1091,27 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                           child: Column(
                             children: [
                               _buildInfoCard(
-                                title: 'Organization',
+                                title:
+                                    AppLocalizations.of(context)!.organization,
                                 value: _userData!['organization_name']
                                         as String? ??
                                     '',
                                 icon: Icons.business_outlined,
                               ),
                               _buildInfoCard(
-                                title: 'Organization ID',
+                                title: AppLocalizations.of(context)!
+                                    .organizationId,
                                 value:
                                     _userData!['organization'] as String? ?? '',
                                 icon: Icons.fingerprint,
                               ),
                               _buildInfoCard(
-                                title: 'Role(s)',
+                                title: AppLocalizations.of(context)!.roles,
                                 value: _getRolesText(),
                                 icon: Icons.work_outline,
                               ),
                               _buildInfoCard(
-                                title: 'Projects',
+                                title: AppLocalizations.of(context)!.projects,
                                 value: _getProjectsText(),
                                 icon: Icons.folder_outlined,
                               ),
@@ -1098,7 +1127,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                             endIndent: 16,
                             color: Colors.grey.withOpacity(0.3)),
                         const SizedBox(height: 16.0),
-                        _buildSectionTitle('Admin Status'),
+                        _buildSectionTitle(
+                            AppLocalizations.of(context)!.adminStatus),
                         Card(
                           elevation: 0,
                           color: const Color.fromARGB(255, 238, 238, 238),
@@ -1127,7 +1157,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                   ),
                                   const SizedBox(width: 12.0),
                                   Text(
-                                    'Super Administrator',
+                                    AppLocalizations.of(context)!
+                                        .superAdministrator,
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
@@ -1147,7 +1178,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                           endIndent: 16,
                           color: Colors.grey.withOpacity(0.3)),
                       const SizedBox(height: 16.0),
-                      _buildSectionTitle('Security'),
+                      _buildSectionTitle(
+                          AppLocalizations.of(context)!.security),
                       Card(
                         elevation: 0,
                         color: const Color.fromARGB(255, 238, 238, 238),
@@ -1189,9 +1221,10 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        const Text(
-                                          'Change Password',
-                                          style: TextStyle(
+                                        Text(
+                                          AppLocalizations.of(context)!
+                                              .changePassword,
+                                          style: const TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                             color: Color(0xFF592941),
@@ -1199,7 +1232,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                         ),
                                         const SizedBox(height: 4.0),
                                         Text(
-                                          'Update your account password',
+                                          AppLocalizations.of(context)!
+                                              .updateYourAccountPassword,
                                           style: TextStyle(
                                             fontSize: 13,
                                             color: Colors.grey[600],
@@ -1227,7 +1261,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                           endIndent: 16,
                           color: Colors.grey.withOpacity(0.3)),
                       const SizedBox(height: 16.0),
-                      _buildSectionTitle('App Data'),
+                      _buildSectionTitle(AppLocalizations.of(context)!.appData),
                       Card(
                         elevation: 0,
                         color: const Color.fromARGB(255, 238, 238, 238),
@@ -1269,9 +1303,10 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        const Text(
-                                          'Clear Cache',
-                                          style: TextStyle(
+                                        Text(
+                                          AppLocalizations.of(context)!
+                                              .clearCache,
+                                          style: const TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                             color: Color(0xFF592941),
@@ -1279,7 +1314,8 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                         ),
                                         const SizedBox(height: 4.0),
                                         Text(
-                                          'Clear WebView cache and cookies',
+                                          AppLocalizations.of(context)!
+                                              .clearWebViewCacheAndCookies,
                                           style: TextStyle(
                                             fontSize: 13,
                                             color: Colors.grey[600],

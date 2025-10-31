@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import './l10n/app_localizations.dart';
 
 import './utils/s3_helper.dart';
 import './config/aws_config.dart';
@@ -815,8 +816,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-                'Successfully downloaded data for the region: ${container.name}'),
+            content: Text(AppLocalizations.of(context)!
+                .successfullyDownloadedData(container.name)),
             backgroundColor: Colors.green,
           ),
         );
@@ -841,7 +842,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         if (!isCancelled) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to download data: ${e.toString()}'),
+              content: Text(AppLocalizations.of(context)!
+                  .failedToDownloadData(e.toString())),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 5),
             ),
@@ -888,8 +890,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Base map downloaded successfully'),
+          SnackBar(
+            content: Text(
+                AppLocalizations.of(context)!.baseMapDownloadedSuccessfully),
             backgroundColor: Colors.green,
           ),
         );
@@ -905,7 +908,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to retry base map: ${e.toString()}'),
+            content: Text(AppLocalizations.of(context)!
+                .failedToRetryBaseMap(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -958,8 +962,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Vector layers retry completed'),
+          SnackBar(
+            content:
+                Text(AppLocalizations.of(context)!.vectorLayersRetryCompleted),
             backgroundColor: Colors.green,
           ),
         );
@@ -972,7 +977,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to retry vector layers: ${e.toString()}'),
+            content: Text(AppLocalizations.of(context)!
+                .failedToRetryVectorLayers(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -1025,8 +1031,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Plan layers retry completed'),
+          SnackBar(
+            content:
+                Text(AppLocalizations.of(context)!.planLayersRetryCompleted),
             backgroundColor: Colors.green,
           ),
         );
@@ -1039,7 +1046,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to retry plan layers: ${e.toString()}'),
+            content: Text(AppLocalizations.of(context)!
+                .failedToRetryPlanLayers(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -1109,8 +1117,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Form data retry completed'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.formDataRetryCompleted),
             backgroundColor: Colors.green,
           ),
         );
@@ -1123,7 +1131,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to retry form data: ${e.toString()}'),
+            content: Text(AppLocalizations.of(context)!
+                .failedToRetryFormData(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -1202,16 +1211,17 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
 
         if (!anyFailed) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Image layers downloaded successfully'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!
+                  .imageLayersDownloadedSuccessfully),
               backgroundColor: Colors.green,
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content:
-                  Text('Some image layers failed. Check individual statuses.'),
+                  Text(AppLocalizations.of(context)!.someImageLayersFailed),
               backgroundColor: Colors.orange,
             ),
           );
@@ -1226,7 +1236,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to retry image layers: ${e.toString()}'),
+            content: Text(AppLocalizations.of(context)!
+                .failedToRetryImageLayers(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -1282,8 +1293,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Web app files retry completed'),
+          SnackBar(
+            content:
+                Text(AppLocalizations.of(context)!.webAppFilesRetryCompleted),
             backgroundColor: Colors.green,
           ),
         );
@@ -1296,7 +1308,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to retry web app: ${e.toString()}'),
+            content: Text(AppLocalizations.of(context)!
+                .failedToRetryWebApp(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -1384,8 +1397,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Download cancelled.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.downloadCancelled),
             backgroundColor: Colors.orange,
           ),
         );
@@ -1488,10 +1501,11 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title:
-            const Text('Downloading Layers', style: TextStyle(fontSize: 18.0)),
+        title: Text(l10n.downloadingLayers,
+            style: const TextStyle(fontSize: 18.0)),
         centerTitle: true,
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
@@ -1511,7 +1525,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                       borderRadius: BorderRadius.circular(15),
                     ),
                   ),
-                  child: const Text('Cancel'),
+                  child: Text(l10n.cancel),
                 ),
               )
             : null,
@@ -1532,16 +1546,16 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),
-                              title: const Text(
-                                'Download Complete',
-                                style: TextStyle(
+                              title: Text(
+                                l10n.downloadComplete,
+                                style: const TextStyle(
                                   color: Color(0xFF592941),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              content: const Text(
-                                'All layers have been downloaded successfully. You can now access this region offline.',
-                                style: TextStyle(
+                              content: Text(
+                                l10n.allLayersDownloadedSuccessfully,
+                                style: const TextStyle(
                                   color: Color(0xFF592941),
                                 ),
                               ),
@@ -1550,9 +1564,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                   onPressed: () {
                                     Navigator.pop(context);
                                   },
-                                  child: const Text(
-                                    'OK',
-                                    style: TextStyle(
+                                  child: Text(
+                                    l10n.ok,
+                                    style: const TextStyle(
                                       color: Color(0xFF592941),
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -1571,16 +1585,16 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),
-                              title: const Text(
-                                'Download Incomplete',
-                                style: TextStyle(
+                              title: Text(
+                                l10n.downloadIncomplete,
+                                style: const TextStyle(
                                   color: Colors.orange,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              content: const Text(
-                                'Some layers failed to download. You can retry failed layers or exit. The container will not be marked as complete.',
-                                style: TextStyle(
+                              content: Text(
+                                l10n.someLayersFailedToDownload,
+                                style: const TextStyle(
                                   color: Color(0xFF592941),
                                 ),
                               ),
@@ -1589,9 +1603,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                   onPressed: () {
                                     Navigator.pop(context);
                                   },
-                                  child: const Text(
-                                    'Retry',
-                                    style: TextStyle(
+                                  child: Text(
+                                    l10n.retry,
+                                    style: const TextStyle(
                                       color: Color(0xFF592941),
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -1602,9 +1616,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                     Navigator.pop(context);
                                     Navigator.pop(context);
                                   },
-                                  child: const Text(
-                                    'Exit Anyway',
-                                    style: TextStyle(
+                                  child: Text(
+                                    l10n.exitAnyway,
+                                    style: const TextStyle(
                                       color: Colors.red,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -1632,7 +1646,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                   borderRadius: BorderRadius.circular(15),
                 ),
               ),
-              child: Text(hasAnyFailures ? 'Exit' : 'Done'),
+              child: Text(hasAnyFailures ? l10n.exit : l10n.done),
             ),
           )
         ],
@@ -1642,13 +1656,14 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
   }
 
   Widget buildDownloadProgressContent() {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.all(20),
       child: ListView(
         children: [
-          const Text(
-            "Please do not close this page while download is in progress.",
-            style: TextStyle(
+          Text(
+            l10n.doNotClosePageWhileDownloading,
+            style: const TextStyle(
               fontSize: 18,
               color: Color(0xFF592941),
             ),
@@ -1688,9 +1703,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Downloading Layers",
-                  style: TextStyle(
+                Text(
+                  l10n.downloadingLayers,
+                  style: const TextStyle(
                     fontSize: 18,
                     color: Color(0xFF592941),
                   ),
@@ -1827,9 +1842,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
-                            "Estimated time to download: 10 minutes",
-                            style: TextStyle(
+                          Text(
+                            l10n.estimatedTimeToDownload,
+                            style: const TextStyle(
                               fontSize: 14,
                               color: Color(0xFF592941),
                             ),
@@ -1853,9 +1868,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Download Status",
-                  style: TextStyle(
+                Text(
+                  l10n.downloadStatus,
+                  style: const TextStyle(
                     fontSize: 18,
                     color: Color(0xFF592941),
                     fontWeight: FontWeight.bold,
@@ -1889,10 +1904,10 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                 color: const Color(0xFF592941),
                               ),
                               const SizedBox(width: 8),
-                              const Expanded(
+                              Expanded(
                                 child: Text(
-                                  "Base Map",
-                                  style: TextStyle(
+                                  l10n.baseMap,
+                                  style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF592941),
@@ -1920,7 +1935,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                       onPressed:
                                           isRetrying ? null : retryBaseMap,
                                       icon: const Icon(Icons.refresh, size: 16),
-                                      label: const Text('Retry'),
+                                      label: Text(l10n.retry),
                                       style: TextButton.styleFrom(
                                         foregroundColor: Colors.white,
                                         backgroundColor:
@@ -1993,16 +2008,20 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              const Text(
-                                                "Vector Layers",
-                                                style: TextStyle(
+                                              Text(
+                                                l10n.vectorLayers,
+                                                style: const TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
                                                   color: Color(0xFF592941),
                                                 ),
                                               ),
                                               Text(
-                                                "$nonPlanCompletedCount of ${nonPlanLayers.length} completed",
+                                                l10n.completedOf(
+                                                    nonPlanCompletedCount
+                                                        .toString(),
+                                                    nonPlanLayers.length
+                                                        .toString()),
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   color: Color(0xFF592941),
@@ -2040,7 +2059,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                                     : retryVectorLayers,
                                                 icon: const Icon(Icons.refresh,
                                                     size: 16),
-                                                label: const Text('Retry'),
+                                                label: Text(l10n.retry),
                                                 style: TextButton.styleFrom(
                                                   foregroundColor: Colors.white,
                                                   backgroundColor:
@@ -2177,16 +2196,20 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              const Text(
-                                                "Plan Layers",
-                                                style: TextStyle(
+                                              Text(
+                                                l10n.planLayers,
+                                                style: const TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
                                                   color: Color(0xFF592941),
                                                 ),
                                               ),
                                               Text(
-                                                "$completedCount of ${_getTotalPlanLayersCount(snapshot.data!)} completed",
+                                                l10n.completedOf(
+                                                    completedCount.toString(),
+                                                    _getTotalPlanLayersCount(
+                                                            snapshot.data!)
+                                                        .toString()),
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   color: Color(0xFF592941),
@@ -2223,7 +2246,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                                     : retryPlanLayers,
                                                 icon: const Icon(Icons.refresh,
                                                     size: 16),
-                                                label: const Text('Retry'),
+                                                label: Text(l10n.retry),
                                                 style: TextButton.styleFrom(
                                                   foregroundColor: Colors.white,
                                                   backgroundColor:
@@ -2363,16 +2386,19 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              const Text(
-                                                "Raster Layers (GeoTIFF + PNG)",
-                                                style: TextStyle(
+                                              Text(
+                                                l10n.rasterLayersGeoTiffPng,
+                                                style: const TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
                                                   color: Color(0xFF592941),
                                                 ),
                                               ),
                                               Text(
-                                                "$totalCompleted of $totalRasterLayers completed",
+                                                l10n.completedOf(
+                                                    totalCompleted.toString(),
+                                                    totalRasterLayers
+                                                        .toString()),
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   color: Color(0xFF592941),
@@ -2409,7 +2435,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                                     : retryImageLayers,
                                                 icon: const Icon(Icons.refresh,
                                                     size: 16),
-                                                label: const Text('Retry'),
+                                                label: Text(l10n.retry),
                                                 style: TextButton.styleFrom(
                                                   foregroundColor: Colors.white,
                                                   backgroundColor:
@@ -2627,16 +2653,19 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              const Text(
-                                                "Form Data Files",
-                                                style: TextStyle(
+                                              Text(
+                                                l10n.formDataFiles,
+                                                style: const TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
                                                   color: Color(0xFF592941),
                                                 ),
                                               ),
                                               Text(
-                                                "$s3CompletedCount of ${s3JsonProgress.length} completed",
+                                                l10n.completedOf(
+                                                    s3CompletedCount.toString(),
+                                                    s3JsonProgress.length
+                                                        .toString()),
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   color: Color(0xFF592941),
@@ -2671,7 +2700,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                                     : retryFormData,
                                                 icon: const Icon(Icons.refresh,
                                                     size: 16),
-                                                label: const Text('Retry'),
+                                                label: Text(l10n.retry),
                                                 style: TextButton.styleFrom(
                                                   foregroundColor: Colors.white,
                                                   backgroundColor:
@@ -2815,16 +2844,20 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              const Text(
-                                                "Web App Files",
-                                                style: TextStyle(
+                                              Text(
+                                                l10n.webAppFiles,
+                                                style: const TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
                                                   color: Color(0xFF592941),
                                                 ),
                                               ),
                                               Text(
-                                                "$webappCompletedCount of ${webappProgress.length} completed",
+                                                l10n.completedOf(
+                                                    webappCompletedCount
+                                                        .toString(),
+                                                    webappProgress.length
+                                                        .toString()),
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   color: Color(0xFF592941),
@@ -2859,7 +2892,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                                     : retryWebApp,
                                                 icon: const Icon(Icons.refresh,
                                                     size: 16),
-                                                label: const Text('Retry'),
+                                                label: Text(l10n.retry),
                                                 style: TextButton.styleFrom(
                                                   foregroundColor: Colors.white,
                                                   backgroundColor:
@@ -2979,16 +3012,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                   },
                 ),
               ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Center(
-            child: Text(
-              isDownloading ? "---" : "Download Complete",
-              style: const TextStyle(
-                color: Color(0xFF592941),
-                fontSize: 16,
-              ),
             ),
           ),
         ],

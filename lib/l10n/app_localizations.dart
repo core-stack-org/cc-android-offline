@@ -62,8 +62,7 @@ import 'app_localizations_hi.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -71,8 +70,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -84,8 +82,7 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-      <LocalizationsDelegate<dynamic>>[
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
     delegate,
     GlobalMaterialLocalizations.delegate,
     GlobalCupertinoLocalizations.delegate,
@@ -673,10 +670,519 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Zoom out'**
   String get zoomOut;
+
+  /// No description provided for @downloadingLayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading Layers'**
+  String get downloadingLayers;
+
+  /// No description provided for @doNotClosePageWhileDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Please do not close this page while download process is in progress.'**
+  String get doNotClosePageWhileDownloading;
+
+  /// No description provided for @regionName.
+  ///
+  /// In en, this message translates to:
+  /// **'Region name:'**
+  String get regionName;
+
+  /// No description provided for @estimatedTimeToDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated time to download: 10 minutes'**
+  String get estimatedTimeToDownload;
+
+  /// No description provided for @downloadStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Status'**
+  String get downloadStatus;
+
+  /// No description provided for @baseMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Base Map'**
+  String get baseMap;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @vectorLayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Vector Layers'**
+  String get vectorLayers;
+
+  /// No description provided for @completedOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{completed} of {total} completed'**
+  String completedOf(String completed, String total);
+
+  /// No description provided for @planLayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan Layers'**
+  String get planLayers;
+
+  /// No description provided for @rasterLayersGeoTiffPng.
+  ///
+  /// In en, this message translates to:
+  /// **'Raster Layers (GeoTIFF + PNG)'**
+  String get rasterLayersGeoTiffPng;
+
+  /// No description provided for @formDataFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Form Data Files'**
+  String get formDataFiles;
+
+  /// No description provided for @webAppFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Web App Files'**
+  String get webAppFiles;
+
+  /// No description provided for @clartLayerGeoTiff.
+  ///
+  /// In en, this message translates to:
+  /// **'CLART Layer (GeoTIFF)'**
+  String get clartLayerGeoTiff;
+
+  /// No description provided for @clartLayerPng.
+  ///
+  /// In en, this message translates to:
+  /// **'CLART Layer (PNG)'**
+  String get clartLayerPng;
+
+  /// No description provided for @downloadingOfflineData.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading Offline Data'**
+  String get downloadingOfflineData;
+
+  /// No description provided for @preparingToDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing to download {containerName}'**
+  String preparingToDownload(String containerName);
+
+  /// No description provided for @downloadedPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloaded {percent}% for {containerName}'**
+  String downloadedPercent(String percent, String containerName);
+
+  /// No description provided for @successfullyDownloadedData.
+  ///
+  /// In en, this message translates to:
+  /// **'Successfully downloaded data for the region: {containerName}'**
+  String successfullyDownloadedData(String containerName);
+
+  /// No description provided for @failedToDownloadData.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to download data: {error}'**
+  String failedToDownloadData(String error);
+
+  /// No description provided for @downloadCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Download cancelled.'**
+  String get downloadCancelled;
+
+  /// No description provided for @baseMapDownloadedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Base map downloaded successfully'**
+  String get baseMapDownloadedSuccessfully;
+
+  /// No description provided for @failedToRetryBaseMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to retry base map: {error}'**
+  String failedToRetryBaseMap(String error);
+
+  /// No description provided for @vectorLayersRetryCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Vector layers retry completed'**
+  String get vectorLayersRetryCompleted;
+
+  /// No description provided for @failedToRetryVectorLayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to retry vector layers: {error}'**
+  String failedToRetryVectorLayers(String error);
+
+  /// No description provided for @planLayersRetryCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan layers retry completed'**
+  String get planLayersRetryCompleted;
+
+  /// No description provided for @failedToRetryPlanLayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to retry plan layers: {error}'**
+  String failedToRetryPlanLayers(String error);
+
+  /// No description provided for @formDataRetryCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Form data retry completed'**
+  String get formDataRetryCompleted;
+
+  /// No description provided for @failedToRetryFormData.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to retry form data: {error}'**
+  String failedToRetryFormData(String error);
+
+  /// No description provided for @imageLayersDownloadedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Image layers downloaded successfully'**
+  String get imageLayersDownloadedSuccessfully;
+
+  /// No description provided for @someImageLayersFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Some image layers failed. Check individual statuses.'**
+  String get someImageLayersFailed;
+
+  /// No description provided for @failedToRetryImageLayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to retry image layers: {error}'**
+  String failedToRetryImageLayers(String error);
+
+  /// No description provided for @webAppFilesRetryCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Web app files retry completed'**
+  String get webAppFilesRetryCompleted;
+
+  /// No description provided for @failedToRetryWebApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to retry web app: {error}'**
+  String failedToRetryWebApp(String error);
+
+  /// No description provided for @downloadComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Complete'**
+  String get downloadComplete;
+
+  /// No description provided for @allLayersDownloadedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'All layers have been downloaded successfully. You can now access this region offline.'**
+  String get allLayersDownloadedSuccessfully;
+
+  /// No description provided for @downloadIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Incomplete'**
+  String get downloadIncomplete;
+
+  /// No description provided for @someLayersFailedToDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Some layers failed to download. You can retry failed layers or exit. The container will not be marked as complete.'**
+  String get someLayersFailedToDownload;
+
+  /// No description provided for @exitAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit Anyway'**
+  String get exitAnyway;
+
+  /// No description provided for @exit.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit'**
+  String get exit;
+
+  /// No description provided for @profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get profile;
+
+  /// No description provided for @notSpecified.
+  ///
+  /// In en, this message translates to:
+  /// **'Not specified'**
+  String get notSpecified;
+
+  /// No description provided for @personalInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal Information'**
+  String get personalInformation;
+
+  /// No description provided for @username.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get username;
+
+  /// No description provided for @email.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get email;
+
+  /// No description provided for @contactNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact Number'**
+  String get contactNumber;
+
+  /// No description provided for @userId.
+  ///
+  /// In en, this message translates to:
+  /// **'User ID'**
+  String get userId;
+
+  /// No description provided for @organizationAndRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization & Role'**
+  String get organizationAndRole;
+
+  /// No description provided for @organization.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization'**
+  String get organization;
+
+  /// No description provided for @organizationId.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization ID'**
+  String get organizationId;
+
+  /// No description provided for @roles.
+  ///
+  /// In en, this message translates to:
+  /// **'Role(s)'**
+  String get roles;
+
+  /// No description provided for @projects.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get projects;
+
+  /// No description provided for @noProjectsAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'No projects assigned'**
+  String get noProjectsAssigned;
+
+  /// No description provided for @noRolesAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'No roles assigned'**
+  String get noRolesAssigned;
+
+  /// No description provided for @unknownProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown Project'**
+  String get unknownProject;
+
+  /// No description provided for @adminStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin Status'**
+  String get adminStatus;
+
+  /// No description provided for @superAdministrator.
+  ///
+  /// In en, this message translates to:
+  /// **'Super Administrator'**
+  String get superAdministrator;
+
+  /// No description provided for @security.
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get security;
+
+  /// No description provided for @changePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Password'**
+  String get changePassword;
+
+  /// No description provided for @updateYourAccountPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Update your account password'**
+  String get updateYourAccountPassword;
+
+  /// No description provided for @appData.
+  ///
+  /// In en, this message translates to:
+  /// **'App Data'**
+  String get appData;
+
+  /// No description provided for @clearCache.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Cache'**
+  String get clearCache;
+
+  /// No description provided for @clearWebViewCacheAndCookies.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear WebView cache and cookies'**
+  String get clearWebViewCacheAndCookies;
+
+  /// No description provided for @currentPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Password'**
+  String get currentPassword;
+
+  /// No description provided for @newPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'New Password'**
+  String get newPassword;
+
+  /// No description provided for @confirmNewPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm New Password'**
+  String get confirmNewPassword;
+
+  /// No description provided for @youWillBeLoggedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'You will be logged out from all devices'**
+  String get youWillBeLoggedOut;
+
+  /// No description provided for @minPasswordRequirements.
+  ///
+  /// In en, this message translates to:
+  /// **'Min 8 chars, alphanumeric, special symbols'**
+  String get minPasswordRequirements;
+
+  /// No description provided for @allFieldsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'All fields are required'**
+  String get allFieldsRequired;
+
+  /// No description provided for @newPasswordsDoNotMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'New passwords do not match'**
+  String get newPasswordsDoNotMatch;
+
+  /// No description provided for @passwordMustBeAtLeast8.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 8 characters'**
+  String get passwordMustBeAtLeast8;
+
+  /// No description provided for @passwordMustContainLettersNumbersSpecial.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must contain letters, numbers, and special characters'**
+  String get passwordMustContainLettersNumbersSpecial;
+
+  /// No description provided for @networkErrorOccurred.
+  ///
+  /// In en, this message translates to:
+  /// **'Network error occurred'**
+  String get networkErrorOccurred;
+
+  /// No description provided for @invalidCurrentPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid current password or password requirements not met'**
+  String get invalidCurrentPassword;
+
+  /// No description provided for @currentPasswordIncorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password is incorrect'**
+  String get currentPasswordIncorrect;
+
+  /// No description provided for @failedToChangePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to change password. Please try again.'**
+  String get failedToChangePassword;
+
+  /// No description provided for @passwordChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Password Changed'**
+  String get passwordChanged;
+
+  /// No description provided for @passwordUpdatedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Your password has been updated successfully.'**
+  String get passwordUpdatedSuccessfully;
+
+  /// No description provided for @youWillBeLoggedOutPleaseLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'You will be logged out. Please login again.'**
+  String get youWillBeLoggedOutPleaseLogin;
+
+  /// No description provided for @clearCacheTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Cache'**
+  String get clearCacheTitle;
+
+  /// No description provided for @clearCacheMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will clear all WebView cache and cookies. The app may need to reload data.'**
+  String get clearCacheMessage;
+
+  /// No description provided for @thisActionCannotBeUndone.
+  ///
+  /// In en, this message translates to:
+  /// **'This action cannot be undone'**
+  String get thisActionCannotBeUndone;
+
+  /// No description provided for @cacheClearedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache cleared successfully!'**
+  String get cacheClearedSuccessfully;
+
+  /// No description provided for @failedToClearCache.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to clear cache'**
+  String get failedToClearCache;
+
+  /// No description provided for @unableToLoadProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to load profile data'**
+  String get unableToLoadProfile;
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -685,25 +1191,25 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'hi'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'hi'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
+
+
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'en':
-      return AppLocalizationsEn();
-    case 'hi':
-      return AppLocalizationsHi();
+    case 'en': return AppLocalizationsEn();
+    case 'hi': return AppLocalizationsHi();
   }
 
   throw FlutterError(
-      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-      'an issue with the localizations generation tool. Please file an issue '
-      'on GitHub with a reproducible sample app and the gen-l10n configuration '
-      'that was used.');
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.'
+  );
 }

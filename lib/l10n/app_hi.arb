@@ -95,5 +95,173 @@
   "changeMapLayer": "मानचित्र परत बदलें",
   "goToCurrentLocation": "वर्तमान स्थान पर जाएं",
   "zoomIn": "ज़ूम इन",
-  "zoomOut": "ज़ूम आउट"
+  "zoomOut": "ज़ूम आउट",
+  "downloadingLayers": "लेयर डाउनलोड हो रही हैं",
+  "doNotClosePageWhileDownloading": "कृपया डाउनलोड प्रक्रिया चल रहे समय इस पेज को बंद न करें।",
+  "regionName": "क्षेत्र का नाम:",
+  "estimatedTimeToDownload": "डाउनलोड का अनुमानित समय: 10 मिनट",
+  "downloadStatus": "डाउनलोड स्थिति",
+  "baseMap": "बेस मैप",
+  "retry": "पुनः प्रयास",
+  "vectorLayers": "वेक्टर लेयर",
+  "completedOf": "{total} में से {completed} पूर्ण",
+  "@completedOf": {
+    "placeholders": {
+      "completed": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "planLayers": "योजना लेयर",
+  "rasterLayersGeoTiffPng": "रास्टर लेयर (GeoTIFF + PNG)",
+  "formDataFiles": "फॉर्म डेटा फाइलें",
+  "webAppFiles": "वेब ऐप फाइलें",
+  "clartLayerGeoTiff": "CLART लेयर (GeoTIFF)",
+  "clartLayerPng": "CLART लेयर (PNG)",
+  "downloadingOfflineData": "ऑफलाइन डेटा डाउनलोड हो रहा है",
+  "preparingToDownload": "{containerName} डाउनलोड करने की तैयारी हो रही है",
+  "@preparingToDownload": {
+    "placeholders": {
+      "containerName": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadedPercent": "{containerName} के लिए {percent}% डाउनलोड हो गया",
+  "@downloadedPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      },
+      "containerName": {
+        "type": "String"
+      }
+    }
+  },
+  "successfullyDownloadedData": "क्षेत्र के लिए डेटा सफलतापूर्वक डाउनलोड हो गया: {containerName}",
+  "@successfullyDownloadedData": {
+    "placeholders": {
+      "containerName": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToDownloadData": "डेटा डाउनलोड करने में विफल: {error}",
+  "@failedToDownloadData": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadCancelled": "डाउनलोड रद्द कर दिया गया।",
+  "baseMapDownloadedSuccessfully": "बेस मैप सफलतापूर्वक डाउनलोड हो गया",
+  "failedToRetryBaseMap": "बेस मैप पुनः प्रयास में विफल: {error}",
+  "@failedToRetryBaseMap": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "vectorLayersRetryCompleted": "वेक्टर लेयर पुनः प्रयास पूर्ण",
+  "failedToRetryVectorLayers": "वेक्टर लेयर पुनः प्रयास में विफल: {error}",
+  "@failedToRetryVectorLayers": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "planLayersRetryCompleted": "योजना लेयर पुनः प्रयास पूर्ण",
+  "failedToRetryPlanLayers": "योजना लेयर पुनः प्रयास में विफल: {error}",
+  "@failedToRetryPlanLayers": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "formDataRetryCompleted": "फॉर्म डेटा पुनः प्रयास पूर्ण",
+  "failedToRetryFormData": "फॉर्म डेटा पुनः प्रयास में विफल: {error}",
+  "@failedToRetryFormData": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "imageLayersDownloadedSuccessfully": "इमेज लेयर सफलतापूर्वक डाउनलोड हो गईं",
+  "someImageLayersFailed": "कुछ इमेज लेयर विफल रहीं। व्यक्तिगत स्थिति देखें।",
+  "failedToRetryImageLayers": "इमेज लेयर पुनः प्रयास में विफल: {error}",
+  "@failedToRetryImageLayers": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "webAppFilesRetryCompleted": "वेब ऐप फाइलें पुनः प्रयास पूर्ण",
+  "failedToRetryWebApp": "वेब ऐप पुनः प्रयास में विफल: {error}",
+  "@failedToRetryWebApp": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadComplete": "डाउनलोड पूर्ण",
+  "allLayersDownloadedSuccessfully": "सभी लेयर सफलतापूर्वक डाउनलोड हो गई हैं। अब आप इस क्षेत्र को ऑफलाइन एक्सेस कर सकते हैं।",
+  "downloadIncomplete": "डाउनलोड अधूरा",
+  "someLayersFailedToDownload": "कुछ लेयर डाउनलोड होने में विफल रहीं। आप विफल लेयर पुनः प्रयास कर सकते हैं या बाहर निकल सकते हैं। कंटेनर को पूर्ण के रूप में चिह्नित नहीं किया जाएगा।",
+  "exitAnyway": "फिर भी बाहर निकलें",
+  "exit": "बाहर निकलें",
+  "profile": "प्रोफ़ाइल",
+  "notSpecified": "निर्दिष्ट नहीं",
+  "personalInformation": "व्यक्तिगत जानकारी",
+  "username": "उपयोगकर्ता नाम",
+  "email": "ईमेल",
+  "contactNumber": "संपर्क नंबर",
+  "userId": "उपयोगकर्ता आईडी",
+  "organizationAndRole": "संगठन और भूमिका",
+  "organization": "संगठन",
+  "organizationId": "संगठन आईडी",
+  "roles": "भूमिका(एं)",
+  "projects": "परियोजनाएं",
+  "noProjectsAssigned": "कोई परियोजना नहीं सौंपी गई",
+  "noRolesAssigned": "कोई भूमिका नहीं सौंपी गई",
+  "unknownProject": "अज्ञात परियोजना",
+  "adminStatus": "व्यवस्थापक स्थिति",
+  "superAdministrator": "सुपर व्यवस्थापक",
+  "security": "सुरक्षा",
+  "changePassword": "पासवर्ड बदलें",
+  "updateYourAccountPassword": "अपने खाते का पासवर्ड अपडेट करें",
+  "appData": "ऐप डेटा",
+  "clearCache": "कैश साफ़ करें",
+  "clearWebViewCacheAndCookies": "वेबव्यू कैश और कुकीज़ साफ़ करें",
+  "currentPassword": "वर्तमान पासवर्ड",
+  "newPassword": "नया पासवर्ड",
+  "confirmNewPassword": "नए पासवर्ड की पुष्टि करें",
+  "youWillBeLoggedOut": "आप सभी उपकरणों से लॉग आउट हो जाएंगे",
+  "minPasswordRequirements": "कम से कम 8 अक्षर, अल्फान्यूमेरिक, विशेष प्रतीक",
+  "allFieldsRequired": "सभी फ़ील्ड आवश्यक हैं",
+  "newPasswordsDoNotMatch": "नए पासवर्ड मेल नहीं खाते",
+  "passwordMustBeAtLeast8": "पासवर्ड कम से कम 8 अक्षरों का होना चाहिए",
+  "passwordMustContainLettersNumbersSpecial": "पासवर्ड में अक्षर, संख्या और विशेष वर्ण होने चाहिए",
+  "networkErrorOccurred": "नेटवर्क त्रुटि हुई",
+  "invalidCurrentPassword": "अमान्य वर्तमान पासवर्ड या पासवर्ड आवश्यकताएं पूरी नहीं हुईं",
+  "currentPasswordIncorrect": "वर्तमान पासवर्ड गलत है",
+  "failedToChangePassword": "पासवर्ड बदलने में विफल। कृपया पुनः प्रयास करें।",
+  "passwordChanged": "पासवर्ड बदल गया",
+  "passwordUpdatedSuccessfully": "आपका पासवर्ड सफलतापूर्वक अपडेट हो गया है।",
+  "youWillBeLoggedOutPleaseLogin": "आप लॉग आउट हो जाएंगे। कृपया फिर से लॉगिन करें।",
+  "clearCacheTitle": "कैश साफ़ करें",
+  "clearCacheMessage": "यह सभी वेबव्यू कैश और कुकीज़ साफ़ कर देगा। ऐप को डेटा पुनः लोड करने की आवश्यकता हो सकती है।",
+  "thisActionCannotBeUndone": "इस क्रिया को पूर्ववत नहीं किया जा सकता",
+  "cacheClearedSuccessfully": "कैश सफलतापूर्वक साफ़ हो गया!",
+  "failedToClearCache": "कैश साफ़ करने में विफल",
+  "unableToLoadProfile": "प्रोफ़ाइल डेटा लोड करने में असमर्थ"
 }

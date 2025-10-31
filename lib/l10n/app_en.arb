@@ -95,5 +95,173 @@
   "changeMapLayer": "Change map layer",
   "goToCurrentLocation": "Go to current location",
   "zoomIn": "Zoom in",
-  "zoomOut": "Zoom out"
+  "zoomOut": "Zoom out",
+  "downloadingLayers": "Downloading Layers",
+  "doNotClosePageWhileDownloading": "Please do not close this page while download process is in progress.",
+  "regionName": "Region name:",
+  "estimatedTimeToDownload": "Estimated time to download: 10 minutes",
+  "downloadStatus": "Download Status",
+  "baseMap": "Base Map",
+  "retry": "Retry",
+  "vectorLayers": "Vector Layers",
+  "completedOf": "{completed} of {total} completed",
+  "@completedOf": {
+    "placeholders": {
+      "completed": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "planLayers": "Plan Layers",
+  "rasterLayersGeoTiffPng": "Raster Layers (GeoTIFF + PNG)",
+  "formDataFiles": "Form Data Files",
+  "webAppFiles": "Web App Files",
+  "clartLayerGeoTiff": "CLART Layer (GeoTIFF)",
+  "clartLayerPng": "CLART Layer (PNG)",
+  "downloadingOfflineData": "Downloading Offline Data",
+  "preparingToDownload": "Preparing to download {containerName}",
+  "@preparingToDownload": {
+    "placeholders": {
+      "containerName": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadedPercent": "Downloaded {percent}% for {containerName}",
+  "@downloadedPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      },
+      "containerName": {
+        "type": "String"
+      }
+    }
+  },
+  "successfullyDownloadedData": "Successfully downloaded data for the region: {containerName}",
+  "@successfullyDownloadedData": {
+    "placeholders": {
+      "containerName": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToDownloadData": "Failed to download data: {error}",
+  "@failedToDownloadData": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadCancelled": "Download cancelled.",
+  "baseMapDownloadedSuccessfully": "Base map downloaded successfully",
+  "failedToRetryBaseMap": "Failed to retry base map: {error}",
+  "@failedToRetryBaseMap": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "vectorLayersRetryCompleted": "Vector layers retry completed",
+  "failedToRetryVectorLayers": "Failed to retry vector layers: {error}",
+  "@failedToRetryVectorLayers": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "planLayersRetryCompleted": "Plan layers retry completed",
+  "failedToRetryPlanLayers": "Failed to retry plan layers: {error}",
+  "@failedToRetryPlanLayers": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "formDataRetryCompleted": "Form data retry completed",
+  "failedToRetryFormData": "Failed to retry form data: {error}",
+  "@failedToRetryFormData": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "imageLayersDownloadedSuccessfully": "Image layers downloaded successfully",
+  "someImageLayersFailed": "Some image layers failed. Check individual statuses.",
+  "failedToRetryImageLayers": "Failed to retry image layers: {error}",
+  "@failedToRetryImageLayers": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "webAppFilesRetryCompleted": "Web app files retry completed",
+  "failedToRetryWebApp": "Failed to retry web app: {error}",
+  "@failedToRetryWebApp": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadComplete": "Download Complete",
+  "allLayersDownloadedSuccessfully": "All layers have been downloaded successfully. You can now access this region offline.",
+  "downloadIncomplete": "Download Incomplete",
+  "someLayersFailedToDownload": "Some layers failed to download. You can retry failed layers or exit. The container will not be marked as complete.",
+  "exitAnyway": "Exit Anyway",
+  "exit": "Exit",
+  "profile": "Profile",
+  "notSpecified": "Not specified",
+  "personalInformation": "Personal Information",
+  "username": "Username",
+  "email": "Email",
+  "contactNumber": "Contact Number",
+  "userId": "User ID",
+  "organizationAndRole": "Organization & Role",
+  "organization": "Organization",
+  "organizationId": "Organization ID",
+  "roles": "Role(s)",
+  "projects": "Projects",
+  "noProjectsAssigned": "No projects assigned",
+  "noRolesAssigned": "No roles assigned",
+  "unknownProject": "Unknown Project",
+  "adminStatus": "Admin Status",
+  "superAdministrator": "Super Administrator",
+  "security": "Security",
+  "changePassword": "Change Password",
+  "updateYourAccountPassword": "Update your account password",
+  "appData": "App Data",
+  "clearCache": "Clear Cache",
+  "clearWebViewCacheAndCookies": "Clear WebView cache and cookies",
+  "currentPassword": "Current Password",
+  "newPassword": "New Password",
+  "confirmNewPassword": "Confirm New Password",
+  "youWillBeLoggedOut": "You will be logged out from all devices",
+  "minPasswordRequirements": "Min 8 chars, alphanumeric, special symbols",
+  "allFieldsRequired": "All fields are required",
+  "newPasswordsDoNotMatch": "New passwords do not match",
+  "passwordMustBeAtLeast8": "Password must be at least 8 characters",
+  "passwordMustContainLettersNumbersSpecial": "Password must contain letters, numbers, and special characters",
+  "networkErrorOccurred": "Network error occurred",
+  "invalidCurrentPassword": "Invalid current password or password requirements not met",
+  "currentPasswordIncorrect": "Current password is incorrect",
+  "failedToChangePassword": "Failed to change password. Please try again.",
+  "passwordChanged": "Password Changed",
+  "passwordUpdatedSuccessfully": "Your password has been updated successfully.",
+  "youWillBeLoggedOutPleaseLogin": "You will be logged out. Please login again.",
+  "clearCacheTitle": "Clear Cache",
+  "clearCacheMessage": "This will clear all WebView cache and cookies. The app may need to reload data.",
+  "thisActionCannotBeUndone": "This action cannot be undone",
+  "cacheClearedSuccessfully": "Cache cleared successfully!",
+  "failedToClearCache": "Failed to clear cache",
+  "unableToLoadProfile": "Unable to load profile data"
 }
