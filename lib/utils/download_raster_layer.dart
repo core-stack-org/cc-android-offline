@@ -5,10 +5,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:nrmflutter/container_flow/container_manager.dart';
 import 'package:nrmflutter/utils/utility.dart';
 
+import '../utils/s3_helper.dart';
+import '../config/aws_config.dart';
+
 class RasterLayerDownloader {
   final Function(String layerName, double progress) onProgressUpdate;
   final String geoserverUrl = 'https://geoserver.core-stack.org:8443/';
   Map<String, bool> layerCancelled = {};
+  late S3Helper s3Helper;
 
   RasterLayerDownloader({required this.onProgressUpdate});
 
@@ -23,6 +27,13 @@ class RasterLayerDownloader {
   }) async {
     print("Starting downloadImageLayers");
 
+    s3Helper = S3Helper(
+      accessKey: AWSConfig.accessKey,
+      secretKey: AWSConfig.secretKey,
+      region: AWSConfig.region,
+      bucketName: AWSConfig.bucketName,
+    );
+
     final districtFormatted = formatNameForGeoServer(district ?? '');
     final blockFormatted = formatNameForGeoServer(block ?? '');
 
@@ -36,17 +47,52 @@ class RasterLayerDownloader {
       return;
     }
 
-    final clartUrl =
-        '${geoserverUrl}geoserver/clart/wcs?service=WCS&version=2.0.1&request=GetCoverage&CoverageId=clart:${districtFormatted}_${blockFormatted}_clart&styles=testClart&format=geotiff&compression=LZW&tiling=false';
+    //final clartUrl = '${geoserverUrl}geoserver/clart/wcs?service=WCS&version=2.0.1&request=GetCoverage&CoverageId=clart:${districtFormatted}_${blockFormatted}_clart&styles=testClart&format=geotiff&compression=LZW&tiling=false';
 
     onProgressUpdate(clartLayerName, 0.0);
 
     try {
-      await downloadImageLayer(
-        layerName: clartLayerName,
-        url: clartUrl,
-        container: container,
-      );
+      // await downloadImageLayer(
+      //   layerName: clartLayerName,
+      //   url: clartUrl,
+      //   container: container,
+      // );
+      final clartTifContent = await s3Helper.downloadFileBytes('clart_theni_periyakulam_clart.tif');
+
+      if (clartTifContent != null && clartTifContent.isNotEmpty) {
+        // Save the downloaded file
+        final directory = await getApplicationDocumentsDirectory();
+        final formattedLayerName = formatLayerName(clartLayerName);
+
+        final containerPath =
+            '${directory.path}/persistent_offline_data/containers/${container.name}';
+
+        final filePath = '$containerPath/image_layers/$formattedLayerName.tiff';
+        print("Saving CLART layer to: $filePath");
+
+        final file = File(filePath);
+        await file.create(recursive: true);
+
+        // Write the bytes to file
+        await file.writeAsBytes(clartTifContent);
+
+        final fileSize = await file.length();
+        print("Successfully saved CLART layer: $clartLayerName");
+        print("File size: ${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB");
+        
+        // Verify file was written correctly
+        if (await file.exists()) {
+          print("✅ File verification: CLART file exists at $filePath");
+          onProgressUpdate(clartLayerName, 1.0);
+        } else {
+          print("❌ File verification failed: CLART file does not exist");
+          onProgressUpdate(clartLayerName, -1.0);
+        }
+      } else {
+        print("❌ Failed to download CLART from S3: received null or empty content");
+        onProgressUpdate(clartLayerName, -1.0);
+      }
+
       print("Successfully downloaded CLART layer: $clartLayerName");
     } catch (e) {
       print("Error downloading CLART layer: $e");

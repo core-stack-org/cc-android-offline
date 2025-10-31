@@ -22,6 +22,44 @@ class _WebViewState extends State<WebViewApp> {
   final LoginService _loginService = LoginService();
   final GlobalKey _optionsButtonKey = GlobalKey();
 
+  // ADD THESE SETTINGS
+  final InAppWebViewSettings settings = InAppWebViewSettings(
+    // Critical for local server access
+    allowFileAccessFromFileURLs: true,
+    allowUniversalAccessFromFileURLs: true,
+    allowContentAccess: true,
+    
+    // Mixed content for localhost
+    mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+    
+    // Security settings for local development
+    mediaPlaybackRequiresUserGesture: false,
+    
+    // IMPORTANT: Allow loading insecure content (for localhost)
+    // This is needed for Android
+    useOnLoadResource: true,
+    
+    // Cache and offline settings
+    cacheEnabled: true,
+    clearCache: false,
+    
+    // JavaScript and DOM
+    javaScriptEnabled: true,
+    domStorageEnabled: true,
+    databaseEnabled: true,
+    
+    // WebGL support (needed for OpenLayers WebGL rendering)
+    hardwareAcceleration: true,
+    
+    // CORS
+    disableContextMenu: false,
+    supportZoom: true,
+    
+    // Resource loading
+    useOnDownloadStart: true,
+    useShouldInterceptRequest: true,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -230,45 +268,46 @@ class _WebViewState extends State<WebViewApp> {
 
   void _goToHomePage() {
     print('Home button clicked - Loading URL: ${widget.url}');
-    webViewController?.loadUrl(
-        urlRequest: URLRequest(url: WebUri(widget.url.toString())));
+    if (webViewController != null && widget.url != null) {
+      webViewController!.loadUrl(
+        urlRequest: URLRequest(url: WebUri(widget.url.toString())),
+      );
+    } else {
+      print('Cannot go to home - WebViewController or URL is null');
+    }
   }
 
   void _goToLocationSelection() {
-    Navigator.pop(context);
+    Navigator.of(context).pop();
   }
 
   Widget _buildOptionsMenu() {
-    return IconButton(
+    return GestureDetector(
       key: _optionsButtonKey,
-      icon: const Icon(Icons.more_vert, color: Colors.white),
-      tooltip: 'Options',
-      onPressed: () => _showOptionsMenu(),
+      onTap: _showOptionsMenu,
+      child: Container(
+        width: 56,
+        height: 56,
+        alignment: Alignment.center,
+        child: const Icon(
+          Icons.more_vert,
+          size: 28,
+          color: Colors.white,
+        ),
+      ),
     );
   }
 
-  void _showOptionsMenu() async {
-    if (!mounted) return;
-
-    await Future.delayed(Duration.zero);
-
-    if (!mounted) return;
-
+  Future<void> _showOptionsMenu() async {
     try {
-      final RenderBox? renderBox =
-          _optionsButtonKey.currentContext?.findRenderObject() as RenderBox?;
-      if (renderBox == null || !renderBox.hasSize) {
-        return;
-      }
-
+      final RenderBox renderBox =
+          _optionsButtonKey.currentContext?.findRenderObject() as RenderBox;
       final Offset offset = renderBox.localToGlobal(Offset.zero);
-      final Size size = renderBox.size;
-
       final RelativeRect position = RelativeRect.fromLTRB(
-        offset.dx - 200, // Adjust to position from right edge
-        offset.dy + size.height,
-        offset.dx + size.width + 50,
-        offset.dy + size.height + 200,
+        offset.dx,
+        offset.dy + renderBox.size.height,
+        offset.dx + renderBox.size.width,
+        offset.dy + renderBox.size.height + 10,
       );
 
       HapticFeedback.lightImpact();
@@ -405,7 +444,7 @@ class _WebViewState extends State<WebViewApp> {
         final navigator = Navigator.of(context);
         final shouldPop = await _handlePopScope();
         if (shouldPop) {
-          navigator.pop(); // Go back to location selection
+          navigator.pop();
         }
       },
       child: Scaffold(
@@ -434,10 +473,10 @@ class _WebViewState extends State<WebViewApp> {
               initialUrlRequest: URLRequest(
                 url: WebUri(widget.url.toString()),
               ),
+              initialSettings: settings, // ADD THIS LINE - Critical!
               onWebViewCreated: (InAppWebViewController controller) {
                 webViewController = controller;
 
-                // Existing title channel handler
                 webViewController!.addJavaScriptHandler(
                   handlerName: 'TitleChannel',
                   callback: (args) {
@@ -453,7 +492,6 @@ class _WebViewState extends State<WebViewApp> {
                   },
                 );
 
-                // token refresh handler
                 webViewController!.addJavaScriptHandler(
                   handlerName: 'RefreshToken',
                   callback: (args) async {
@@ -482,11 +520,31 @@ class _WebViewState extends State<WebViewApp> {
                 await _initializeTitleTracking();
                 await _initializeAuthentication();
               },
+              onConsoleMessage: (controller, consoleMessage) {
+                // ADD THIS - Log console messages for debugging
+                print('WebView Console [${consoleMessage.messageLevel}]: ${consoleMessage.message}');
+              },
+              onLoadError: (controller, url, code, message) {
+                // ADD THIS - Log load errors
+                print('WebView Load Error: $message (code: $code) for $url');
+              },
+              onLoadHttpError: (controller, url, statusCode, description) {
+                // ADD THIS - Log HTTP errors
+                print('WebView HTTP Error: $description (status: $statusCode) for $url');
+              },
               androidOnPermissionRequest:
                   (controller, origin, resources) async {
                 return PermissionRequestResponse(
                     resources: resources,
                     action: PermissionRequestResponseAction.GRANT);
+              },
+              // ADD THIS - Allow localhost resource loading
+              shouldOverrideUrlLoading: (controller, navigationAction) async {
+                final uri = navigationAction.request.url;
+                if (uri != null && uri.host == 'localhost') {
+                  return NavigationActionPolicy.ALLOW;
+                }
+                return NavigationActionPolicy.ALLOW;
               },
             ),
             if (loadingProgress < 1.0)
