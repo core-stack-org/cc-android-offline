@@ -1660,13 +1660,22 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
               color: const Color(0xFFD6D5C9),
               borderRadius: BorderRadius.circular(15),
             ),
-            child: Text(
-              widget.container.name,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF592941),
-              ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.container.name,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF592941),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 30),
@@ -1814,6 +1823,14 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
+                              color: Color(0xFF592941),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "Estimated time to download: 10 minutes",
+                            style: TextStyle(
+                              fontSize: 14,
                               color: Color(0xFF592941),
                             ),
                           ),
@@ -2554,6 +2571,18 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                   ),
                                 ],
                               ],
+                            ),
+                          ),
+                        );
+
+                        // Add divider after Raster Layers
+                        items.add(
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 15),
+                            child: Divider(
+                              color: Colors.grey,
+                              thickness: 1,
+                              height: 1,
                             ),
                           ),
                         );
