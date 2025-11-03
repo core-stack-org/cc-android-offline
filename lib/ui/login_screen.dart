@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 //import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../l10n/app_localizations.dart';
 import '../location_selection.dart';
@@ -27,12 +28,14 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isFormValid = false;
   String _selectedLanguage = 'hi';
   bool _obscurePassword = true;
+  String _appVersion = '';
 
   @override
   void initState() {
     super.initState();
     _loadSavedLanguage();
     _setupFormValidation();
+    _loadInfo();
   }
 
   Future<void> _loadSavedLanguage() async {
@@ -57,6 +60,19 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _isFormValid = isValid;
       });
+    }
+  }
+
+  Future<void> _loadInfo() async {
+    try {
+      final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      _appVersion = '${packageInfo.version}+${packageInfo.buildNumber}';
+    } catch (e) {
+      print('Failed to load info: $e');
+      _appVersion = 'Error';
+    }
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -418,7 +434,23 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-                const SizedBox(height: 24),
+                SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.15,
+                ),
+                if (_appVersion.isNotEmpty)
+                  Padding(
+                    padding: EdgeInsets.only(
+                      bottom: 16.0 + MediaQuery.of(context).viewPadding.bottom,
+                    ),
+                    child: Text(
+                      '${AppLocalizations.of(context)!.version} $_appVersion',
+                      style: const TextStyle(
+                        color: Color(0xFF592941),
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
               ],
             ),
           ),

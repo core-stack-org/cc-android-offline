@@ -229,14 +229,15 @@ class ContainerSheets {
                                       .showSnackBar(
                                     SnackBar(
                                       content: Text(e.toString()),
+                                      backgroundColor: Colors.red,
                                       behavior: SnackBarBehavior.floating,
                                       margin: EdgeInsets.only(
                                         bottom: MediaQuery.of(sheetContext)
                                                 .size
-                                                .height -
-                                            100,
-                                        left: 10,
-                                        right: 10,
+                                                .height *
+                                            0.7,
+                                        left: 16,
+                                        right: 16,
                                       ),
                                     ),
                                   );
@@ -456,6 +457,15 @@ class ContainerSheets {
                                                 .regionDeleted(container.name)),
                                             backgroundColor:
                                                 const Color(0xFFFF4D6D),
+                                            behavior: SnackBarBehavior.floating,
+                                            margin: EdgeInsets.only(
+                                              bottom: MediaQuery.of(context)
+                                                      .size
+                                                      .height *
+                                                  0.87,
+                                              left: 16,
+                                              right: 16,
+                                            ),
                                           ),
                                         );
                                         setState(() {

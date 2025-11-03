@@ -1292,16 +1292,6 @@ class _LocationSelectionState extends State<LocationSelection> {
             ),
             const SizedBox(height: 32.0),
             Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: Text(
-                '${localizations.version} $_appVersion',
-                style: const TextStyle(
-                  color: Color(0xFF592941),
-                  fontSize: 14,
-                ),
-              ),
-            ),
-            Padding(
               padding: const EdgeInsets.only(bottom: 16.0, top: 4.0),
               child: InkWell(
                 onTap: _launchEmail,

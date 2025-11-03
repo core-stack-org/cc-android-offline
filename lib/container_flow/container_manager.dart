@@ -68,7 +68,7 @@ class ContainerManager {
 
     // Check for duplicate names
     if (containers.any((c) => c.name == container.name)) {
-      throw Exception('A container with this name already exists');
+      throw Exception('A region with this name already exists');
     }
 
     containers.add(container);
