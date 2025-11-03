@@ -875,7 +875,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
             Positioned(
               left: 10,
               right: 10,
-              bottom: 20,
+              bottom: 20 + MediaQuery.of(context).viewPadding.bottom,
               child: Row(
                 children: [
                   Expanded(

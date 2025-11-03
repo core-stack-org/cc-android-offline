@@ -50,7 +50,12 @@ class ContainerSheets {
                 bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
               child: Container(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                  bottom: 20 + MediaQuery.of(context).viewPadding.bottom,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,9 +338,11 @@ class ContainerSheets {
                         final containers = snapshot.data!;
 
                         if (containers.isEmpty) {
-                          return Center(
+                          return Align(
+                            alignment: Alignment.centerLeft,
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   localizations.looksLikeNoRegionsCreated,
@@ -449,15 +456,6 @@ class ContainerSheets {
                                                 .regionDeleted(container.name)),
                                             backgroundColor:
                                                 const Color(0xFFFF4D6D),
-                                            behavior: SnackBarBehavior.floating,
-                                            margin: EdgeInsets.only(
-                                              bottom: MediaQuery.of(context)
-                                                      .size
-                                                      .height -
-                                                  100,
-                                              left: 10,
-                                              right: 10,
-                                            ),
                                           ),
                                         );
                                         setState(() {
@@ -538,7 +536,12 @@ class ContainerSheets {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    bottom: 16 + MediaQuery.of(context).viewPadding.bottom,
+                  ),
                   decoration: BoxDecoration(
                     border: Border(
                       top: BorderSide(

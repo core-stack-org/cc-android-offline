@@ -237,7 +237,12 @@ class _LocationSelectionState extends State<LocationSelection> {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setSheetState) {
             return Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: 20 + MediaQuery.of(context).viewPadding.bottom,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
