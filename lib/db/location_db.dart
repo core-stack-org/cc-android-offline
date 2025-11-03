@@ -89,35 +89,35 @@ class LocationDatabase {
 
   Future<List<Map<String, dynamic>>> getLocationData() async {
     final db = await database;
-    final List<Map<String, dynamic>> states = await db.query('states');
-    List<Map<String, dynamic>> result = [];
 
-    for (var state in states) {
-      final districts = await db.query(
-        'districts',
-        where: 'state_id = ?',
-        whereArgs: [state['state_id']],
-      );
+    final states = await db.query('states');
+    final districts = await db.query('districts');
+    final blocks = await db.query('blocks');
 
-      List<Map<String, dynamic>> districtList = [];
-      for (var district in districts) {
-        final blocks = await db.query(
-          'blocks',
-          where: 'district_id = ?',
-          whereArgs: [district['district_id']],
-        );
-
-        districtList.add({
-          ...district,
-          'blocks': blocks,
-        });
-      }
-
-      result.add({
-        ...state,
-        'district': districtList,
-      });
+    final blocksByDistrict = <String, List<Map<String, dynamic>>>{};
+    for (var block in blocks) {
+      final districtId = block['district_id'] as String;
+      blocksByDistrict.putIfAbsent(districtId, () => []).add(block);
     }
+
+    final districtsByState = <String, List<Map<String, dynamic>>>{};
+    for (var district in districts) {
+      final stateId = district['state_id'] as String;
+      final districtId = district['district_id'] as String;
+      final districtWithBlocks = {
+        ...district,
+        'blocks': blocksByDistrict[districtId] ?? [],
+      };
+      districtsByState.putIfAbsent(stateId, () => []).add(districtWithBlocks);
+    }
+
+    final result = states.map((state) {
+      final stateId = state['state_id'] as String;
+      return {
+        ...state,
+        'district': districtsByState[stateId] ?? [],
+      };
+    }).toList();
 
     return result;
   }

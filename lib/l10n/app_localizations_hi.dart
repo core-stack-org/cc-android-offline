@@ -584,4 +584,10 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get unableToLoadProfile => 'प्रोफ़ाइल डेटा लोड करने में असमर्थ';
+
+  @override
+  String get loadingLocations => 'स्थान लोड हो रहे हैं';
+
+  @override
+  String get pleaseWait => 'कृपया प्रतीक्षा करें...';
 }

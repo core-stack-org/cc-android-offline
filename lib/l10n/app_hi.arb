@@ -263,5 +263,7 @@
   "thisActionCannotBeUndone": "इस क्रिया को पूर्ववत नहीं किया जा सकता",
   "cacheClearedSuccessfully": "कैश सफलतापूर्वक साफ़ हो गया!",
   "failedToClearCache": "कैश साफ़ करने में विफल",
-  "unableToLoadProfile": "प्रोफ़ाइल डेटा लोड करने में असमर्थ"
+  "unableToLoadProfile": "प्रोफ़ाइल डेटा लोड करने में असमर्थ",
+  "loadingLocations": "स्थान लोड हो रहे हैं",
+  "pleaseWait": "कृपया प्रतीक्षा करें..."
 }

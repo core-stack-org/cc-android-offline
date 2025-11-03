@@ -1180,6 +1180,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unable to load profile data'**
   String get unableToLoadProfile;
+
+  /// No description provided for @loadingLocations.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading Locations'**
+  String get loadingLocations;
+
+  /// No description provided for @pleaseWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait...'**
+  String get pleaseWait;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

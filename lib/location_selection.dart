@@ -60,6 +60,12 @@ class _LocationSelectionState extends State<LocationSelection> {
   List<Map<String, dynamic>> districts = [];
   List<Map<String, dynamic>> blocks = [];
 
+  List<DropdownMenuItem<String>>? _cachedStateItems;
+  List<DropdownMenuItem<String>>? _cachedDistrictItems;
+  List<DropdownMenuItem<String>>? _cachedBlockItems;
+
+  bool _isLoadingData = true;
+
   final GlobalKey _profileButtonKey = GlobalKey();
   final GlobalKey _languageButtonKey = GlobalKey();
 
@@ -82,61 +88,80 @@ class _LocationSelectionState extends State<LocationSelection> {
     localeNotifier.value = Locale(savedLanguage);
   }
 
-  List<Map<String, dynamic>> sortLocationData(List<Map<String, dynamic>> data) {
-    data.sort((a, b) => (a['label'] as String).compareTo(b['label'] as String));
+  Future<void> fetchLocationData() async {
+    setState(() {
+      _isLoadingData = true;
+    });
 
-    for (var state in data) {
-      List<Map<String, dynamic>> districts =
-          List<Map<String, dynamic>>.from(state['district']);
-      districts.sort(
-          (a, b) => (a['label'] as String).compareTo(b['label'] as String));
+    try {
+      final data = await LocationDatabase.instance.getLocationData();
 
-      for (var district in districts) {
-        List<Map<String, dynamic>> blocks =
-            List<Map<String, dynamic>>.from(district['blocks']);
-        blocks.sort(
-            (a, b) => (a['label'] as String).compareTo(b['label'] as String));
-        district['blocks'] = blocks;
+      if (data.isNotEmpty) {
+        setState(() {
+          states = data;
+          _cachedStateItems = null;
+          _isLoadingData = false;
+        });
+
+        _syncDataInBackground();
+      } else {
+        final connectivityResult = await Connectivity().checkConnectivity();
+        if (connectivityResult != ConnectivityResult.none) {
+          final response =
+              await http.get(Uri.parse('${apiUrl}proposed_blocks/'));
+          if (response.statusCode == 200) {
+            final apiData = json.decode(response.body);
+            await LocationDatabase.instance
+                .insertLocationData(List<Map<String, dynamic>>.from(apiData));
+
+            await PlansDatabase.instance.syncPlans();
+
+            setState(() {
+              states = List<Map<String, dynamic>>.from(apiData);
+              _cachedStateItems = null;
+              _isLoadingData = false;
+            });
+          } else {
+            setState(() {
+              _isLoadingData = false;
+            });
+          }
+        } else {
+          setState(() {
+            _isLoadingData = false;
+          });
+        }
       }
-
-      state['district'] = districts;
+    } catch (e) {
+      print('Error fetching location data: $e');
+      setState(() {
+        _isLoadingData = false;
+      });
     }
-
-    return data;
   }
 
-  Future<void> fetchLocationData() async {
+  Future<void> _syncDataInBackground() async {
     try {
       final connectivityResult = await Connectivity().checkConnectivity();
       if (connectivityResult != ConnectivityResult.none) {
+        print('Syncing location data in background...');
         final response = await http.get(Uri.parse('${apiUrl}proposed_blocks/'));
         if (response.statusCode == 200) {
-          final data = json.decode(response.body);
+          final apiData = json.decode(response.body);
           await LocationDatabase.instance
-              .insertLocationData(List<Map<String, dynamic>>.from(data));
+              .insertLocationData(List<Map<String, dynamic>>.from(apiData));
 
           await PlansDatabase.instance.syncPlans();
 
           setState(() {
-            states = sortLocationData(List<Map<String, dynamic>>.from(data));
+            states = List<Map<String, dynamic>>.from(apiData);
+            _cachedStateItems = null;
           });
+          print('Background sync completed successfully');
         }
-      } else {
-        final data = await LocationDatabase.instance.getLocationData();
-        setState(() {
-          states = sortLocationData(data);
-        });
       }
     } catch (e) {
-      print('Error fetching location data: $e');
-      try {
-        final data = await LocationDatabase.instance.getLocationData();
-        setState(() {
-          states = sortLocationData(data);
-        });
-      } catch (dbError) {
-        print('Error fetching from local database: $dbError');
-      }
+      print('Background sync failed: $e');
     }
   }
 
@@ -151,6 +176,8 @@ class _LocationSelectionState extends State<LocationSelection> {
       selectedBlockID = null;
       districts =
           List<Map<String, dynamic>>.from(selectedStateData["district"]);
+      _cachedDistrictItems = null;
+      _cachedBlockItems = null;
       _isSubmitEnabled = selectedState != null &&
           selectedDistrict != null &&
           selectedBlock != null;
@@ -166,6 +193,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       selectedBlock = null;
       selectedBlockID = null;
       blocks = List<Map<String, dynamic>>.from(selectedDistrictData["blocks"]);
+      _cachedBlockItems = null;
       _isSubmitEnabled = selectedState != null &&
           selectedDistrict != null &&
           selectedBlock != null;
@@ -374,12 +402,32 @@ class _LocationSelectionState extends State<LocationSelection> {
     }
   }
 
+  List<DropdownMenuItem<String>> _buildDropdownItems(
+      List<Map<String, dynamic>> items) {
+    return items.map((Map<String, dynamic> map) {
+      return DropdownMenuItem<String>(
+        value: map["label"],
+        child: Text(
+          map["label"],
+          style: const TextStyle(color: Color(0xFF592941)),
+        ),
+      );
+    }).toList();
+  }
+
   Widget _buildDropdown({
     required String? value,
     required String hint,
     required List<Map<String, dynamic>> items,
     required Function(String?) onChanged,
+    required List<DropdownMenuItem<String>>? cachedItems,
+    required Function(List<DropdownMenuItem<String>>?) updateCache,
   }) {
+    final dropdownItems = cachedItems ?? _buildDropdownItems(items);
+    if (cachedItems == null) {
+      updateCache(dropdownItems);
+    }
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOut,
@@ -427,15 +475,7 @@ class _LocationSelectionState extends State<LocationSelection> {
               child:
                   const Icon(Icons.arrow_drop_down, color: Color(0xFF592941)),
             ),
-            items: items.map((Map<String, dynamic> map) {
-              return DropdownMenuItem<String>(
-                value: map["label"],
-                child: Text(
-                  map["label"],
-                  style: const TextStyle(color: Color(0xFF592941)),
-                ),
-              );
-            }).toList(),
+            items: dropdownItems,
             isExpanded: true,
             dropdownColor: Colors.white,
             borderRadius: BorderRadius.circular(20.0),
@@ -966,6 +1006,66 @@ class _LocationSelectionState extends State<LocationSelection> {
                 child:
                     _buildLocationSelectionContent(localizations, customGrey),
               ),
+              if (_isLoadingData)
+                Positioned.fill(
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(32.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20.0),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                localizations.loadingLocations,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF592941),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              SizedBox(
+                                width: 200,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: const LinearProgressIndicator(
+                                    backgroundColor: Color(0xFFD6D5C9),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFF592941),
+                                    ),
+                                    minHeight: 8,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                localizations.pleaseWait,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         );
@@ -1001,6 +1101,8 @@ class _LocationSelectionState extends State<LocationSelection> {
               value: selectedState,
               hint: localizations.selectState,
               items: states,
+              cachedItems: _cachedStateItems,
+              updateCache: (items) => _cachedStateItems = items,
               onChanged: (String? value) {
                 setState(() {
                   selectedState = value;
@@ -1013,6 +1115,8 @@ class _LocationSelectionState extends State<LocationSelection> {
               value: selectedDistrict,
               hint: localizations.selectDistrict,
               items: districts,
+              cachedItems: _cachedDistrictItems,
+              updateCache: (items) => _cachedDistrictItems = items,
               onChanged: (String? value) {
                 setState(() {
                   selectedDistrict = value;
@@ -1025,6 +1129,8 @@ class _LocationSelectionState extends State<LocationSelection> {
               value: selectedBlock,
               hint: localizations.selectTehsil,
               items: blocks,
+              cachedItems: _cachedBlockItems,
+              updateCache: (items) => _cachedBlockItems = items,
               onChanged: (String? value) {
                 if (value != null) {
                   updateSelectedBlock(value);

@@ -263,5 +263,7 @@
   "thisActionCannotBeUndone": "This action cannot be undone",
   "cacheClearedSuccessfully": "Cache cleared successfully!",
   "failedToClearCache": "Failed to clear cache",
-  "unableToLoadProfile": "Unable to load profile data"
+  "unableToLoadProfile": "Unable to load profile data",
+  "loadingLocations": "Loading Locations",
+  "pleaseWait": "Please wait..."
 }

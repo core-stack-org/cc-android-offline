@@ -1512,7 +1512,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         automaticallyImplyLeading: false,
         leadingWidth: 100,
         leading: !isDownloadComplete
-            ? Center(
+            ? Padding(
+                padding: const EdgeInsets.only(left: 8.0),
                 child: TextButton(
                   onPressed: isRetrying ? null : _cancelAllDownloads,
                   style: TextButton.styleFrom(
@@ -1524,6 +1525,10 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12.0, vertical: 8.0),
+                    minimumSize: const Size(80, 40),
+                    tapTargetSize: MaterialTapTargetSize.padded,
                   ),
                   child: Text(l10n.cancel),
                 ),
@@ -1645,6 +1650,10 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15),
                 ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                minimumSize: const Size(70, 40),
+                tapTargetSize: MaterialTapTargetSize.padded,
               ),
               child: Text(hasAnyFailures ? l10n.exit : l10n.done),
             ),

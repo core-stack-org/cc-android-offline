@@ -584,4 +584,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unableToLoadProfile => 'Unable to load profile data';
+
+  @override
+  String get loadingLocations => 'Loading Locations';
+
+  @override
+  String get pleaseWait => 'Please wait...';
 }
