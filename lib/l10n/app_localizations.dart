@@ -737,6 +737,12 @@ abstract class AppLocalizations {
   /// **'Raster Layers (GeoTIFF + PNG)'**
   String get rasterLayersGeoTiffPng;
 
+  /// No description provided for @rasterLayersPng.
+  ///
+  /// In en, this message translates to:
+  /// **'Raster Layers (PNG)'**
+  String get rasterLayersPng;
+
   /// No description provided for @formDataFiles.
   ///
   /// In en, this message translates to:

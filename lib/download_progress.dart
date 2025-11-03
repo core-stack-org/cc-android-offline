@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -39,13 +40,12 @@ class DownloadProgressPage extends StatefulWidget {
 class _DownloadProgressPageState extends State<DownloadProgressPage> {
   bool isDownloading = false;
   bool isDownloadComplete = false;
+  bool allDownloadsVerified = false;
   double baseMapProgress = 0.0;
   Map<String, double> vectorLayerProgress = {};
-  Map<String, double> imageLayerProgress = {};
   Map<String, double> pngLayerProgress = {};
   Map<String, bool> layerCancelled = {};
   late BaseMapDownloader baseMapDownloader;
-  late RasterLayerDownloader rasterLayerDownloader;
   late RasterLayerDownloader pngLayerDownloader;
   Future<List<Map<String, String>>>? _cachedLayers;
   bool _isLoadingLayers = false;
@@ -69,13 +69,11 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
   static const int _notificationId = 1001;
+  Timer? _verificationTimer;
 
   @override
   void initState() {
     super.initState();
-
-    _initializeNotifications();
-    _enableWakelock();
 
     s3Helper = S3Helper(
       accessKey: AWSConfig.accessKey,
@@ -94,16 +92,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       },
     );
 
-    rasterLayerDownloader = RasterLayerDownloader(
-      onProgressUpdate: (layerName, progress) {
-        if (mounted) {
-          setState(() {
-            imageLayerProgress[layerName] = progress;
-          });
-        }
-      },
-    );
-
     pngLayerDownloader = RasterLayerDownloader(
       onProgressUpdate: (layerName, progress) {
         if (mounted) {
@@ -113,15 +101,30 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         }
       },
     );
+    _initAndStartDownload();
+  }
 
+  Future<void> _initAndStartDownload() async {
+    await _initializeNotifications();
+    await _enableWakelock();
+    _startPeriodicVerificationCheck();
     downloadAllLayers(widget.container);
   }
 
   @override
   void dispose() {
+    _verificationTimer?.cancel();
     _disableWakelock();
     _cancelNotification();
     super.dispose();
+  }
+
+  void _startPeriodicVerificationCheck() {
+    _verificationTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (mounted && (isDownloading || isRetrying)) {
+        _updateVerificationStatus();
+      }
+    });
   }
 
   Future<void> _initializeNotifications() async {
@@ -138,18 +141,16 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
   Future<void> _enableWakelock() async {
     try {
       await WakelockPlus.enable();
-      print('Wakelock enabled - screen will stay on during download');
     } catch (e) {
-      print('Failed to enable wakelock: $e');
+      // Failed to enable wakelock
     }
   }
 
   Future<void> _disableWakelock() async {
     try {
       await WakelockPlus.disable();
-      print('Wakelock disabled');
     } catch (e) {
-      print('Failed to disable wakelock: $e');
+      // Failed to disable wakelock
     }
   }
 
@@ -206,20 +207,20 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
   }
 
   Future<void> _cancelNotification() async {
-    await _notificationsPlugin.cancel(_notificationId);
+    try {
+      await _notificationsPlugin.cancel(_notificationId);
+    } catch (e) {
+      // Silently fail as this can crash in release mode if called before init
+    }
   }
 
   // *c Downloads webapp static files from S3 and replaces existing files
   Future<void> downloadWebappFiles() async {
-    print("Starting downloadWebappFiles from S3");
-
     final directory = await getApplicationDocumentsDirectory();
     final webappDir =
         Directory('${directory.path}/persistent_offline_data/webapp');
 
     try {
-      print("Downloading webapp manifest...");
-
       if (mounted) {
         setState(() {
           webappProgress['webapp_manifest'] = 0.1;
@@ -230,8 +231,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           await s3Helper.downloadFile('webapp-manifest.json');
       final manifestData = json.decode(manifestContent);
       final List<String> files = List<String>.from(manifestData['files']);
-
-      print("Found ${files.length} webapp files in manifest");
 
       if (mounted) {
         setState(() {
@@ -245,11 +244,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       }
 
       if (await webappDir.exists()) {
-        print("Clearing old webapp files...");
         await webappDir.delete(recursive: true);
       }
 
-      print(webappDir);
       await webappDir.create(recursive: true);
 
       if (mounted) {
@@ -447,8 +444,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
 
   // * Downloads multiple JSON files from S3
   Future<void> downloadS3JsonFiles(OfflineContainer container) async {
-    print("Starting downloadS3JsonFiles");
-
     final s3Files = {
       'add_settlements.json': 'add_settlements.json',
       'add_well.json': 'add_well.json',
@@ -659,18 +654,16 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         vectorLayerProgress.clear();
         layerCancelled.clear();
         isDownloadComplete = false;
+        allDownloadsVerified = false;
         downloadErrors.clear();
         hasAnyFailures = false;
 
-        imageLayerProgress.clear();
         pngLayerProgress.clear();
         final districtFormatted =
             formatNameForGeoServer(widget.selectedDistrict ?? '');
         final blockFormatted =
             formatNameForGeoServer(widget.selectedBlock ?? '');
 
-        imageLayerProgress['clart_${districtFormatted}_${blockFormatted}'] =
-            0.0;
         pngLayerProgress['clart_${districtFormatted}_${blockFormatted}_png'] =
             0.0;
         final yearDataLulc = [
@@ -683,7 +676,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           "23_24"
         ];
         for (var year in yearDataLulc) {
-          imageLayerProgress['lulc_${year}_${blockFormatted}'] = 0.0;
           pngLayerProgress['lulc_${year}_${blockFormatted}_png'] = 0.0;
         }
 
@@ -723,16 +715,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       }
 
       await downloadVectorLayers(container);
-
-      if (!isDownloading) {
-        throw Exception("Download cancelled by user");
-      }
-
-      await rasterLayerDownloader.downloadImageLayers(
-        container: container,
-        district: widget.selectedDistrict,
-        block: widget.selectedBlock,
-      );
 
       if (!isDownloading) {
         throw Exception("Download cancelled by user");
@@ -803,8 +785,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
 
       await ContainerManager.updateContainerDownloadStatus(
           container.name, true);
-      print("Container ${container.name} marked as downloaded");
-
       await _disableWakelock();
       await _cancelNotification();
 
@@ -813,6 +793,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isDownloading = false;
           isDownloadComplete = true;
         });
+
+        print("=== DOWNLOAD COMPLETED SUCCESSFULLY ===");
+        _logButtonState();
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -889,6 +872,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         setState(() {
           isRetrying = false;
         });
+        _updateVerificationStatus();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -906,6 +890,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           downloadErrors['base_map'] = e.toString();
           hasAnyFailures = true;
         });
+        _updateVerificationStatus();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!
@@ -961,6 +946,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         setState(() {
           isRetrying = false;
         });
+        _updateVerificationStatus();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
@@ -975,6 +961,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         setState(() {
           isRetrying = false;
         });
+        _updateVerificationStatus();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!
@@ -1030,6 +1017,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         setState(() {
           isRetrying = false;
         });
+        _updateVerificationStatus();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
@@ -1044,6 +1032,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         setState(() {
           isRetrying = false;
         });
+        _updateVerificationStatus();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!
@@ -1116,6 +1105,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         setState(() {
           isRetrying = false;
         });
+        _updateVerificationStatus();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!.formDataRetryCompleted),
@@ -1129,6 +1119,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         setState(() {
           isRetrying = false;
         });
+        _updateVerificationStatus();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!
@@ -1148,15 +1139,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
     });
 
     try {
-      List<String> failedGeoTiffLayers = imageLayerProgress.entries
-          .where((entry) =>
-              entry.value < 0 ||
-              (entry.value >= 0 &&
-                  entry.value < 1.0 &&
-                  downloadErrors.containsKey(entry.key)))
-          .map((entry) => entry.key)
-          .toList();
-
       List<String> failedPngLayers = pngLayerProgress.entries
           .where((entry) =>
               entry.value < 0 ||
@@ -1165,16 +1147,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                   downloadErrors.containsKey(entry.key)))
           .map((entry) => entry.key)
           .toList();
-
-      for (var layerName in failedGeoTiffLayers) {
-        if (mounted) {
-          setState(() {
-            imageLayerProgress[layerName] = 0.0;
-            downloadErrors.remove(layerName);
-            rasterLayerDownloader.layerCancelled[layerName] = false;
-          });
-        }
-      }
 
       for (var layerName in failedPngLayers) {
         if (mounted) {
@@ -1186,20 +1158,13 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         }
       }
 
-      await rasterLayerDownloader.downloadImageLayers(
-        container: widget.container,
-        district: widget.selectedDistrict,
-        block: widget.selectedBlock,
-      );
-
       await pngLayerDownloader.downloadImageLayersAsPng(
         container: widget.container,
         district: widget.selectedDistrict,
         block: widget.selectedBlock,
       );
 
-      bool anyFailed = imageLayerProgress.values.any((v) => v < 0) ||
-          pngLayerProgress.values.any((v) => v < 0);
+      bool anyFailed = pngLayerProgress.values.any((v) => v < 0);
 
       if (mounted) {
         setState(() {
@@ -1208,6 +1173,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
             hasAnyFailures = true;
           }
         });
+        _updateVerificationStatus();
 
         if (!anyFailed) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1234,6 +1200,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
           hasAnyFailures = true;
         });
+        _updateVerificationStatus();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!
@@ -1292,6 +1259,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         setState(() {
           isRetrying = false;
         });
+        _updateVerificationStatus();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
@@ -1306,6 +1274,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         setState(() {
           isRetrying = false;
         });
+        _updateVerificationStatus();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!
@@ -1318,7 +1287,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
   }
 
   Future<void> _cancelAllDownloads() async {
-    if (!isDownloading || isDownloadComplete) return;
+    if ((!isDownloading && !isRetrying) || isDownloadComplete) return;
 
     await _disableWakelock();
     await _cancelNotification();
@@ -1326,6 +1295,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
     if (mounted) {
       setState(() {
         isDownloading = false;
+        isRetrying = false;
         baseMapDownloader.cancelBaseMapDownload = true;
       });
 
@@ -1376,15 +1346,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         }
       }
 
-      for (var layerKey in imageLayerProgress.keys) {
-        if (mounted) {
-          setState(() {
-            layerCancelled[layerKey] = true;
-            rasterLayerDownloader.cancelDownload(layerKey);
-          });
-        }
-      }
-
       for (var layerKey in pngLayerProgress.keys) {
         if (mounted) {
           setState(() {
@@ -1408,95 +1369,57 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
 
   bool _verifyAllDownloadsComplete() {
     if (baseMapProgress != 1.0) {
-      print("Base map not complete: $baseMapProgress");
       return false;
     }
 
     for (var entry in vectorLayerProgress.entries) {
       if (entry.value != 1.0) {
-        print("Vector layer ${entry.key} not complete: ${entry.value}");
         return false;
       }
     }
 
     for (var entry in s3JsonProgress.entries) {
       if (entry.value != 1.0) {
-        print("S3 JSON file ${entry.key} not complete: ${entry.value}");
         return false;
       }
     }
 
     for (var entry in webappProgress.entries) {
       if (entry.value != 1.0) {
-        print("Webapp file ${entry.key} not complete: ${entry.value}");
         return false;
-      }
-    }
-
-    if (imageLayerProgress.isNotEmpty) {
-      for (var entry in imageLayerProgress.entries) {
-        if (entry.value != 1.0) {
-          print("Image layer ${entry.key} not complete: ${entry.value}");
-          return false;
-        }
       }
     }
 
     if (pngLayerProgress.isNotEmpty) {
       for (var entry in pngLayerProgress.entries) {
         if (entry.value != 1.0) {
-          print("PNG layer ${entry.key} not complete: ${entry.value}");
           return false;
         }
       }
     }
-
-    print("All downloads verified as complete");
     return true;
   }
 
-  bool _isPlanLayer(String layerName) {
-    final planLayerPrefixes = [
-      'settlement_',
-      'well_',
-      'waterbody_',
-      'main_swb_',
-      'plan_agri_',
-      'plan_gw_',
-      'livelihood_'
-    ];
-
-    return planLayerPrefixes.any((prefix) => layerName.startsWith(prefix));
-  }
-
-  double _calculatePlanLayersProgress(List<Map<String, String>> allLayers) {
-    final planLayers = allLayers.where((layer) => _isPlanLayer(layer['name']!));
-    if (planLayers.isEmpty) return 0.0;
-
-    double totalProgress = 0.0;
-    int count = 0;
-
-    for (var layer in planLayers) {
-      double progress = vectorLayerProgress[layer['name']] ?? 0.0;
-      if (progress >= 0) {
-        totalProgress += progress;
-        count++;
+  void _updateVerificationStatus() {
+    bool verified = _verifyAllDownloadsComplete();
+    if (verified != allDownloadsVerified) {
+      if (mounted) {
+        setState(() {
+          allDownloadsVerified = verified;
+        });
+        _logButtonState();
       }
     }
-
-    return count > 0 ? totalProgress / count : 0.0;
   }
 
-  int _getCompletedPlanLayersCount(List<Map<String, String>> allLayers) {
-    return allLayers
-        .where((layer) =>
-            _isPlanLayer(layer['name']!) &&
-            (vectorLayerProgress[layer['name']] ?? 0.0) == 1.0)
-        .length;
+  void _logButtonState() {
+    // This function is for debugging and can be left empty in production.
   }
 
-  int _getTotalPlanLayersCount(List<Map<String, String>> allLayers) {
-    return allLayers.where((layer) => _isPlanLayer(layer['name']!)).length;
+  bool _isDoneButtonEnabled() {
+    return isDownloadComplete ||
+        (!isDownloading && !isRetrying) ||
+        (allDownloadsVerified && !isDownloading);
   }
 
   @override
@@ -1512,25 +1435,32 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         automaticallyImplyLeading: false,
         leadingWidth: 100,
         leading: !isDownloadComplete
-            ? Padding(
-                padding: const EdgeInsets.only(left: 8.0),
+            ? Center(
                 child: TextButton(
-                  onPressed: isRetrying ? null : _cancelAllDownloads,
+                  key: const ValueKey('cancel_button'),
+                  onPressed: (isDownloading || isRetrying)
+                      ? _cancelAllDownloads
+                      : null,
                   style: TextButton.styleFrom(
-                    backgroundColor: isRetrying ? Colors.grey : Colors.red,
+                    backgroundColor: (isDownloading || isRetrying)
+                        ? Colors.red
+                        : Colors.grey,
                     foregroundColor: Colors.white,
                     side: BorderSide(
-                        color: isRetrying ? Colors.grey : Colors.red,
+                        color: (isDownloading || isRetrying)
+                            ? Colors.red
+                            : Colors.grey,
                         width: 1.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12.0, vertical: 8.0),
-                    minimumSize: const Size(80, 40),
-                    tapTargetSize: MaterialTapTargetSize.padded,
+                        horizontal: 8.0, vertical: 4.0),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: Text(l10n.cancel),
+                  child:
+                      Text(l10n.cancel, style: const TextStyle(fontSize: 13)),
                 ),
               )
             : null,
@@ -1538,7 +1468,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: TextButton(
-              onPressed: (isDownloadComplete || (!isDownloading && !isRetrying))
+              key: const ValueKey('done_button'),
+              onPressed: _isDoneButtonEnabled()
                   ? () {
                       if (isDownloadComplete &&
                           _verifyAllDownloadsComplete() &&
@@ -1639,23 +1570,22 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                     }
                   : null,
               style: TextButton.styleFrom(
-                foregroundColor:
-                    (isDownloadComplete || (!isDownloading && !isRetrying))
-                        ? Colors.white
-                        : Colors.grey.shade700,
-                backgroundColor:
-                    (isDownloadComplete || (!isDownloading && !isRetrying))
-                        ? (hasAnyFailures ? Colors.orange : Colors.blue)
-                        : Colors.grey.shade400,
+                foregroundColor: (_isDoneButtonEnabled())
+                    ? Colors.white
+                    : Colors.grey.shade700,
+                backgroundColor: (_isDoneButtonEnabled())
+                    ? (hasAnyFailures ? Colors.orange : Colors.blue)
+                    : Colors.grey.shade400,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15),
                 ),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                minimumSize: const Size(70, 40),
-                tapTargetSize: MaterialTapTargetSize.padded,
+                    const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: Text(hasAnyFailures ? l10n.exit : l10n.done),
+              child: Text(hasAnyFailures ? l10n.exit : l10n.done,
+                  style: const TextStyle(fontSize: 13)),
             ),
           )
         ],
@@ -1725,108 +1655,13 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                       getLayers(widget.selectedDistrict, widget.selectedBlock),
                   builder: (context, snapshot) {
                     if (snapshot.hasData) {
-                      double totalProgress = 0;
-                      int totalSections = 0;
-
-                      // Base map progress (1 section)
-                      if (baseMapProgress >= 0) {
-                        totalProgress += baseMapProgress;
-                      }
-                      totalSections++;
-
-                      // Non-plan vector layers progress (1 section)
-                      List<Map<String, String>> nonPlanLayers = snapshot.data!
-                          .where((layer) => !_isPlanLayer(layer['name']!))
-                          .toList();
-
-                      if (nonPlanLayers.isNotEmpty) {
-                        double vectorProgress = 0;
-                        int vectorCount = 0;
-                        for (var layer in nonPlanLayers) {
-                          double layerProgress =
-                              vectorLayerProgress[layer['name']] ?? 0.0;
-                          if (layerProgress >= 0) {
-                            vectorProgress += layerProgress;
-                          }
-                          vectorCount++;
-                        }
-                        totalProgress += (vectorCount > 0
-                            ? vectorProgress / vectorCount
-                            : 0.0);
-                        totalSections++;
-                      }
-
-                      // Plan layers progress (1 section)
-                      if (_getTotalPlanLayersCount(snapshot.data!) > 0) {
-                        double planLayersProgress =
-                            _calculatePlanLayersProgress(snapshot.data!);
-                        totalProgress += planLayersProgress;
-                        totalSections++;
-                      }
-
-                      // Image/Raster layers progress (GeoTIFF + PNG = 2 subsections counted as 1 section)
-                      if (imageLayerProgress.isNotEmpty ||
-                          pngLayerProgress.isNotEmpty) {
-                        double imageProgress = 0;
-                        int imageCount = 0;
-
-                        imageLayerProgress.forEach((fileName, progress) {
-                          if (progress >= 0) {
-                            imageProgress += progress;
-                          }
-                          imageCount++;
-                        });
-
-                        pngLayerProgress.forEach((fileName, progress) {
-                          if (progress >= 0) {
-                            imageProgress += progress;
-                          }
-                          imageCount++;
-                        });
-
-                        totalProgress +=
-                            (imageCount > 0 ? imageProgress / imageCount : 0.0);
-                        totalSections++;
-                      }
-
-                      // S3 JSON files progress (1 section)
-                      if (s3JsonProgress.isNotEmpty) {
-                        double s3Progress = 0;
-                        int s3Count = 0;
-                        s3JsonProgress.forEach((fileName, progress) {
-                          if (progress >= 0) {
-                            s3Progress += progress;
-                          }
-                          s3Count++;
-                        });
-                        totalProgress +=
-                            (s3Count > 0 ? s3Progress / s3Count : 0.0);
-                        totalSections++;
-                      }
-
-                      // Webapp files progress (1 section)
-                      if (webappProgress.isNotEmpty) {
-                        double webappProgressTotal = 0;
-                        int webappCount = 0;
-                        webappProgress.forEach((fileName, progress) {
-                          if (progress >= 0) {
-                            webappProgressTotal += progress;
-                          }
-                          webappCount++;
-                        });
-                        totalProgress += (webappCount > 0
-                            ? webappProgressTotal / webappCount
-                            : 0.0);
-                        totalSections++;
-                      }
-
-                      double overallProgress = totalSections > 0
-                          ? totalProgress / totalSections
-                          : 0.0;
+                      final overallProgress =
+                          _calculateOverallProgress(snapshot.data!);
 
                       if (isDownloading) {
                         _updateDownloadNotification(
                             (overallProgress * 100).toInt());
+                        _updateVerificationStatus();
                       }
 
                       return Column(
@@ -2347,19 +2182,13 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                           ),
                         );
                       }
-                      // * RASTER LAYERS SECTION
-                      if (imageLayerProgress.isNotEmpty ||
-                          pngLayerProgress.isNotEmpty) {
-                        int imageCompletedCount = imageLayerProgress.values
-                            .where((progress) => progress == 1.0)
-                            .length;
+                      // * RASTER LAYERS SECTION (PNG only)
+                      if (pngLayerProgress.isNotEmpty) {
                         int pngCompletedCount = pngLayerProgress.values
                             .where((progress) => progress == 1.0)
                             .length;
-                        int totalRasterLayers =
-                            imageLayerProgress.length + pngLayerProgress.length;
-                        int totalCompleted =
-                            imageCompletedCount + pngCompletedCount;
+                        int totalRasterLayers = pngLayerProgress.length;
+                        int totalCompleted = pngCompletedCount;
 
                         items.add(
                           Container(
@@ -2396,7 +2225,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                l10n.rasterLayersGeoTiffPng,
+                                                l10n.rasterLayersPng,
                                                 style: const TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
@@ -2429,10 +2258,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                               strokeWidth: 2,
                                             ),
                                           )
-                                        else if (imageLayerProgress.values.any(
-                                                (progress) => progress < 0) ||
-                                            pngLayerProgress.values.any(
-                                                (progress) => progress < 0))
+                                        else if (pngLayerProgress.values
+                                            .any((progress) => progress < 0))
                                           Row(
                                             children: [
                                               const Icon(Icons.error,
@@ -2481,65 +2308,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                         left: 12, right: 12, bottom: 8),
                                     child: Column(
                                       children: [
-                                        ...imageLayerProgress.entries
-                                            .map((entry) {
-                                          final fileName = entry.key;
-                                          final progress = entry.value;
-
-                                          String displayName = fileName;
-                                          if (fileName.startsWith('clart_')) {
-                                            displayName =
-                                                'CLART Layer (GeoTIFF)';
-                                          } else if (fileName
-                                              .startsWith('lulc_')) {
-                                            final year = fileName.split('_')[1];
-                                            displayName =
-                                                'LULC 20$year (GeoTIFF)';
-                                          }
-
-                                          return Padding(
-                                            padding: const EdgeInsets.only(
-                                                bottom: 6),
-                                            child: Row(
-                                              children: [
-                                                const SizedBox(width: 8),
-                                                const Icon(
-                                                  Icons.satellite_alt,
-                                                  size: 16,
-                                                  color: Color(0xFF592941),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    displayName,
-                                                    style: const TextStyle(
-                                                      fontSize: 14,
-                                                      color: Color(0xFF592941),
-                                                    ),
-                                                  ),
-                                                ),
-                                                if (progress == 1.0)
-                                                  const Icon(Icons.check_circle,
-                                                      color: Colors.green,
-                                                      size: 18)
-                                                else if (progress > 0 &&
-                                                    progress < 1)
-                                                  const SizedBox(
-                                                    width: 16,
-                                                    height: 16,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                    ),
-                                                  )
-                                                else if (progress < 0)
-                                                  const Icon(Icons.error,
-                                                      color: Colors.red,
-                                                      size: 18)
-                                              ],
-                                            ),
-                                          );
-                                        }).toList(),
                                         ...pngLayerProgress.entries
                                             .map((entry) {
                                           final fileName = entry.key;
@@ -3026,5 +2794,132 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         ],
       ),
     );
+  }
+
+  double _calculatePlanLayersProgress(List<Map<String, String>> allLayers) {
+    final planLayers = allLayers.where((layer) => _isPlanLayer(layer['name']!));
+    if (planLayers.isEmpty) return 0.0;
+
+    double totalProgress = 0.0;
+    int count = 0;
+
+    for (var layer in planLayers) {
+      double progress = vectorLayerProgress[layer['name']] ?? 0.0;
+      if (progress >= 0) {
+        totalProgress += progress;
+        count++;
+      }
+    }
+
+    return count > 0 ? totalProgress / count : 0.0;
+  }
+
+  int _getCompletedPlanLayersCount(List<Map<String, String>> allLayers) {
+    return allLayers
+        .where((layer) =>
+            _isPlanLayer(layer['name']!) &&
+            (vectorLayerProgress[layer['name']] ?? 0.0) == 1.0)
+        .length;
+  }
+
+  int _getTotalPlanLayersCount(List<Map<String, String>> allLayers) {
+    return allLayers.where((layer) => _isPlanLayer(layer['name']!)).length;
+  }
+
+  double _calculateOverallProgress(List<Map<String, String>> layers) {
+    double totalProgress = 0;
+    int totalSections = 0;
+
+    // Base map progress (1 section)
+    if (baseMapProgress >= 0) {
+      totalProgress += baseMapProgress;
+    }
+    totalSections++;
+
+    // Non-plan vector layers progress (1 section)
+    List<Map<String, String>> nonPlanLayers =
+        layers.where((layer) => !_isPlanLayer(layer['name']!)).toList();
+
+    if (nonPlanLayers.isNotEmpty) {
+      double vectorProgress = 0;
+      int vectorCount = 0;
+      for (var layer in nonPlanLayers) {
+        double layerProgress = vectorLayerProgress[layer['name']] ?? 0.0;
+        if (layerProgress >= 0) {
+          vectorProgress += layerProgress;
+        }
+        vectorCount++;
+      }
+      totalProgress += (vectorCount > 0 ? vectorProgress / vectorCount : 0.0);
+      totalSections++;
+    }
+
+    // Plan layers progress (1 section)
+    if (_getTotalPlanLayersCount(layers) > 0) {
+      double planLayersProgress = _calculatePlanLayersProgress(layers);
+      totalProgress += planLayersProgress;
+      totalSections++;
+    }
+
+    // PNG Raster layers progress
+    if (pngLayerProgress.isNotEmpty) {
+      double pngProgress = 0;
+      int pngCount = 0;
+
+      pngLayerProgress.forEach((fileName, progress) {
+        if (progress >= 0) {
+          pngProgress += progress;
+        }
+        pngCount++;
+      });
+
+      totalProgress += (pngCount > 0 ? pngProgress / pngCount : 0.0);
+      totalSections++;
+    }
+
+    // S3 JSON files progress (1 section)
+    if (s3JsonProgress.isNotEmpty) {
+      double s3Progress = 0;
+      int s3Count = 0;
+      s3JsonProgress.forEach((fileName, progress) {
+        if (progress >= 0) {
+          s3Progress += progress;
+        }
+        s3Count++;
+      });
+      totalProgress += (s3Count > 0 ? s3Progress / s3Count : 0.0);
+      totalSections++;
+    }
+
+    // Webapp files progress (1 section)
+    if (webappProgress.isNotEmpty) {
+      double webappProgressTotal = 0;
+      int webappCount = 0;
+      webappProgress.forEach((fileName, progress) {
+        if (progress >= 0) {
+          webappProgressTotal += progress;
+        }
+        webappCount++;
+      });
+      totalProgress +=
+          (webappCount > 0 ? webappProgressTotal / webappCount : 0.0);
+      totalSections++;
+    }
+
+    return totalSections > 0 ? totalProgress / totalSections : 0.0;
+  }
+
+  bool _isPlanLayer(String layerName) {
+    final planLayerPrefixes = [
+      'settlement_',
+      'well_',
+      'waterbody_',
+      'main_swb_',
+      'plan_agri_',
+      'plan_gw_',
+      'livelihood_'
+    ];
+
+    return planLayerPrefixes.any((prefix) => layerName.startsWith(prefix));
   }
 }

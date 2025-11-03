@@ -117,6 +117,7 @@
   },
   "planLayers": "योजना लेयर",
   "rasterLayersGeoTiffPng": "रास्टर लेयर (GeoTIFF + PNG)",
+  "rasterLayersPng": "रास्टर लेयर (PNG)",
   "formDataFiles": "फॉर्म डेटा फाइलें",
   "webAppFiles": "वेब ऐप फाइलें",
   "clartLayerGeoTiff": "CLART लेयर (GeoTIFF)",

@@ -326,6 +326,7 @@ class _WebViewState extends State<WebViewApp> {
         items: [
           PopupMenuItem<String>(
             value: 'location',
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             child: Row(
               children: [
                 Container(
@@ -370,8 +371,14 @@ class _WebViewState extends State<WebViewApp> {
               ],
             ),
           ),
+          const PopupMenuItem<String>(
+            enabled: false,
+            height: 8,
+            child: SizedBox.shrink(),
+          ),
           PopupMenuItem<String>(
             value: 'home',
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             child: Row(
               children: [
                 Container(

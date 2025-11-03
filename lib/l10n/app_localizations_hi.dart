@@ -344,6 +344,9 @@ class AppLocalizationsHi extends AppLocalizations {
   String get rasterLayersGeoTiffPng => 'रास्टर लेयर (GeoTIFF + PNG)';
 
   @override
+  String get rasterLayersPng => 'रास्टर लेयर (PNG)';
+
+  @override
   String get formDataFiles => 'फॉर्म डेटा फाइलें';
 
   @override

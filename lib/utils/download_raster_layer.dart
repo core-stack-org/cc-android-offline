@@ -6,7 +6,6 @@ import 'package:nrmflutter/container_flow/container_manager.dart';
 import 'package:nrmflutter/utils/utility.dart';
 
 import '../utils/s3_helper.dart';
-import '../config/aws_config.dart';
 
 class RasterLayerDownloader {
   final Function(String layerName, double progress) onProgressUpdate;
@@ -25,114 +24,7 @@ class RasterLayerDownloader {
     required String? district,
     required String? block,
   }) async {
-    print("Starting downloadImageLayers");
-
-    s3Helper = S3Helper(
-      accessKey: AWSConfig.accessKey,
-      secretKey: AWSConfig.secretKey,
-      region: AWSConfig.region,
-      bucketName: AWSConfig.bucketName,
-    );
-
-    final districtFormatted = formatNameForGeoServer(district ?? '');
-    final blockFormatted = formatNameForGeoServer(block ?? '');
-
-    print("Formatted district: $districtFormatted, block: $blockFormatted");
-
-    final clartLayerName = 'clart_${districtFormatted}_${blockFormatted}';
-
-    if (layerCancelled[clartLayerName] == true) {
-      print("CLART download cancelled, skipping");
-      onProgressUpdate(clartLayerName, -1.0);
-      return;
-    }
-
-    //final clartUrl = '${geoserverUrl}geoserver/clart/wcs?service=WCS&version=2.0.1&request=GetCoverage&CoverageId=clart:${districtFormatted}_${blockFormatted}_clart&styles=testClart&format=geotiff&compression=LZW&tiling=false';
-
-    onProgressUpdate(clartLayerName, 0.0);
-
-    try {
-      // await downloadImageLayer(
-      //   layerName: clartLayerName,
-      //   url: clartUrl,
-      //   container: container,
-      // );
-      final clartTifContent =
-          await s3Helper.downloadFileBytes('clart_theni_periyakulam_clart.tif');
-
-      if (clartTifContent != null && clartTifContent.isNotEmpty) {
-        // Save the downloaded file
-        final directory = await getApplicationDocumentsDirectory();
-        final formattedLayerName = formatLayerName(clartLayerName);
-
-        final containerPath =
-            '${directory.path}/persistent_offline_data/containers/${container.name}';
-
-        final filePath = '$containerPath/image_layers/$formattedLayerName.tiff';
-        print("Saving CLART layer to: $filePath");
-
-        final file = File(filePath);
-        await file.create(recursive: true);
-
-        await file.writeAsBytes(clartTifContent);
-
-        final fileSize = await file.length();
-
-        // Verify file was written correctly
-        if (await file.exists()) {
-          onProgressUpdate(clartLayerName, 1.0);
-        } else {
-          onProgressUpdate(clartLayerName, -1.0);
-        }
-      } else {
-        onProgressUpdate(clartLayerName, -1.0);
-      }
-
-      print("Successfully downloaded CLART layer: $clartLayerName");
-    } catch (e) {
-      print("Error downloading CLART layer: $e");
-      onProgressUpdate(clartLayerName, -1.0);
-    }
-
-    final yearDataLulc = [
-      "17_18",
-      "18_19",
-      "19_20",
-      "20_21",
-      "21_22",
-      "22_23",
-      "23_24"
-    ];
-
-    for (var yearValue in yearDataLulc) {
-      final lulcLayerName = 'lulc_${yearValue}_${blockFormatted}';
-
-      if (layerCancelled[lulcLayerName] == true ||
-          layerCancelled['lulc_$yearValue'] == true) {
-        print("LULC layer for year $yearValue is cancelled, skipping");
-        onProgressUpdate(lulcLayerName, -1.0);
-        continue;
-      }
-
-      final lulcUrl =
-          '${geoserverUrl}geoserver/LULC_level_3/wcs?service=WCS&version=2.0.1&request=GetCoverage&CoverageId=LULC_level_3:LULC_${yearValue}_${blockFormatted}_level_3&styles=lulc_level_3_style&format=geotiff&compression=LZW&tiling=false';
-
-      onProgressUpdate(lulcLayerName, 0.0);
-
-      try {
-        await downloadImageLayer(
-          layerName: lulcLayerName,
-          url: lulcUrl,
-          container: container,
-        );
-        print("Successfully downloaded LULC layer: $lulcLayerName");
-      } catch (e) {
-        print("Error downloading LULC layer $lulcLayerName: $e");
-        onProgressUpdate(lulcLayerName, -1.0);
-      }
-    }
-
-    print("Finished downloadImageLayers");
+    print("TIFF download skipped - only PNG downloads are enabled");
   }
 
   // PNG (WMS) alternative: render server-side styled PNG and save with bbox sidecar

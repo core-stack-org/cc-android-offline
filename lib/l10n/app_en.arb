@@ -117,6 +117,7 @@
   },
   "planLayers": "Plan Layers",
   "rasterLayersGeoTiffPng": "Raster Layers (GeoTIFF + PNG)",
+  "rasterLayersPng": "Raster Layers (PNG)",
   "formDataFiles": "Form Data Files",
   "webAppFiles": "Web App Files",
   "clartLayerGeoTiff": "CLART Layer (GeoTIFF)",
