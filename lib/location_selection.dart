@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -13,19 +11,20 @@ import 'dart:ui' as ui;
 import 'webview.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
-import 'package:nrmflutter/config/api_config.dart';
 import 'package:nrmflutter/db/plans_db.dart';
 import 'package:nrmflutter/db/location_db.dart';
 import 'package:nrmflutter/utils/constants.dart';
 import 'package:nrmflutter/utils/change_log.dart';
 
-import './server/local_server.dart';
 import './container_flow/container_manager.dart';
 import './container_flow/container_sheet.dart';
 import './download_progress.dart';
 import './ui/profile_screen.dart';
 import './services/logout.dart';
 import './services/language_service.dart';
+import './services/update_service.dart';
+import './ui/update_bottom_sheet.dart';
+import './ui/offline_webview.dart';
 
 //import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import './l10n/app_localizations.dart';
@@ -48,7 +47,6 @@ class _LocationSelectionState extends State<LocationSelection> {
   String? selectedDistrictID;
   String? selectedBlockID;
   bool isAgreed = false;
-  LocalServer? _localServer;
   List<bool> _isSelected = [true, false];
   bool _isSubmitEnabled = false;
   String _appVersion = '';
@@ -65,6 +63,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   List<DropdownMenuItem<String>>? _cachedBlockItems;
 
   bool _isLoadingData = true;
+  bool _hasCheckedUpdate = false;
 
   final GlobalKey _profileButtonKey = GlobalKey();
   final GlobalKey _languageButtonKey = GlobalKey();
@@ -77,7 +76,38 @@ class _LocationSelectionState extends State<LocationSelection> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       fetchLocationData();
+      _checkForUpdate();
     });
+  }
+
+  Future<void> _checkForUpdate() async {
+    if (_hasCheckedUpdate) return;
+
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult == ConnectivityResult.none) {
+        return;
+      }
+
+      // TEST MODE: Set to true to force show the update bottom sheet for testing
+      // Change this to false when done testing
+      final bool testMode = false;
+
+      // ignore: dead_code
+      final bool hasUpdate =
+          testMode ? true : await UpdateService.checkForUpdate();
+
+      _hasCheckedUpdate = true;
+
+      if (hasUpdate && mounted) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          UpdateBottomSheet.showUpdateBottomSheet(context);
+        }
+      }
+    } catch (e) {
+      print('Error checking for update: $e');
+    }
   }
 
   Future<void> _loadSavedLanguage() async {
@@ -346,65 +376,23 @@ class _LocationSelectionState extends State<LocationSelection> {
   Future<void> navigateToWebViewOffline(OfflineContainer container) async {
     final localizations = AppLocalizations.of(context)!;
 
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      final persistentOfflinePath =
-          path.join(directory.path, 'persistent_offline_data');
-
-      _localServer = LocalServer(persistentOfflinePath, container.name);
-      final serverUrl = await _localServer!.start();
-
-      final plansResponse = await http.get(
-        Uri.parse('$serverUrl/api/v1/watershed/plans/?block=$selectedBlockID'),
-        headers: {
-          "Content-Type": "application/json",
-          'X-API-Key': apiKey,
-        },
+    if (selectedBlockID == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(localizations.couldNotFindBlockInfo)),
       );
-
-      if (plansResponse.statusCode != 200) {
-        throw Exception('Failed to fetch plans: ${plansResponse.statusCode}');
-      }
-
-      final encodedPlans = Uri.encodeComponent(plansResponse.body);
-      print("Plans are printed here !");
-      print(plansResponse.body);
-
-      String url = "$serverUrl/maps?" +
-          "geoserver_url=$serverUrl" +
-          "&state_name=${container.state}" +
-          "&dist_name=${container.district}" +
-          "&block_name=${container.block}" +
-          "&block_id=$selectedBlockID" +
-          "&isOffline=true" +
-          "&container_name=${container.name}" +
-          "&plans=$encodedPlans" +
-          "&language=$_selectedLanguage" +
-          "&latitude=${container.latitude}" +
-          "&longitude=${container.longitude}";
-
-      print('Offline URL: $url');
-
-      if (mounted) {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => WebViewApp(url: url),
-          ),
-        );
-      }
-    } catch (e) {
-      print('Error navigating to offline web view: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                '${localizations.errorLoadingOfflineView} ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      return;
     }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OfflineWebView(
+          container: container,
+          selectedBlockID: selectedBlockID!,
+          selectedLanguage: _selectedLanguage,
+        ),
+      ),
+    );
   }
 
   List<DropdownMenuItem<String>> _buildDropdownItems(
