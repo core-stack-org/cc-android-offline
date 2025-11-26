@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
+import 'dart:async';
 
 import 'package:nrmflutter/server/local_server.dart';
 import 'package:nrmflutter/webview.dart';
@@ -25,16 +26,74 @@ class OfflineWebView extends StatefulWidget {
   State<OfflineWebView> createState() => _OfflineWebViewState();
 }
 
-class _OfflineWebViewState extends State<OfflineWebView> {
+class _OfflineWebViewState extends State<OfflineWebView>
+    with WidgetsBindingObserver {
   LocalServer? _localServer;
   String? _url;
   bool _isLoading = true;
   String? _errorMessage;
+  Timer? _serverCheckTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _startServerAndLoad();
+    _startPeriodicServerCheck();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.resumed) {
+      print('App resumed, checking server health...');
+      _checkServerHealth();
+    }
+  }
+
+  void _startPeriodicServerCheck() {
+    // Check server health every 30 seconds
+    _serverCheckTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted && _localServer != null) {
+        _checkServerHealth();
+      }
+    });
+  }
+
+  Future<void> _checkServerHealth() async {
+    if (_localServer == null || _url == null) return;
+
+    try {
+      final testUrl = _url!.split('?').first;
+      final response = await http.get(Uri.parse(testUrl)).timeout(
+            const Duration(seconds: 3),
+          );
+
+      if (response.statusCode == 200) {
+        print('✓ Server health check passed');
+      } else {
+        print('⚠️ Server returned ${response.statusCode}, restarting...');
+        await _restartServer();
+      }
+    } catch (e) {
+      print('❌ Server health check failed: $e, restarting...');
+      await _restartServer();
+    }
+  }
+
+  Future<void> _restartServer() async {
+    print('Restarting local server...');
+
+    // Stop the existing server
+    _localServer?.stop();
+    _localServer = null;
+
+    // Small delay to ensure port is released
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Restart
+    await _startServerAndLoad();
   }
 
   Future<void> _startServerAndLoad() async {
@@ -108,6 +167,8 @@ class _OfflineWebViewState extends State<OfflineWebView> {
   @override
   void dispose() {
     print('OfflineWebView disposing, stopping server...');
+    _serverCheckTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _localServer?.stop();
     super.dispose();
   }

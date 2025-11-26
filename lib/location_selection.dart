@@ -141,15 +141,23 @@ class _LocationSelectionState extends State<LocationSelection> {
               await http.get(Uri.parse('${apiUrl}proposed_blocks/'));
           if (response.statusCode == 200) {
             final apiData = json.decode(response.body);
-            await LocationDatabase.instance
-                .insertLocationData(List<Map<String, dynamic>>.from(apiData));
+            final locationList = List<Map<String, dynamic>>.from(apiData);
 
-            await PlansDatabase.instance.syncPlans();
+            // Update UI immediately
+            if (mounted) {
+              setState(() {
+                states = locationList;
+                _cachedStateItems = null;
+                _isLoadingData = false;
+              });
+            }
 
-            setState(() {
-              states = List<Map<String, dynamic>>.from(apiData);
-              _cachedStateItems = null;
-              _isLoadingData = false;
+            // Sync DB in background
+            LocationDatabase.instance
+                .insertLocationData(locationList)
+                .then((_) => PlansDatabase.instance.syncPlans())
+                .catchError((e) {
+              print('Background sync error: $e');
             });
           } else {
             setState(() {
