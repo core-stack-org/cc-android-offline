@@ -31,28 +31,6 @@ class LocalServer {
           persistentOfflineDataDirectory, CONTAINERS_PATH, containerName!)
       : persistentOfflineDataDirectory;
 
-  Future<void> debugImageLayers() async {
-    final imageLayersDir = Directory(path.join(_basePath, IMAGE_LAYERS_PATH));
-    print('\n========== IMAGE LAYERS DEBUG ==========');
-    print('Base path: $_basePath');
-    print('Image layers directory: ${imageLayersDir.path}');
-    print('Directory exists: ${await imageLayersDir.exists()}');
-    
-    if (await imageLayersDir.exists()) {
-      print('Files found:');
-      await for (var entity in imageLayersDir.list()) {
-        if (entity is File) {
-          final stat = await entity.stat();
-          final fileName = path.basename(entity.path);
-          print('  - $fileName (${(stat.size / 1024 / 1024).toStringAsFixed(2)} MB)');
-        }
-      }
-    } else {
-      print('⚠️ Directory does not exist!');
-    }
-    print('======================================\n');
-  }
-
   Future<void> _validateOfflineData() async {
     final vectorLayersDir = Directory(path.join(_basePath, VECTOR_LAYERS_PATH));
     if (!await vectorLayersDir.exists()) {
@@ -98,10 +76,9 @@ class LocalServer {
     try {
       _server = await io.serve(handler, 'localhost', 3000, shared: true);
       print('Server running on localhost:${_server!.port}');
-      await debugImageLayers();
       return 'http://localhost:${_server!.port}';
     } catch (e) {
-      print('Failed to start server on port 3000: $e');
+      print('Failed to start server: $e');
       rethrow;
     }
   }
@@ -123,7 +100,7 @@ class LocalServer {
 
   Future<shelf.Response> _handleLocationRequest() async {
     print("Handling GPS location request");
-    
+
     try {
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -159,7 +136,7 @@ class LocalServer {
           );
         }
       }
-      
+
       if (permission == LocationPermission.deniedForever) {
         return shelf.Response.ok(
           json.encode({
@@ -193,8 +170,9 @@ class LocalServer {
         'permissionStatus': 'granted'
       };
 
-      print('Location retrieved: Lat ${position.latitude}, Lon ${position.longitude}');
-      
+      print(
+          'Location retrieved: Lat ${position.latitude}, Lon ${position.longitude}');
+
       return shelf.Response.ok(
         json.encode(locationData),
         headers: {
@@ -206,12 +184,11 @@ class LocalServer {
     } catch (e) {
       print('Error getting location: $e');
       return shelf.Response.internalServerError(
-        body: json.encode({
-          'error': 'Failed to get location: ${e.toString()}',
-          'location': null
-        }),
-        headers: {'Content-Type': 'application/json; charset=utf-8'}
-      );
+          body: json.encode({
+            'error': 'Failed to get location: ${e.toString()}',
+            'location': null
+          }),
+          headers: {'Content-Type': 'application/json; charset=utf-8'});
     }
   }
 
@@ -416,10 +393,10 @@ class LocalServer {
       }
 
       // Handle GPS location
-      if (normalizedPath == 'api/v1/location' || normalizedPath == 'api/v1/gps') {
+      if (normalizedPath == 'api/v1/location' ||
+          normalizedPath == 'api/v1/gps') {
         return await _handleLocationRequest();
       }
-
 
       // FIX: Handle container-specific requests (image layers, vector layers, etc.)
       if (requestPath.startsWith('containers/')) {
@@ -454,9 +431,9 @@ class LocalServer {
 
   // NEW: Specialized handler for image layers with correct MIME and Range support only for TIFF
   Future<shelf.Response> _serveImageLayer(
-    shelf.Request request, String requestPath) async {
+      shelf.Request request, String requestPath) async {
     final filePath = path.join(persistentOfflineDataDirectory, requestPath);
-    
+
     print('=== IMAGE LAYER REQUEST ===');
     print('Request path: $requestPath');
     print('Full file path: $filePath');
@@ -466,7 +443,7 @@ class LocalServer {
     try {
       final file = File(filePath);
       final exists = await file.exists();
-      
+
       if (!exists) {
         print('❌ Image layer not found: $filePath');
         return shelf.Response.notFound('Image layer not found');
@@ -530,7 +507,7 @@ class LocalServer {
 
       // Fallback: serve with detected MIME
       final bytes = await file.readAsBytes();
-      
+
       return shelf.Response.ok(
         bytes,
         headers: {
@@ -539,7 +516,8 @@ class LocalServer {
           'Content-Length': fileLength.toString(),
           'Cache-Control': 'max-age=3600',
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Expose-Headers': 'Accept-Ranges, Content-Length, Content-Range',
+          'Access-Control-Expose-Headers':
+              'Accept-Ranges, Content-Length, Content-Range',
         },
       );
     } catch (e, stackTrace) {
@@ -550,10 +528,9 @@ class LocalServer {
     }
   }
 
-
   // NEW: Handle HTTP Range requests
   Future<shelf.Response> _serveRangeRequest(
-    File file, int fileLength, String rangeHeader) async {
+      File file, int fileLength, String rangeHeader) async {
     try {
       print('=== RANGE REQUEST DEBUG ===');
       print('Range header: $rangeHeader');
@@ -564,10 +541,9 @@ class LocalServer {
 
       if (rangeMatch == null) {
         print('❌ Invalid range header format');
-        return shelf.Response(416, 
-          headers: {'Content-Range': 'bytes */$fileLength'},
-          body: 'Invalid range header'
-        );
+        return shelf.Response(416,
+            headers: {'Content-Range': 'bytes */$fileLength'},
+            body: 'Invalid range header');
       }
 
       final startStr = rangeMatch.group(1);
@@ -582,9 +558,8 @@ class LocalServer {
         if (endStr == null || endStr.isEmpty) {
           print('❌ Invalid range: both start and end empty');
           return shelf.Response(416,
-            headers: {'Content-Range': 'bytes */$fileLength'},
-            body: 'Invalid range'
-          );
+              headers: {'Content-Range': 'bytes */$fileLength'},
+              body: 'Invalid range');
         }
         final suffixLength = int.parse(endStr);
         start = fileLength - suffixLength;
@@ -602,13 +577,13 @@ class LocalServer {
       // Validate range
       if (start < 0) start = 0;
       if (end >= fileLength) end = fileLength - 1;
-      
+
       if (start > end || start >= fileLength) {
-        print('❌ Range not satisfiable: start=$start, end=$end, fileLength=$fileLength');
+        print(
+            '❌ Range not satisfiable: start=$start, end=$end, fileLength=$fileLength');
         return shelf.Response(416,
-          headers: {'Content-Range': 'bytes */$fileLength'},
-          body: 'Range not satisfiable'
-        );
+            headers: {'Content-Range': 'bytes */$fileLength'},
+            body: 'Range not satisfiable');
       }
 
       final length = end - start + 1;
@@ -632,7 +607,8 @@ class LocalServer {
           'Content-Range': 'bytes $start-$end/$fileLength',
           'Accept-Ranges': 'bytes',
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Expose-Headers': 'Accept-Ranges, Content-Length, Content-Range',
+          'Access-Control-Expose-Headers':
+              'Accept-Ranges, Content-Length, Content-Range',
           'Cache-Control': 'public, max-age=3600',
         },
       );
@@ -644,7 +620,6 @@ class LocalServer {
     }
   }
 
-  
   Future<shelf.Response> _serveFile(String sanitizedPath,
       {bool isWebApp = false}) async {
     if (sanitizedPath.contains('..')) {
