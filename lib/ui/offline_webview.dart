@@ -3,6 +3,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
 import 'dart:async';
+import 'dart:io';
 
 import 'package:nrmflutter/server/local_server.dart';
 import 'package:nrmflutter/webview.dart';
@@ -109,12 +110,43 @@ class _OfflineWebViewState extends State<OfflineWebView>
       final persistentOfflinePath =
           path.join(directory.path, 'persistent_offline_data');
 
+      // === DIAGNOSTIC LOGGING ===
+      print('=== OFFLINE WEBVIEW DIAGNOSTICS ===');
+      print('Container: ${widget.container.name}');
+      print('Persistent path: $persistentOfflinePath');
+
+      final webappDir = Directory(path.join(persistentOfflinePath, 'webapp'));
+      final indexFile =
+          File(path.join(persistentOfflinePath, 'webapp', 'index.html'));
+      final containerDir = Directory(path.join(
+          persistentOfflinePath, 'containers', widget.container.name));
+
+      print('Webapp dir exists: ${await webappDir.exists()}');
+      print('index.html exists: ${await indexFile.exists()}');
+      print('Container dir exists: ${await containerDir.exists()}');
+
+      if (await webappDir.exists()) {
+        final webappFiles =
+            await webappDir.list().map((e) => path.basename(e.path)).toList();
+        print('Webapp files: $webappFiles');
+      }
+
+      if (await containerDir.exists()) {
+        final containerContents = await containerDir
+            .list()
+            .map((e) => path.basename(e.path))
+            .toList();
+        print('Container contents: $containerContents');
+      }
+      print('=== END DIAGNOSTICS ===');
+
       // Stop existing server if any
       _localServer?.stop();
 
       // Start server SPECIFIC to this container
       _localServer = LocalServer(persistentOfflinePath, widget.container.name);
       final serverUrl = await _localServer!.start();
+      print('Server started at: $serverUrl');
 
       // Fetch plans using the local server
       final plansResponse = await http.get(

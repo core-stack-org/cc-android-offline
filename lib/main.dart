@@ -1,20 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import './l10n/app_localizations.dart';
 
 import './splash/splash_screen.dart';
 import 'location_selection.dart';
 import './ui/login_screen.dart';
 import './utils/offline_asset.dart';
-import './server/local_server.dart';
 import './services/language_service.dart';
-
-// Global variable to store the server URL
-String? globalServerUrl;
 
 // Global ValueNotifier for locale changes
 ValueNotifier<Locale> localeNotifier = ValueNotifier(const Locale('hi'));
@@ -47,28 +40,15 @@ Future<void> checkLocationPermission(BuildContext context) async {
 
 Future<void> initializeApp() async {
   WidgetsFlutterBinding.ensureInitialized();
-  //await OfflineAssetsManager.copyOfflineAssets();
 
   // Load saved language preference
   final languageService = LanguageService();
   final savedLanguage = await languageService.getLanguage();
   localeNotifier.value = Locale(savedLanguage);
 
-  // Get the persistent offline data path
-  final directory = await getApplicationDocumentsDirectory();
-  final persistentOfflineDataPath =
-      path.join(directory.path, 'persistent_offline_data');
-  print('Persistent offline path in main: $persistentOfflineDataPath');
-
-  // Force copy to ensure tiff_test.html is included
+  // Copy offline assets (webapp, etc.) to device storage
   await OfflineAssetsManager.copyOfflineAssets(forceUpdate: true);
-  print('Finished copying offline assets with forceUpdate');
-
-  // Start the local server
-  final localServer = LocalServer(persistentOfflineDataPath);
-  globalServerUrl = await localServer.start();
-
-  print('Local server started at : $globalServerUrl');
+  print('Finished copying offline assets');
 }
 
 void main() async {
