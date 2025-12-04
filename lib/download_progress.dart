@@ -467,10 +467,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       final s3ObjectKey = entry.key;
       final localFileName = entry.value;
 
-      print("Processing S3 file: $s3ObjectKey -> $localFileName");
 
       if (layerCancelled[localFileName] == true) {
-        print("S3 file $localFileName is cancelled, skipping");
         continue;
       }
 
@@ -480,9 +478,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           localFileName: localFileName,
           container: container,
         );
-        print("Successfully downloaded S3 JSON: $localFileName");
       } catch (e) {
-        print("Error downloading S3 JSON $localFileName: $e");
         downloadErrors[localFileName] = e.toString();
         hasAnyFailures = true;
         failedFiles.add(localFileName);
@@ -493,8 +489,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       throw Exception(
           'Failed to download ${failedFiles.length} S3 JSON file(s): ${failedFiles.join(", ")}');
     }
-
-    print("Finished downloadS3JsonFiles");
   }
 
   Future<List<Map<String, String>>> getLayers(
@@ -664,8 +658,14 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         final blockFormatted =
             formatNameForGeoServer(widget.selectedBlock ?? '');
 
-        pngLayerProgress['clart_${districtFormatted}_${blockFormatted}_png'] =
-            0.0;
+        pngLayerProgress['clart_${districtFormatted}_${blockFormatted}_png'] = 0.0;
+
+        pngLayerProgress['stream_order_${districtFormatted}_${blockFormatted}_raster_png'] = 0.0;
+
+        pngLayerProgress['natural_depression_${districtFormatted}_${blockFormatted}_raster_png'] = 0.0;
+
+        pngLayerProgress['${districtFormatted}_${blockFormatted}_terrain_raster_png'] = 0.0;
+        
         final yearDataLulc = [
           "17_18",
           "18_19",
@@ -2316,14 +2316,20 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                           String displayName = fileName;
                                           if (fileName.contains('clart_')) {
                                             displayName = 'CLART Layer (PNG)';
-                                          } else if (fileName
-                                              .contains('lulc_')) {
+                                          } else if (fileName.contains('lulc_')) {
                                             final parts = fileName.split('_');
                                             if (parts.length > 1) {
                                               final year = parts[1];
                                               displayName =
                                                   'LULC 20$year (PNG)';
                                             }
+                                          }else if(fileName.contains('stream_order_')){
+                                            displayName = 'Stream Order Layer (PNG)';
+                                          }
+                                          else if(fileName.contains('natural_depression_')){
+                                            displayName = 'Natural Depression Layer (PNG)';
+                                          } else if(fileName.contains('terrain_')){
+                                            displayName = 'Terrain Layer (PNG)';
                                           }
 
                                           return Padding(
