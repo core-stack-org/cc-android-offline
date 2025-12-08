@@ -14,39 +14,79 @@ class UpdateService {
     try {
       final PackageInfo packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
+      final currentBuildNumber = packageInfo.buildNumber;
 
-      final latestVersion = await _getLatestVersionFromPlayStore();
+      final playStoreData = await _getLatestVersionAndBuildFromPlayStore();
 
-      if (latestVersion == null) {
+      if (playStoreData == null) {
         return false;
       }
 
-      return _compareVersions(currentVersion, latestVersion);
+      return _compareVersions(
+        currentVersion, 
+        playStoreData['version']!, 
+        currentBuildNumber,
+        playStoreData['build']
+      );
     } catch (e) {
       print('Error checking for update: $e');
       return false;
     }
   }
 
-  static Future<String?> _getLatestVersionFromPlayStore() async {
+  static Future<Map<String, String>?> _getLatestVersionAndBuildFromPlayStore() async {
     try {
       final response = await http.get(
         Uri.parse(
-            'https://play.google.com/store/apps/details?id=$playStorePackageId'),
+            'https://play.google.com/store/apps/details?id=$playStorePackageId&hl=en&gl=US'),
         headers: {
           'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
         },
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final html = response.body;
-        final versionMatch = RegExp(
-                r'Current Version</div><span class="htlgb"><div class="IQ1z0d"><span class="htlgb">([\d.]+)')
-            .firstMatch(html);
 
-        if (versionMatch != null) {
-          return versionMatch.group(1);
+        final versionPatterns = [
+          RegExp(r'\[\[\["(\d+\.\d+\.?\d*)"\]\]'),
+          RegExp(r'"softwareVersion":"(\d+\.\d+\.?\d*)"'),
+          RegExp(r',\[\[null,"(\d+\.\d+\.?\d*)"\]\]'),
+          RegExp(r'Current Version.*?(\d+\.\d+\.?\d*)'),
+        ];
+
+        String? version;
+        for (final pattern in versionPatterns) {
+          final match = pattern.firstMatch(html);
+          if (match != null && match.group(1) != null) {
+            final v = match.group(1)!;
+            if (_isValidVersion(v)) {
+              version = v;
+              break;
+            }
+          }
+        }
+
+        final buildPatterns = [
+          RegExp(r'versionCode["\s:]+(\d+)'),
+          RegExp(r'"installationSize":"[^"]*","numDownloads":"[^"]*","versionCode":"(\d+)"'),
+        ];
+
+        String? buildNumber;
+        for (final pattern in buildPatterns) {
+          final match = pattern.firstMatch(html);
+          if (match != null && match.group(1) != null) {
+            buildNumber = match.group(1);
+            break;
+          }
+        }
+
+        if (version != null) {
+          return {
+            'version': version,
+            'build': buildNumber ?? '0',
+          };
         }
       }
     } catch (e) {
@@ -55,7 +95,21 @@ class UpdateService {
     return null;
   }
 
-  static bool _compareVersions(String currentVersion, String latestVersion) {
+  static bool _isValidVersion(String version) {
+    final parts = version.split('.');
+    if (parts.isEmpty || parts.length > 4) return false;
+    for (final part in parts) {
+      if (int.tryParse(part) == null) return false;
+    }
+    return true;
+  }
+
+  static bool _compareVersions(
+    String currentVersion, 
+    String latestVersion, 
+    String currentBuildNumber,
+    String? latestBuildNumber
+  ) {
     final currentParts =
         currentVersion.split('.').map((e) => int.tryParse(e) ?? 0).toList();
     final latestParts =
@@ -73,6 +127,15 @@ class UpdateService {
         return true;
       } else if (latest < current) {
         return false;
+      }
+    }
+
+    if (latestBuildNumber != null) {
+      final currentBuild = int.tryParse(currentBuildNumber) ?? 0;
+      final latestBuild = int.tryParse(latestBuildNumber) ?? 0;
+      
+      if (latestBuild > currentBuild) {
+        return true;
       }
     }
 

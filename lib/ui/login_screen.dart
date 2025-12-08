@@ -233,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'To use a demo login account, log in using the following details and then navigate to Jharkhand > Dumka > Masalia',
+                'To use a demo login account, log in using the following details and then navigate to Jharkhand > Dumka > Masalia and Select a Demo / Test Plan while navigating to the Online Mode',
                 style: TextStyle(
                   fontSize: 16,
                   color: Color(0xFF592941),
@@ -281,6 +281,26 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.copy,
+                            size: 18,
+                            color: Color(0xFF592941),
+                          ),
+                          onPressed: () {
+                            Clipboard.setData(
+                                const ClipboardData(text: '9898989898'));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content:
+                                    Text('Phone number copied to clipboard'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -310,6 +330,25 @@ class _LoginScreenState extends State<LoginScreen> {
                               fontWeight: FontWeight.w500,
                             ),
                           ),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.copy,
+                            size: 18,
+                            color: Color(0xFF592941),
+                          ),
+                          onPressed: () {
+                            Clipboard.setData(
+                                const ClipboardData(text: 'demo@1234'));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Password copied to clipboard'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                         ),
                       ],
                     ),
