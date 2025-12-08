@@ -89,6 +89,7 @@ class _LocationSelectionState extends State<LocationSelection> {
         return;
       }
 
+      // MARK: Update Check
       // TEST MODE: Set to true to force show the update bottom sheet for testing
       // Change this to false when done testing
       final bool testMode = false;
