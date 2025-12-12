@@ -41,18 +41,24 @@ class RasterLayerDownloader {
     const clartWorkspace = 'clart';
     final clartLayerQualified = '$clartWorkspace:$clartLayerBase';
     final clartOutName = 'clart_${districtFormatted}_${blockFormatted}';
-    
-    final streamOrderBase = 'stream_order_${districtFormatted}_${blockFormatted}_raster';
+
+    final streamOrderBase =
+        'stream_order_${districtFormatted}_${blockFormatted}_raster';
     final streamOrderQualified = 'stream_order:$streamOrderBase';
-    final streamOrderOutName = 'stream_order_${districtFormatted}_${blockFormatted}_raster';
-  
-    final naturalDepressionBase = 'natural_depression_${districtFormatted}_${blockFormatted}_raster';
-    final naturalDepressionQualified = 'natural_depression:$naturalDepressionBase';
-    final naturalDepressionOutName = 'natural_depression_${districtFormatted}_${blockFormatted}_raster';
+    final streamOrderOutName =
+        'stream_order_${districtFormatted}_${blockFormatted}_raster';
+
+    final naturalDepressionBase =
+        'natural_depression_${districtFormatted}_${blockFormatted}_raster';
+    final naturalDepressionQualified =
+        'natural_depression:$naturalDepressionBase';
+    final naturalDepressionOutName =
+        'natural_depression_${districtFormatted}_${blockFormatted}_raster';
 
     final terrainBase = '${districtFormatted}_${blockFormatted}_terrain_raster';
     final terrainQualified = 'terrain:$terrainBase';
-    final terrainOutName = '${districtFormatted}_${blockFormatted}_terrain_raster';
+    final terrainOutName =
+        '${districtFormatted}_${blockFormatted}_terrain_raster';
 
     try {
       final clartBbox = await _fetchCoverageBBox(clartLayerQualified);
@@ -74,9 +80,9 @@ class RasterLayerDownloader {
       onProgressUpdate(clartOutName, -1.0);
     }
 
-    try{
+    try {
       final streamBbox = await _fetchCoverageBBox(streamOrderQualified);
-      if(streamBbox != null){
+      if (streamBbox != null) {
         await _downloadStyledPng(
           container: container,
           layerOutName: streamOrderOutName,
@@ -87,17 +93,16 @@ class RasterLayerDownloader {
           height: 2048,
         );
         onProgressUpdate(streamOrderOutName, 1.0);
-      }
-      else{
+      } else {
         onProgressUpdate(streamOrderOutName, -1.0);
       }
-    }catch(err){
+    } catch (err) {
       onProgressUpdate(streamOrderOutName, -1.0);
     }
 
-    try{
+    try {
       final naturalBbox = await _fetchCoverageBBox(naturalDepressionQualified);
-      if(naturalBbox != null){
+      if (naturalBbox != null) {
         await _downloadStyledPng(
           container: container,
           layerOutName: naturalDepressionOutName,
@@ -108,17 +113,16 @@ class RasterLayerDownloader {
           height: 2048,
         );
         onProgressUpdate(naturalDepressionOutName, 1.0);
-      }
-      else{
+      } else {
         onProgressUpdate(naturalDepressionOutName, -1.0);
       }
-    }catch(err){
+    } catch (err) {
       onProgressUpdate(naturalDepressionOutName, -1.0);
     }
 
-    try{
+    try {
       final terrainBbox = await _fetchCoverageBBox(terrainQualified);
-      if(terrainBbox != null){
+      if (terrainBbox != null) {
         await _downloadStyledPng(
           container: container,
           layerOutName: terrainOutName,
@@ -129,11 +133,10 @@ class RasterLayerDownloader {
           height: 2048,
         );
         onProgressUpdate(terrainOutName, 1.0);
-      }
-      else{
+      } else {
         onProgressUpdate(terrainOutName, -1.0);
       }
-    }catch(err){
+    } catch (err) {
       onProgressUpdate(terrainOutName, -1.0);
     }
 
@@ -149,7 +152,8 @@ class RasterLayerDownloader {
     ];
 
     for (final yearValue in yearDataLulc) {
-      final lulcLayerBase = 'LULC_${yearValue}_${blockFormatted}_level_3';
+      final lulcLayerBase =
+          'LULC_${yearValue}_${districtFormatted}_${blockFormatted}_level_3';
       const lulcWorkspace = 'LULC_level_3';
       final lulcLayerQualified = '$lulcWorkspace:$lulcLayerBase';
       final lulcOutName = 'lulc_${yearValue}_${blockFormatted}';
@@ -275,7 +279,8 @@ class RasterLayerDownloader {
 
       if (resp.statusCode != 200) {
         print('WMS GetMap failed with status: ${resp.statusCode}');
-        print('Response body: ${resp.body.substring(0, resp.body.length > 200 ? 200 : resp.body.length)}');
+        print(
+            'Response body: ${resp.body.substring(0, resp.body.length > 200 ? 200 : resp.body.length)}');
         throw Exception('WMS GetMap failed: ${resp.statusCode}');
       }
 

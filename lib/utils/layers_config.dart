@@ -45,7 +45,7 @@ class LayersConfig {
       {
         "name": "Cropping Drought",
         "geoserverPath":
-            "cropping_drought:${formattedDistrict}_${formattedBlock}_drought"
+            "drought:${formattedDistrict}_${formattedBlock}_drought"
       },
       {
         "name": "Cropping Intensity",
