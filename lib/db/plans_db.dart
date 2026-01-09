@@ -19,7 +19,12 @@ class PlansDatabase {
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(
+      path,
+      version: 2,
+      onCreate: _createDB,
+      onUpgrade: _upgradeDB,
+    );
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -30,6 +35,7 @@ class PlansDatabase {
       state TEXT,
       district INTEGER,
       block INTEGER,
+      tehsil INTEGER,
       village_name TEXT,
       gram_panchayat TEXT,
       facilitator_name TEXT,
@@ -50,6 +56,14 @@ class PlansDatabase {
   ''');
   }
 
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE plans ADD COLUMN tehsil INTEGER');
+      await db.execute(
+          'UPDATE plans SET tehsil = block WHERE tehsil IS NULL AND block IS NOT NULL');
+    }
+  }
+
   Future<void> insertPlansData(List<Map<String, dynamic>> plans) async {
     final db = await database;
     await db.transaction((txn) async {
@@ -58,14 +72,17 @@ class PlansDatabase {
 
       // Insert new data
       for (var plan in plans) {
+        final tehsilValue = plan['tehsil_soi'];
+
         await txn.insert(
           'plans',
           {
             'id': plan['id'],
             'plan': plan['plan'],
-            'state': plan['state']?.toString(),
-            'district': plan['district'],
-            'block': plan['block'],
+            'state': plan['state_soi']?.toString(),
+            'district': plan['district_soi'],
+            'block': plan['tehsil_soi'],
+            'tehsil': tehsilValue,
             'village_name': plan['village_name'],
             'gram_panchayat': plan['gram_panchayat'],
             'facilitator_name': plan['facilitator_name'],
@@ -89,12 +106,12 @@ class PlansDatabase {
     });
   }
 
-  Future<List<Map<String, dynamic>>> getPlansForBlock(int blockId) async {
+  Future<List<Map<String, dynamic>>> getPlansForTehsil(int tehsilId) async {
     final db = await database;
     return await db.query(
       'plans',
-      where: 'block = ?',
-      whereArgs: [blockId],
+      where: 'tehsil = ?',
+      whereArgs: [tehsilId],
     );
   }
 
@@ -106,6 +123,7 @@ class PlansDatabase {
   // Method to sync plans with the server
   Future<void> syncPlans() async {
     try {
+      print('DEBUG: Syncing plans from API...');
       final response = await http.get(
         Uri.parse('https://geoserver.core-stack.org/api/v1/watershed/plans'),
         headers: {
@@ -116,12 +134,12 @@ class PlansDatabase {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        await insertPlansData(List<Map<String, dynamic>>.from(data));
+        final plansList = List<Map<String, dynamic>>.from(data);
+        await insertPlansData(plansList);
       } else {
         throw Exception('Failed to fetch plans');
       }
     } catch (e) {
-      print('Error syncing plans: $e');
       rethrow;
     }
   }

@@ -165,7 +165,7 @@ class LocalServer {
         'heading': position.heading,
         'speed': position.speed,
         'speedAccuracy': position.speedAccuracy,
-        'timestamp': position.timestamp?.toIso8601String(),
+        'timestamp': position.timestamp.toIso8601String(),
         'serviceEnabled': true,
         'permissionStatus': 'granted'
       };
@@ -193,11 +193,23 @@ class LocalServer {
   }
 
   Future<shelf.Response> _handlePlansRequest(String blockId) async {
-    print("Handling plans request for block ID: $blockId");
+    print("DEBUG: Handling plans request for block/tehsil ID: $blockId");
     try {
       final plans =
-          await PlansDatabase.instance.getPlansForBlock(int.parse(blockId));
-      print("Found ${plans.length} plans for block $blockId");
+          await PlansDatabase.instance.getPlansForTehsil(int.parse(blockId));
+      print("DEBUG: Found ${plans.length} plans for tehsil ID $blockId");
+
+      if (plans.isEmpty) {
+        print("DEBUG: No plans found. Checking all plans in database...");
+        final allPlans = await PlansDatabase.instance.getAllPlans();
+        print("DEBUG: Total plans in database: ${allPlans.length}");
+        if (allPlans.isNotEmpty) {
+          print(
+              "DEBUG: Sample plan tehsil values: ${allPlans.map((p) => p['tehsil']).toSet()}");
+          print(
+              "DEBUG: Sample plan block values: ${allPlans.map((p) => p['block']).toSet()}");
+        }
+      }
 
       final responseJson = json.encode({'plans': plans});
 

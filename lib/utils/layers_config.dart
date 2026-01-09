@@ -61,8 +61,7 @@ class LayersConfig {
 
     if (blockId != null) {
       final plans =
-          await PlansDatabase.instance.getPlansForBlock(int.parse(blockId));
-      print("Found ${plans.length} plans for block");
+          await PlansDatabase.instance.getPlansForTehsil(int.parse(blockId));
 
       final resourceLayers = ['settlement', 'well', 'waterbody'];
       final worksLayers = ['main_swb', 'plan_agri', 'plan_gw', 'livelihood'];

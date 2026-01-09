@@ -250,6 +250,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     });
   }
 
+  // MARK: - Online Mode
   void submitLocation() {
     HapticFeedback.mediumImpact();
     String url =
