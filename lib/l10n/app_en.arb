@@ -71,6 +71,7 @@
   "pleaseEnterPassword": "Please enter your password",
   "invalidUsernameOrPassword": "Invalid username or password. Please try again.",
   "networkErrorMessage": "Network error. Please check your connection and try again.",
+  "serverErrorMessage": "Server is currently unavailable. Please try again later.",
   "usernameOrPhoneNumber": "Phone number",
   "usernameOrPhoneNumberHint": "Enter your phone number",
   "pleaseEnterUsernameOrPhoneNumber": "Please enter your phone number",

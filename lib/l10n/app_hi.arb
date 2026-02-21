@@ -71,6 +71,7 @@
   "pleaseEnterPassword": "कृपया अपना पासवर्ड दर्ज करें",
   "invalidUsernameOrPassword": "अमान्य उपयोगकर्ता नाम या पासवर्ड। कृपया फिर से कोशिश करें।",
   "networkErrorMessage": "नेटवर्क त्रुटि। कृपया अपना कनेक्शन जांचें और फिर से कोशिश करें।",
+  "serverErrorMessage": "सर्वर वर्तमान में उपलब्ध नहीं है। कृपया बाद में पुनः प्रयास करें।",
   "usernameOrPhoneNumber": "फोन नंबर",
   "usernameOrPhoneNumberHint": "फोन नंबर दर्ज करें",
   "pleaseEnterUsernameOrPhoneNumber": "कृपया फोन नंबर दर्ज करें",

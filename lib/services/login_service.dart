@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
+
+enum LoginResult { success, invalidCredentials, networkError, serverError }
 
 class LoginService {
   static const String _accessTokenKey = 'access_token';
@@ -9,108 +12,54 @@ class LoginService {
   static const String _userDataKey = 'user_data';
   static const String _tokenExpiryKey = 'token_expiry';
 
-  Future<bool> login(String username, String password) async {
+  Future<LoginResult> login(String username, String password) async {
+    final http.Response response;
     try {
-      print('Making login request to: ${apiUrl}auth/login/');
-      print('Username: $username');
-      print('Password: [HIDDEN]');
-
-      final Map<String, dynamic> requestBody = {
-        'username': username,
-        'password': password,
-      };
-
-      print('REQUEST BODY: ${jsonEncode(requestBody)}');
-
-      final response = await http.post(
+      response = await http.post(
         Uri.parse('${apiUrl}auth/login/'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode(requestBody),
+        body: jsonEncode({
+          'username': username,
+          'password': password,
+        }),
       );
-
-      print('RESPONSE STATUS CODE: ${response.statusCode}');
-      print('RESPONSE HEADERS: ${response.headers}');
-      print('RESPONSE BODY: ${response.body}');
-
-      // Parse the JSON response
-      Map<String, dynamic> responseData;
-      try {
-        responseData = jsonDecode(response.body);
-        print('Parsed JSON response: $responseData');
-      } catch (e) {
-        print('Error parsing JSON response: $e');
-        return false;
-      }
-
-      if (response.statusCode == 200) {
-        print('=== LOGIN API SUCCESS (200) ===');
-
-        final String? accessToken = responseData['access'];
-        final String? refreshToken = responseData['refresh'];
-        final Map<String, dynamic>? userData = responseData['user'];
-
-        print('Access token exists: ${accessToken != null}');
-        print('Refresh token exists: ${refreshToken != null}');
-        print('User data exists: ${userData != null}');
-
-        if (accessToken != null) {
-          print('Access token length: ${accessToken.length}');
-        }
-        if (refreshToken != null) {
-          print('Refresh token length: ${refreshToken.length}');
-        }
-        if (userData != null) {
-          print('User data keys: ${userData.keys.toList()}');
-        }
-
-        if (accessToken != null && refreshToken != null && userData != null) {
-          print('=== ALL REQUIRED FIELDS PRESENT ===');
-
-          // Store tokens and user data securely
-          await _storeAuthData(accessToken, refreshToken, userData);
-
-          print('=== STORED AUTH DATA ===');
-          print('Access token: ${accessToken.substring(0, 20)}...');
-          print('Refresh token: ${refreshToken.substring(0, 20)}...');
-          print('User: ${userData['username']} (${userData['email']})');
-          print('Organization: ${userData['organization_name']}');
-          print('Is Superadmin: ${userData['is_superadmin']}');
-          print('Groups: ${userData['groups']}');
-
-          print('=== RETURNING TRUE FOR LOGIN SUCCESS ===');
-          return true;
-        } else {
-          print('=== LOGIN RESPONSE MISSING REQUIRED FIELDS ===');
-          print('Missing access token: ${accessToken == null}');
-          print('Missing refresh token: ${refreshToken == null}');
-          print('Missing user data: ${userData == null}');
-          return false;
-        }
-      } else if (response.statusCode == 401) {
-        print('Login failed: Invalid credentials (401)');
-        if (responseData.containsKey('detail')) {
-          print('Error message: ${responseData['detail']}');
-        }
-        return false;
-      } else if (response.statusCode == 400) {
-        print('Login failed: Bad request (400)');
-        if (responseData.containsKey('detail')) {
-          print('Error message: ${responseData['detail']}');
-        }
-        return false;
-      } else {
-        print('Login failed: Unexpected status code ${response.statusCode}');
-        return false;
-      }
+    } on SocketException {
+      return LoginResult.networkError;
+    } on HttpException {
+      return LoginResult.networkError;
+    } on FormatException {
+      return LoginResult.serverError;
     } catch (e) {
-      print('Network error during login: $e');
-      print('Exception type: ${e.runtimeType}');
-      print('Stack trace: ${StackTrace.current}');
-      return false;
+      return LoginResult.networkError;
     }
+
+    Map<String, dynamic> responseData;
+    try {
+      responseData = jsonDecode(response.body);
+    } catch (_) {
+      return LoginResult.serverError;
+    }
+
+    if (response.statusCode == 200) {
+      final String? accessToken = responseData['access'];
+      final String? refreshToken = responseData['refresh'];
+      final Map<String, dynamic>? userData = responseData['user'];
+
+      if (accessToken != null && refreshToken != null && userData != null) {
+        await _storeAuthData(accessToken, refreshToken, userData);
+        return LoginResult.success;
+      }
+      return LoginResult.serverError;
+    }
+
+    if (response.statusCode == 401 || response.statusCode == 400) {
+      return LoginResult.invalidCredentials;
+    }
+
+    return LoginResult.serverError;
   }
 
   Future<void> _storeAuthData(String accessToken, String refreshToken,

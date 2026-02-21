@@ -86,57 +86,40 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   String _normalizePhoneNumber(String input) {
-    String cleaned = input.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+    String cleaned = input.replaceAll(RegExp(r'[\s\-\(\)+]'), '');
+    if (!RegExp(r'^[0-9]+$').hasMatch(cleaned)) return input;
 
-    if (cleaned.startsWith('+')) {
-      cleaned = cleaned.substring(1);
-
-      if (cleaned.startsWith('91') && cleaned.length == 12) {
-        return cleaned.substring(2);
-      }
+    if (cleaned.startsWith('91') && cleaned.length == 12) {
+      return cleaned.substring(2);
+    }
+    if (cleaned.startsWith('0') && cleaned.length == 11) {
+      return cleaned.substring(1);
     }
     return cleaned;
   }
 
-  bool _isPhoneNumber(String input) {
-    // Check if input contains any digits and looks like a phone number
-    String cleaned = input.replaceAll(RegExp(r'[\s\-\(\)+]'), '');
-    // If it contains digits and is mostly numeric, treat as phone number
-    return RegExp(r'^[0-9]+$').hasMatch(cleaned) && cleaned.length >= 6;
-  }
-
   Future<void> _performLogin() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
+    if (!_formKey.currentState!.validate()) return;
 
-      HapticFeedback.mediumImpact();
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-      final rawUsername = _usernameController.text.trim();
-      // Only normalize if it's a phone number, otherwise use as-is
-      final username = _isPhoneNumber(rawUsername)
-          ? _normalizePhoneNumber(rawUsername)
-          : rawUsername;
+    HapticFeedback.mediumImpact();
 
-      print('Original Username: $rawUsername');
-      print('Is Phone Number: ${_isPhoneNumber(rawUsername)}');
-      print('Final Username: $username');
-      print('Timestamp: ${DateTime.now()}');
+    final username = _normalizePhoneNumber(_usernameController.text.trim());
 
-      try {
-        final success = await _loginService.login(
-          username,
-          _passwordController.text,
-        );
+    try {
+      final result = await _loginService.login(
+        username,
+        _passwordController.text,
+      );
 
-        print('=== LOGIN SERVICE RETURNED ===');
-        print('Login result: $success');
-        print('Login result type: ${success.runtimeType}');
+      if (!mounted) return;
 
-        if (success == true) {
-          print('=== LOGIN SUCCESSFUL - NAVIGATING ===');
+      switch (result) {
+        case LoginResult.success:
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(
               pageBuilder: (context, animation, secondaryAnimation) =>
@@ -146,23 +129,14 @@ class _LoginScreenState extends State<LoginScreen> {
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
                 const curve = Curves.easeInOutCubic;
-
                 final fadeAnimation = Tween<double>(
                   begin: 0.0,
                   end: 1.0,
-                ).animate(CurvedAnimation(
-                  parent: animation,
-                  curve: curve,
-                ));
-
+                ).animate(CurvedAnimation(parent: animation, curve: curve));
                 final slideAnimation = Tween<Offset>(
                   begin: const Offset(0.05, 0.0),
                   end: Offset.zero,
-                ).animate(CurvedAnimation(
-                  parent: animation,
-                  curve: curve,
-                ));
-
+                ).animate(CurvedAnimation(parent: animation, curve: curve));
                 return FadeTransition(
                   opacity: fadeAnimation,
                   child: SlideTransition(
@@ -173,28 +147,27 @@ class _LoginScreenState extends State<LoginScreen> {
               },
             ),
           );
-        } else {
-          print('=== LOGIN FAILED - SHOWING ERROR ===');
-          print('Success value was: $success');
+        case LoginResult.invalidCredentials:
           setState(() {
             _errorMessage =
                 AppLocalizations.of(context)!.invalidUsernameOrPassword;
           });
-        }
-      } catch (e) {
-        print('=== LOGIN ERROR ===');
-        print('Error details: $e');
-        print('Error type: ${e.runtimeType}');
-        setState(() {
-          _errorMessage = AppLocalizations.of(context)!.networkErrorMessage;
-        });
-      } finally {
-        print('=== LOGIN ATTEMPT COMPLETED ===');
-        if (mounted) {
+        case LoginResult.networkError:
           setState(() {
-            _isLoading = false;
+            _errorMessage =
+                AppLocalizations.of(context)!.networkErrorMessage;
           });
-        }
+        case LoginResult.serverError:
+          setState(() {
+            _errorMessage =
+                AppLocalizations.of(context)!.serverErrorMessage;
+          });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -498,20 +471,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           .pleaseEnterUsernameOrPhoneNumber;
                     }
 
-                    // Only apply phone number validation if input looks like a phone number
-                    if (_isPhoneNumber(value)) {
-                      final normalizedPhone = _normalizePhoneNumber(value);
-                      if (normalizedPhone.isEmpty) {
-                        return AppLocalizations.of(context)!
-                            .pleaseEnterValidPhoneNumber;
-                      }
-
-                      if (normalizedPhone.length < 10) {
-                        return AppLocalizations.of(context)!
-                            .phoneNumberShouldBeAtLeast10Digits;
-                      }
+                    final normalized = _normalizePhoneNumber(value.trim());
+                    if (RegExp(r'^[0-9]+$').hasMatch(normalized) &&
+                        normalized.length < 10) {
+                      return AppLocalizations.of(context)!
+                          .phoneNumberShouldBeAtLeast10Digits;
                     }
-                    // For username (non-numeric input), no additional validation needed
 
                     return null;
                   },
