@@ -23,6 +23,7 @@ import './ui/profile_screen.dart';
 import './services/logout.dart';
 import './services/language_service.dart';
 import './services/update_service.dart';
+import './services/locate_me_service.dart';
 import './ui/update_bottom_sheet.dart';
 import './ui/offline_webview.dart';
 
@@ -838,6 +839,22 @@ class _LocationSelectionState extends State<LocationSelection> {
         ),
         items: [
           const PopupMenuItem<String>(
+            value: 'locate_me',
+            child: Row(
+              children: [
+                Icon(Icons.my_location, color: Color(0xFF592941)),
+                SizedBox(width: 12),
+                Text(
+                  'Locate Me',
+                  style: TextStyle(
+                    color: Color(0xFF592941),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const PopupMenuItem<String>(
             value: 'profile',
             child: Row(
               children: [
@@ -903,6 +920,9 @@ class _LocationSelectionState extends State<LocationSelection> {
 
   void _handleMenuSelection(String value) {
     switch (value) {
+      case 'locate_me':
+        _showLocateMeOptions();
+        break;
       case 'profile':
         Navigator.push(
           context,
@@ -920,6 +940,329 @@ class _LocationSelectionState extends State<LocationSelection> {
     }
   }
 
+  void _showLocateMeOptions() {
+    if (states.isEmpty) return;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Locate Me',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF592941),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFF3E5F5),
+                    child: Icon(Icons.gps_fixed, color: Color(0xFF592941)),
+                  ),
+                  title: const Text('Detect Automatically',
+                      style: TextStyle(fontWeight: FontWeight.w500)),
+                  subtitle: const Text('Use GPS to detect your location'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _locateMeAutomatic();
+                  },
+                ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFF3E5F5),
+                    child: Icon(Icons.edit_location_alt, color: Color(0xFF592941)),
+                  ),
+                  title: const Text('Enter Manually',
+                      style: TextStyle(fontWeight: FontWeight.w500)),
+                  subtitle: const Text('Type latitude and longitude'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showManualLatLonDialog();
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _locateMeAutomatic() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text('Detecting your location...'),
+          ],
+        ),
+        duration: Duration(seconds: 10),
+      ),
+    );
+
+    final result = await LocateMeService.fetchAdminDetailsFromLocation();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    _handleLocateResult(result);
+  }
+
+  void _showManualLatLonDialog() {
+    final latController = TextEditingController();
+    final lonController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            'Enter Coordinates',
+            style: TextStyle(color: Color(0xFF592941), fontWeight: FontWeight.bold),
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: latController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                  decoration: InputDecoration(
+                    labelText: 'Latitude',
+                    hintText: 'e.g. 28.6139',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(Icons.north, color: Color(0xFF592941)),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Required';
+                    final val = double.tryParse(v.trim());
+                    if (val == null || val < -90 || val > 90) return 'Must be -90 to 90';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: lonController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                  decoration: InputDecoration(
+                    labelText: 'Longitude',
+                    hintText: 'e.g. 77.2090',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(Icons.east, color: Color(0xFF592941)),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Required';
+                    final val = double.tryParse(v.trim());
+                    if (val == null || val < -180 || val > 180) return 'Must be -180 to 180';
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF592941),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                if (!formKey.currentState!.validate()) return;
+                final lat = double.parse(latController.text.trim());
+                final lon = double.parse(lonController.text.trim());
+                Navigator.pop(context);
+                _locateMeManual(lat, lon);
+              },
+              child: const Text('Submit', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _locateMeManual(double latitude, double longitude) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text('Fetching location details...'),
+          ],
+        ),
+        duration: Duration(seconds: 10),
+      ),
+    );
+
+    final result = await LocateMeService.fetchAdminDetailsByCoordinates(latitude, longitude);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    _handleLocateResult(result);
+  }
+
+  void _handleLocateResult(LocateMeResult result) {
+    if (result.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message ?? 'Could not determine location'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+      return;
+    }
+
+    final admin = result.data;
+    if (admin == null || !admin.hasData) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No admin details found for this location'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+      return;
+    }
+
+    _autoPopulateDropdowns(admin);
+  }
+
+  void _autoPopulateDropdowns(AdminDetails admin) {
+    final matchedState = states.cast<Map<String, dynamic>?>().firstWhere(
+        (s) => s!["label"].toString().toLowerCase() == admin.state?.toLowerCase(),
+        orElse: () => null);
+
+    if (matchedState == null) {
+      _showLocationMismatch(admin);
+      return;
+    }
+
+    setState(() {
+      selectedState = matchedState["label"];
+      selectedStateID = matchedState["state_id"];
+      districts = List<Map<String, dynamic>>.from(matchedState["district"]);
+      _cachedStateItems = null;
+      _cachedDistrictItems = null;
+      _cachedBlockItems = null;
+      selectedDistrict = null;
+      selectedDistrictID = null;
+      selectedBlock = null;
+      selectedBlockID = null;
+    });
+
+    final matchedDistrict = districts.cast<Map<String, dynamic>?>().firstWhere(
+        (d) => d!["label"].toString().toLowerCase() == admin.district?.toLowerCase(),
+        orElse: () => null);
+
+    if (matchedDistrict == null) {
+      _showPartialMatch('State matched, but district not found in proposed blocks');
+      return;
+    }
+
+    setState(() {
+      selectedDistrict = matchedDistrict["label"];
+      selectedDistrictID = matchedDistrict["district_id"];
+      blocks = List<Map<String, dynamic>>.from(matchedDistrict["blocks"]);
+      _cachedDistrictItems = null;
+      _cachedBlockItems = null;
+    });
+
+    final matchedBlock = blocks.cast<Map<String, dynamic>?>().firstWhere(
+        (b) => b!["label"].toString().toLowerCase() == admin.tehsil?.toLowerCase(),
+        orElse: () => null);
+
+    if (matchedBlock != null) {
+      setState(() {
+        selectedBlock = matchedBlock["label"];
+        selectedBlockID = matchedBlock["block_id"].toString();
+        _cachedBlockItems = null;
+        _isSubmitEnabled = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Location set to ${admin.state}, ${admin.district}, ${admin.tehsil}'),
+          backgroundColor: const Color(0xFF592941),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    } else {
+      _showPartialMatch('State & district matched, please select tehsil manually');
+    }
+  }
+
+  void _showLocationMismatch(AdminDetails admin) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            'Your location (${admin.state ?? ''}) is not in the proposed blocks'),
+        backgroundColor: Colors.orange.shade800,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  void _showPartialMatch(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.orange.shade800,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
   void _showFallbackProfileMenu() {
     showDialog(
       context: context,
@@ -928,6 +1271,14 @@ class _LocationSelectionState extends State<LocationSelection> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              leading: const Icon(Icons.my_location),
+              title: const Text('Locate Me'),
+              onTap: () {
+                Navigator.pop(context);
+                _handleMenuSelection('locate_me');
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.person),
               title: const Text('Profile'),
