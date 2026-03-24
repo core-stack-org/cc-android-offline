@@ -6,6 +6,17 @@ import '../utils/constants.dart';
 
 enum LoginResult { success, invalidCredentials, networkError, serverError }
 
+sealed class ForgotPasswordResult {}
+
+class ForgotPasswordSuccess extends ForgotPasswordResult {}
+
+class ForgotPasswordEmailRequired extends ForgotPasswordResult {}
+
+class ForgotPasswordError extends ForgotPasswordResult {
+  final String message;
+  ForgotPasswordError(this.message);
+}
+
 class LoginService {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
@@ -60,6 +71,47 @@ class LoginService {
     }
 
     return LoginResult.serverError;
+  }
+
+  Future<ForgotPasswordResult> forgotPassword(String username, {String? email}) async {
+    final http.Response response;
+    try {
+      final body = <String, String>{'username': username};
+      if (email != null) body['email'] = email;
+
+      response = await http.post(
+        Uri.parse('${apiUrl}auth/forgot-password/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+    } on SocketException {
+      return ForgotPasswordError('network');
+    } on HttpException {
+      return ForgotPasswordError('network');
+    } catch (e) {
+      return ForgotPasswordError('network');
+    }
+
+    if (response.statusCode == 200) {
+      return ForgotPasswordSuccess();
+    }
+
+    Map<String, dynamic> responseData;
+    try {
+      responseData = jsonDecode(response.body);
+    } catch (_) {
+      return ForgotPasswordError('server');
+    }
+
+    if (response.statusCode == 400 && responseData['email_required'] == true) {
+      return ForgotPasswordEmailRequired();
+    }
+
+    final detail = responseData['detail'] as String?;
+    return ForgotPasswordError(detail ?? 'server');
   }
 
   Future<void> _storeAuthData(String accessToken, String refreshToken,

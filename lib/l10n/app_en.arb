@@ -267,5 +267,17 @@
   "failedToClearCache": "Failed to clear cache",
   "unableToLoadProfile": "Unable to load profile data",
   "loadingLocations": "Loading Locations",
-  "pleaseWait": "Please wait..."
+  "pleaseWait": "Please wait...",
+  "forgotPassword": "Forgot Password?",
+  "forgotPasswordTitle": "Reset Password",
+  "forgotPasswordDescription": "Enter your phone number to receive a password reset link.",
+  "enterUsername": "Enter your phone number",
+  "sendResetLink": "Send Reset Link",
+  "emailRequiredDescription": "No email is linked to this account. Please provide an email to receive the reset link.",
+  "enterEmail": "Enter your email",
+  "pleaseEnterUsername": "Please enter your phone number",
+  "pleaseEnterEmail": "Please enter your email",
+  "pleaseEnterValidEmail": "Please enter a valid email address",
+  "resetLinkSent": "Password reset link has been sent. Please check your email.",
+  "userNotFound": "Could not process request. Please check your phone number and try again."
 }

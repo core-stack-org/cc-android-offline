@@ -172,6 +172,236 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _showForgotPasswordSheet() {
+    final usernameCtrl = TextEditingController(
+      text: _usernameController.text.trim(),
+    );
+    final emailCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var isLoading = false;
+    var needsEmail = false;
+    String? message;
+    bool success = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            final l10n = AppLocalizations.of(ctx)!;
+
+            Future<void> submit() async {
+              if (!formKey.currentState!.validate()) return;
+              setSheetState(() {
+                isLoading = true;
+                message = null;
+              });
+
+              final username = _normalizePhoneNumber(usernameCtrl.text.trim());
+              final email = needsEmail ? emailCtrl.text.trim() : null;
+
+              final result = await _loginService.forgotPassword(
+                username,
+                email: email,
+              );
+
+              if (!ctx.mounted) return;
+
+              switch (result) {
+                case ForgotPasswordSuccess():
+                  setSheetState(() {
+                    isLoading = false;
+                    success = true;
+                    message = l10n.resetLinkSent;
+                  });
+                case ForgotPasswordEmailRequired():
+                  setSheetState(() {
+                    isLoading = false;
+                    needsEmail = true;
+                    message = l10n.emailRequiredDescription;
+                  });
+                case ForgotPasswordError(message: final msg):
+                  setSheetState(() {
+                    isLoading = false;
+                    message = msg == 'network'
+                        ? l10n.networkErrorMessage
+                        : msg == 'server'
+                            ? l10n.serverErrorMessage
+                            : msg;
+                  });
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 24,
+                bottom: 24 + MediaQuery.of(ctx).viewInsets.bottom,
+              ),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          l10n.forgotPasswordTitle,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF592941),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(ctx),
+                          color: const Color(0xFF592941),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      needsEmail
+                          ? l10n.emailRequiredDescription
+                          : l10n.forgotPasswordDescription,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade700,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: usernameCtrl,
+                      enabled: !success,
+                      decoration: InputDecoration(
+                        labelText: l10n.usernameOrPhoneNumber,
+                        hintText: l10n.enterUsername,
+                        prefixIcon: const Icon(Icons.person_outline),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                              color: Color(0xFFD6D4C8), width: 2),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.7),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? l10n.pleaseEnterUsername
+                          : null,
+                    ),
+                    if (needsEmail) ...[
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: emailCtrl,
+                        enabled: !success,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          labelText: l10n.email,
+                          hintText: l10n.enterEmail,
+                          prefixIcon: const Icon(Icons.email_outlined),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: Color(0xFFD6D4C8), width: 2),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.7),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return l10n.pleaseEnterEmail;
+                          }
+                          if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                              .hasMatch(v.trim())) {
+                            return l10n.pleaseEnterValidEmail;
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                    if (message != null && !needsEmail || success) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        message!,
+                        style: TextStyle(
+                          color: success
+                              ? const Color(0xFF2E7D32)
+                              : Theme.of(ctx).colorScheme.error,
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    if (!success)
+                      isLoading
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFF592941)),
+                              ),
+                            )
+                          : ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFD6D4C8),
+                                foregroundColor: const Color(0xFF592941),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              onPressed: submit,
+                              child: Text(l10n.sendResetLink),
+                            ),
+                    if (success)
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD6D4C8),
+                          foregroundColor: const Color(0xFF592941),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(l10n.ok),
+                      ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showHelpBottomSheet() {
     showModalBottomSheet(
       context: context,
@@ -205,12 +435,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              const Text(
-                'To use a demo login account, log in using the following details and then navigate to Jharkhand > Dumka > Masalia and Select a Demo / Test Plan while navigating to the Online Mode',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF592941),
-                  height: 1.5,
+              const Text.rich(
+                TextSpan(
+                  text: 'To try the demo account:\n',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF592941),
+                    height: 1.5,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: '• Log in using the credentials below\n'
+                          '• Navigate to any Tehsil\n'
+                          '• Select a Demo / Test Plan',
+                      style: TextStyle(fontWeight: FontWeight.normal),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
@@ -519,7 +760,24 @@ class _LoginScreenState extends State<LoginScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _showForgotPasswordSheet,
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF592941),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                    ),
+                    child: Text(
+                      AppLocalizations.of(context)!.forgotPassword,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 _buildLanguageSelector(),
                 const SizedBox(height: 16),
                 if (_errorMessage != null)

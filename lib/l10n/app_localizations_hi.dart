@@ -630,4 +630,44 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get pleaseWait => 'कृपया प्रतीक्षा करें...';
+
+  @override
+  String get forgotPassword => 'पासवर्ड भूल गए?';
+
+  @override
+  String get forgotPasswordTitle => 'पासवर्ड रीसेट करें';
+
+  @override
+  String get forgotPasswordDescription =>
+      'पासवर्ड रीसेट लिंक प्राप्त करने के लिए अपना उपयोगकर्ता नाम दर्ज करें।';
+
+  @override
+  String get enterUsername => 'अपना उपयोगकर्ता नाम दर्ज करें';
+
+  @override
+  String get sendResetLink => 'रीसेट लिंक भेजें';
+
+  @override
+  String get emailRequiredDescription =>
+      'इस खाते से कोई ईमेल जुड़ा नहीं है। रीसेट लिंक प्राप्त करने के लिए कृपया अपना ईमेल दर्ज करें।';
+
+  @override
+  String get enterEmail => 'अपना ईमेल दर्ज करें';
+
+  @override
+  String get pleaseEnterUsername => 'कृपया अपना उपयोगकर्ता नाम दर्ज करें';
+
+  @override
+  String get pleaseEnterEmail => 'कृपया अपना ईमेल दर्ज करें';
+
+  @override
+  String get pleaseEnterValidEmail => 'कृपया एक वैध ईमेल पता दर्ज करें';
+
+  @override
+  String get resetLinkSent =>
+      'पासवर्ड रीसेट लिंक भेज दिया गया है। कृपया अपना ईमेल देखें।';
+
+  @override
+  String get userNotFound =>
+      'अनुरोध प्रोसेस नहीं हो सका। कृपया अपना उपयोगकर्ता नाम जांचें और पुनः प्रयास करें।';
 }

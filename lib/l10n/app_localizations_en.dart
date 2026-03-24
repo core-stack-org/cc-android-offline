@@ -629,4 +629,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pleaseWait => 'Please wait...';
+
+  @override
+  String get forgotPassword => 'Forgot Password?';
+
+  @override
+  String get forgotPasswordTitle => 'Reset Password';
+
+  @override
+  String get forgotPasswordDescription =>
+      'Enter your phone number to receive a password reset link.';
+
+  @override
+  String get enterUsername => 'Enter your phone number';
+
+  @override
+  String get sendResetLink => 'Send Reset Link';
+
+  @override
+  String get emailRequiredDescription =>
+      'No email is linked to this account. Please provide an email to receive the reset link.';
+
+  @override
+  String get enterEmail => 'Enter your email';
+
+  @override
+  String get pleaseEnterUsername => 'Please enter your phone number';
+
+  @override
+  String get pleaseEnterEmail => 'Please enter your email';
+
+  @override
+  String get pleaseEnterValidEmail => 'Please enter a valid email address';
+
+  @override
+  String get resetLinkSent =>
+      'Password reset link has been sent. Please check your email.';
+
+  @override
+  String get userNotFound =>
+      'Could not process request. Please check your phone number and try again.';
 }
