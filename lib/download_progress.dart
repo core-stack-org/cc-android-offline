@@ -665,7 +665,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         pngLayerProgress['natural_depression_${districtFormatted}_${blockFormatted}_raster_png'] = 0.0;
 
         pngLayerProgress['${districtFormatted}_${blockFormatted}_terrain_raster_png'] = 0.0;
-        
+
+        pngLayerProgress['${districtFormatted}_${blockFormatted}_site_suitability_raster_png'] = 0.0;
+
         final yearDataLulc = [
           "17_18",
           "18_19",
@@ -2330,6 +2332,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                             displayName = 'Natural Depression Layer (PNG)';
                                           } else if(fileName.contains('terrain_')){
                                             displayName = 'Terrain Layer (PNG)';
+                                          } else if(fileName.contains('site_suitability_')){
+                                            displayName = 'Site Suitability Layer (PNG)';
                                           }
 
                                           return Padding(

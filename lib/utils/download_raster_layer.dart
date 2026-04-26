@@ -60,6 +60,12 @@ class RasterLayerDownloader {
     final terrainOutName =
         '${districtFormatted}_${blockFormatted}_terrain_raster';
 
+    final siteSuitabilityBase =
+        '${districtFormatted}_${blockFormatted}_site_suitability_raster';
+    final siteSuitabilityQualified = 'plantation:$siteSuitabilityBase';
+    final siteSuitabilityOutName =
+        '${districtFormatted}_${blockFormatted}_site_suitability_raster';
+
     try {
       final clartBbox = await _fetchCoverageBBox(clartLayerQualified);
       if (clartBbox != null) {
@@ -138,6 +144,27 @@ class RasterLayerDownloader {
       }
     } catch (err) {
       onProgressUpdate(terrainOutName, -1.0);
+    }
+
+    try {
+      final siteSuitabilityBbox =
+          await _fetchCoverageBBox(siteSuitabilityQualified);
+      if (siteSuitabilityBbox != null) {
+        await _downloadStyledPng(
+          container: container,
+          layerOutName: siteSuitabilityOutName,
+          qualifiedLayerName: siteSuitabilityQualified,
+          styleName: 'site_suitability',
+          bbox4326: siteSuitabilityBbox,
+          width: 2048,
+          height: 2048,
+        );
+        onProgressUpdate(siteSuitabilityOutName, 1.0);
+      } else {
+        onProgressUpdate(siteSuitabilityOutName, -1.0);
+      }
+    } catch (err) {
+      onProgressUpdate(siteSuitabilityOutName, -1.0);
     }
 
     // LULC years

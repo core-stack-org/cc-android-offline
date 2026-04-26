@@ -1491,14 +1491,50 @@ class _LocationSelectionState extends State<LocationSelection> {
                 }
               },
             ),
-            const SizedBox(height: 35.0),
+            const SizedBox(height: 20.0),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0),
-              child: const Divider(
-                height: 1,
-                thickness: 1.5,
-                color: Color.fromARGB(255, 211, 211, 211),
+              padding: const EdgeInsets.symmetric(horizontal: 10.0),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.my_location,
+                    size: 16,
+                    color: Color(0xFF592941),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Auto-fill the State, District and Tehsil',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
               ),
+            ),
+            const SizedBox(height: 10.0),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF592941),
+                side: const BorderSide(color: Color(0xFF592941), width: 1.5),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20.0),
+                ),
+              ),
+              onPressed: _showLocateMeOptions,
+              icon: const Icon(Icons.gps_fixed, size: 18),
+              label: const Text(
+                'Locate Me',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(height: 24.0),
+            const Divider(
+              height: 1,
+              thickness: 1.5,
+              color: Color.fromARGB(255, 211, 211, 211),
             ),
             const SizedBox(height: 15.0),
             Text(
@@ -1617,26 +1653,6 @@ class _LocationSelectionState extends State<LocationSelection> {
                 ),
                 onPressed: _isSubmitEnabled ? _handleSubmit : null,
                 child: Text(localizations.submit),
-              ),
-            ),
-            const SizedBox(height: 20.0),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              child: Container(
-                padding: const EdgeInsets.all(14.0),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade400.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20.0),
-                ),
-                child: Text(
-                  localizations.betaOfflineNote,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                    color: Color.fromARGB(255, 77, 77, 77),
-                  ),
-                ),
               ),
             ),
             const SizedBox(height: 32.0),

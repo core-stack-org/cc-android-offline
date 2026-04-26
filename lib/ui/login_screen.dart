@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -17,7 +18,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -29,6 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String _selectedLanguage = 'hi';
   bool _obscurePassword = true;
   String _appVersion = '';
+  late AnimationController _hintController;
 
   @override
   void initState() {
@@ -36,6 +39,10 @@ class _LoginScreenState extends State<LoginScreen> {
     _loadSavedLanguage();
     _setupFormValidation();
     _loadInfo();
+    _hintController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat();
   }
 
   Future<void> _loadSavedLanguage() async {
@@ -82,6 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.removeListener(_validateForm);
     _usernameController.dispose();
     _passwordController.dispose();
+    _hintController.dispose();
     super.dispose();
   }
 
@@ -627,6 +635,57 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+    // Stop arrow tip just outside the button circle edge (bottom-right quadrant)
+    final buttonCenter = Offset(52.0, topPadding + 50.0);
+    final arrowStart = Offset(68.0, topPadding + kToolbarHeight + 34.0);
+
+    return Stack(
+      children: [
+        _buildScaffold(context),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: AnimatedBuilder(
+              animation: _hintController,
+              builder: (_, __) => CustomPaint(
+                painter: _DemoArrowPainter(
+                  progress: _hintController.value,
+                  buttonCenter: buttonCenter,
+                  arrowStart: arrowStart,
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: topPadding + kToolbarHeight + 16.0,
+          left: 72.0,
+          child: IgnorePointer(
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF592941).withValues(alpha: 0.88),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                'demo login\ndetails here',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFCF4E9),
       appBar: AppBar(
@@ -862,4 +921,76 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+}
+
+class _DemoArrowPainter extends CustomPainter {
+  final double progress;
+  final Offset buttonCenter;
+  final Offset arrowStart;
+
+  _DemoArrowPainter({
+    required this.progress,
+    required this.buttonCenter,
+    required this.arrowStart,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF592941)
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    // Swirling cubic bezier from text label to button
+    // CP1: swing left-and-down first for the swirl
+    // CP2: approach the button edge from below-right
+    final cp1 = Offset(arrowStart.dx - 55, arrowStart.dy + 14);
+    final cp2 = Offset(buttonCenter.dx + 60, buttonCenter.dy + 30);
+
+    final path = Path()
+      ..moveTo(arrowStart.dx, arrowStart.dy)
+      ..cubicTo(cp1.dx, cp1.dy, cp2.dx, cp2.dy, buttonCenter.dx, buttonCenter.dy);
+
+    // Animated dashes flowing along the path
+    const dashLen = 7.0;
+    const gapLen = 5.0;
+    const cycle = dashLen + gapLen;
+    final offset = progress * cycle;
+
+    for (final metric in path.computeMetrics()) {
+      final len = metric.length;
+      var d = -offset;
+      while (d < len) {
+        final s = d.clamp(0.0, len);
+        final e = (d + dashLen).clamp(0.0, len);
+        if (s < e) canvas.drawPath(metric.extractPath(s, e), paint);
+        d += cycle;
+      }
+    }
+
+    // Arrowhead at the tip (button end)
+    final metrics = path.computeMetrics().toList();
+    if (metrics.isNotEmpty) {
+      final m = metrics.first;
+      final t = m.getTangentForOffset(m.length);
+      if (t != null) {
+        const arrowLen = 10.0;
+        const halfAngle = 0.45;
+        canvas.save();
+        canvas.translate(t.position.dx, t.position.dy);
+        canvas.rotate(t.angle);
+        final arrowPath = Path()
+          ..moveTo(0, 0)
+          ..lineTo(-arrowLen * cos(halfAngle), -arrowLen * sin(halfAngle))
+          ..moveTo(0, 0)
+          ..lineTo(-arrowLen * cos(halfAngle), arrowLen * sin(halfAngle));
+        canvas.drawPath(arrowPath, paint);
+        canvas.restore();
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DemoArrowPainter old) => old.progress != progress;
 }
