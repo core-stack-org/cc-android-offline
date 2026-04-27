@@ -458,7 +458,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       'maintenance_rs_swb.json': 'maintenance_rs_swb.json',
       'maintenance_water_structures.json': 'maintenance_water_structures.json',
       'recharge_structure.json': 'recharge_structure.json',
-      'water_structure.json': 'water_structure.json'
+      'water_structure.json': 'water_structure.json',
+      'agrohorticulture.json' : 'agrohorticulture.json'
+
     };
 
     List<String> failedFiles = [];
