@@ -14,8 +14,6 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:nrmflutter/db/plans_db.dart';
 import 'package:nrmflutter/db/location_db.dart';
 import 'package:nrmflutter/utils/constants.dart';
-import 'package:nrmflutter/utils/change_log.dart';
-
 import './container_flow/container_manager.dart';
 import './container_flow/container_sheet.dart';
 import './download_progress.dart';
@@ -839,22 +837,6 @@ class _LocationSelectionState extends State<LocationSelection> {
         ),
         items: [
           const PopupMenuItem<String>(
-            value: 'locate_me',
-            child: Row(
-              children: [
-                Icon(Icons.my_location, color: Color(0xFF592941)),
-                SizedBox(width: 12),
-                Text(
-                  'Locate Me',
-                  style: TextStyle(
-                    color: Color(0xFF592941),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const PopupMenuItem<String>(
             value: 'profile',
             child: Row(
               children: [
@@ -862,22 +844,6 @@ class _LocationSelectionState extends State<LocationSelection> {
                 SizedBox(width: 12),
                 Text(
                   'Profile',
-                  style: TextStyle(
-                    color: Color(0xFF592941),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const PopupMenuItem<String>(
-            value: 'changelogs',
-            child: Row(
-              children: [
-                Icon(Icons.history, color: Color(0xFF592941)),
-                SizedBox(width: 12),
-                Text(
-                  'Change Logs',
                   style: TextStyle(
                     color: Color(0xFF592941),
                     fontWeight: FontWeight.w500,
@@ -920,9 +886,6 @@ class _LocationSelectionState extends State<LocationSelection> {
 
   void _handleMenuSelection(String value) {
     switch (value) {
-      case 'locate_me':
-        _showLocateMeOptions();
-        break;
       case 'profile':
         Navigator.push(
           context,
@@ -930,9 +893,6 @@ class _LocationSelectionState extends State<LocationSelection> {
             builder: (context) => const ProfileStatsScreen(),
           ),
         );
-        break;
-      case 'changelogs':
-        ChangeLog.showChangelogBottomSheet(context);
         break;
       case 'logout':
         LogoutService.showLogoutConfirmationDialog(context);
@@ -1272,27 +1232,11 @@ class _LocationSelectionState extends State<LocationSelection> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.my_location),
-              title: const Text('Locate Me'),
-              onTap: () {
-                Navigator.pop(context);
-                _handleMenuSelection('locate_me');
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.person),
               title: const Text('Profile'),
               onTap: () {
                 Navigator.pop(context);
                 _handleMenuSelection('profile');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.history),
-              title: const Text('Change Logs'),
-              onTap: () {
-                Navigator.pop(context);
-                _handleMenuSelection('changelogs');
               },
             ),
             ListTile(
@@ -1503,7 +1447,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'Auto-fill the State, District and Tehsil',
+                    'Auto-fill the State, District and Tehsil in the dropdown',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
