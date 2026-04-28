@@ -28,33 +28,33 @@ class _WebViewState extends State<WebViewApp> {
     allowFileAccessFromFileURLs: true,
     allowUniversalAccessFromFileURLs: true,
     allowContentAccess: true,
-    
+
     // Mixed content for localhost
     mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
-    
+
     // Security settings for local development
     mediaPlaybackRequiresUserGesture: false,
-    
+
     // IMPORTANT: Allow loading insecure content (for localhost)
     // This is needed for Android
     useOnLoadResource: true,
-    
+
     // Cache and offline settings
     cacheEnabled: true,
     clearCache: false,
-    
+
     // JavaScript and DOM
     javaScriptEnabled: true,
     domStorageEnabled: true,
     databaseEnabled: true,
-    
+
     // WebGL support (needed for OpenLayers WebGL rendering)
     hardwareAcceleration: true,
-    
+
     // CORS
     disableContextMenu: false,
     supportZoom: true,
-    
+
     // Resource loading
     useOnDownloadStart: true,
     useShouldInterceptRequest: true,
@@ -65,24 +65,136 @@ class _WebViewState extends State<WebViewApp> {
     super.initState();
   }
 
+  Future<Map<String, dynamic>> _getCurrentLocationForWeb() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return {
+          'error': 'Location services are disabled',
+          'serviceEnabled': false,
+          'location': null,
+        };
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied) {
+        return {
+          'error': 'Location permissions are denied',
+          'permissionStatus': 'denied',
+          'location': null,
+        };
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        return {
+          'error': 'Location permissions are permanently denied',
+          'permissionStatus': 'deniedForever',
+          'location': null,
+        };
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+
+      return {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'altitude': position.altitude,
+        'accuracy': position.accuracy,
+        'heading': position.heading,
+        'speed': position.speed,
+        'speedAccuracy': position.speedAccuracy,
+        'timestamp': position.timestamp.millisecondsSinceEpoch,
+        'serviceEnabled': true,
+        'permissionStatus': 'granted',
+      };
+    } catch (e) {
+      return {
+        'error': 'Failed to get location: $e',
+        'location': null,
+      };
+    }
+  }
+
   Future<void> _initializeGeolocation() async {
     if (webViewController == null) return;
     try {
-      final position = await Geolocator.getCurrentPosition();
       await webViewController!.evaluateJavascript(source: '''
-        window.navigator.geolocation.getCurrentPosition = (success, error) => {
-          success({
-            coords: {
-              latitude: ${position.latitude},
-              longitude: ${position.longitude},
-              accuracy: ${position.accuracy},
-              altitude: ${position.altitude},
-              heading: ${position.heading},
-              speed: ${position.speed}
-            },
-            timestamp: ${position.timestamp.millisecondsSinceEpoch}
-          });
-        };
+        (function() {
+          if (!window.flutter_inappwebview || !window.flutter_inappwebview.callHandler) {
+            return;
+          }
+
+          var watchId = 1;
+          var watchTimers = {};
+
+          function toBrowserPosition(location) {
+            return {
+              coords: {
+                latitude: Number(location.latitude),
+                longitude: Number(location.longitude),
+                accuracy: Number(location.accuracy) || 0,
+                altitude: Number(location.altitude) || null,
+                heading: Number(location.heading) || null,
+                speed: Number(location.speed) || null
+              },
+              timestamp: Number(location.timestamp) || Date.now()
+            };
+          }
+
+          function getFreshLocation(success, error) {
+            window.flutter_inappwebview.callHandler('GetCurrentLocation')
+              .then(function(location) {
+                if (location && Number.isFinite(Number(location.latitude)) && Number.isFinite(Number(location.longitude))) {
+                  success(toBrowserPosition(location));
+                  return;
+                }
+
+                if (typeof error === 'function') {
+                  error({
+                    code: 2,
+                    message: (location && location.error) || 'Failed to get GPS location'
+                  });
+                }
+              })
+              .catch(function(err) {
+                if (typeof error === 'function') {
+                  error({
+                    code: 2,
+                    message: err && err.message ? err.message : 'Failed to get GPS location'
+                  });
+                }
+              });
+          }
+
+          window.navigator.geolocation.getCurrentPosition = function(success, error) {
+            getFreshLocation(success, error);
+          };
+
+          window.navigator.geolocation.watchPosition = function(success, error) {
+            var id = watchId++;
+            getFreshLocation(success, error);
+            watchTimers[id] = window.setInterval(function() {
+              getFreshLocation(success, error);
+            }, 2500);
+            return id;
+          };
+
+          window.navigator.geolocation.clearWatch = function(id) {
+            if (watchTimers[id]) {
+              window.clearInterval(watchTimers[id]);
+              delete watchTimers[id];
+            }
+          };
+        })();
       ''');
     } catch (e) {
       print('Error initializing geolocation: $e');
@@ -326,7 +438,8 @@ class _WebViewState extends State<WebViewApp> {
         items: [
           PopupMenuItem<String>(
             value: 'location',
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             child: Row(
               children: [
                 Container(
@@ -378,7 +491,8 @@ class _WebViewState extends State<WebViewApp> {
           ),
           PopupMenuItem<String>(
             value: 'home',
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             child: Row(
               children: [
                 Container(
@@ -508,6 +622,13 @@ class _WebViewState extends State<WebViewApp> {
                     return refreshedAuth;
                   },
                 );
+
+                webViewController!.addJavaScriptHandler(
+                  handlerName: 'GetCurrentLocation',
+                  callback: (args) async {
+                    return await _getCurrentLocationForWeb();
+                  },
+                );
               },
               onLoadStart: (controller, url) {
                 setState(() {
@@ -529,7 +650,8 @@ class _WebViewState extends State<WebViewApp> {
               },
               onConsoleMessage: (controller, consoleMessage) {
                 // ADD THIS - Log console messages for debugging
-                print('WebView Console [${consoleMessage.messageLevel}]: ${consoleMessage.message}');
+                print(
+                    'WebView Console [${consoleMessage.messageLevel}]: ${consoleMessage.message}');
               },
               onLoadError: (controller, url, code, message) {
                 // ADD THIS - Log load errors
@@ -537,7 +659,8 @@ class _WebViewState extends State<WebViewApp> {
               },
               onLoadHttpError: (controller, url, statusCode, description) {
                 // ADD THIS - Log HTTP errors
-                print('WebView HTTP Error: $description (status: $statusCode) for $url');
+                print(
+                    'WebView HTTP Error: $description (status: $statusCode) for $url');
               },
               androidOnPermissionRequest:
                   (controller, origin, resources) async {
