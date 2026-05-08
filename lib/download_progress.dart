@@ -496,8 +496,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       String? district, String? block) async {
     if (_cachedLayers == null && !_isLoadingLayers) {
       _isLoadingLayers = true;
-      print(
-          "DownloadProgressPage.getLayers called with district: $district, block: $block, blockId: ${widget.selectedBlockID}");
+      print("DownloadProgressPage.getLayers called with district: $district, block: $block, blockId: ${widget.selectedBlockID}");
       _cachedLayers = LayersConfig.getLayers(district, block,
           blockId: widget.selectedBlockID);
       await _cachedLayers;
@@ -2925,6 +2924,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       'settlement_',
       'well_',
       'waterbody_',
+      'cropping_'
       'main_swb_',
       'plan_agri_',
       'plan_gw_',

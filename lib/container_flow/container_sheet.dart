@@ -774,6 +774,7 @@ class ContainerSheets {
         'settlement_',
         'well_',
         'waterbody_',
+        'cropping_',
         'main_swb_',
         'plan_agri_',
         'plan_gw_',
