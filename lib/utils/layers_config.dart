@@ -63,7 +63,7 @@ class LayersConfig {
       final plans =
           await PlansDatabase.instance.getPlansForTehsil(int.parse(blockId));
 
-      final resourceLayers = ['settlement', 'well', 'waterbody'];
+      final resourceLayers = ['settlement', 'well', 'waterbody', 'cropping'];
       final worksLayers = ['main_swb', 'plan_agri', 'plan_gw', 'livelihood'];
 
       for (var plan in plans) {
