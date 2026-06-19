@@ -533,6 +533,13 @@ class AppLocalizationsHi extends AppLocalizations {
   String get superAdministrator => 'सुपर व्यवस्थापक';
 
   @override
+  String get showAllRegions => 'सभी क्षेत्र दिखाएं';
+
+  @override
+  String get showAllRegionsDescription =>
+      'चयनित राज्य, जिला और तहसील को अनदेखा करके सभी स्थानों के क्षेत्र दिखाएं';
+
+  @override
   String get security => 'सुरक्षा';
 
   @override

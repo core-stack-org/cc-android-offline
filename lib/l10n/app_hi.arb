@@ -238,6 +238,8 @@
   "unknownProject": "अज्ञात परियोजना",
   "adminStatus": "व्यवस्थापक स्थिति",
   "superAdministrator": "सुपर व्यवस्थापक",
+  "showAllRegions": "सभी क्षेत्र दिखाएं",
+  "showAllRegionsDescription": "चयनित राज्य, जिला और तहसील को अनदेखा करके सभी स्थानों के क्षेत्र दिखाएं",
   "security": "सुरक्षा",
   "changePassword": "पासवर्ड बदलें",
   "updateYourAccountPassword": "अपने खाते का पासवर्ड अपडेट करें",

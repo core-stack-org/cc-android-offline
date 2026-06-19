@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui' as ui;
 
 import 'webview.dart';
@@ -65,6 +66,7 @@ class _LocationSelectionState extends State<LocationSelection> {
   bool _isLoadingData = true;
   bool _isRefreshing = false;
   bool _hasCheckedUpdate = false;
+  bool _showAllRegions = false;
 
   final GlobalKey _profileButtonKey = GlobalKey();
 
@@ -73,11 +75,21 @@ class _LocationSelectionState extends State<LocationSelection> {
     super.initState();
     _loadSavedLanguage();
     _loadInfo();
+    _loadShowAllRegions();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       fetchLocationData();
       _checkForUpdate();
     });
+  }
+
+  Future<void> _loadShowAllRegions() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _showAllRegions = prefs.getBool(kShowAllRegionsPrefKey) ?? false;
+      });
+    }
   }
 
   Future<void> _checkForUpdate() async {
@@ -449,6 +461,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                                     selectedDistrict: selectedDistrict,
                                     selectedBlock: selectedBlock,
                                     selectedBlockID: selectedBlockID,
+                                    onDownloadComplete: showContainerList,
                                   ),
                                 ),
                               );
@@ -487,8 +500,27 @@ class _LocationSelectionState extends State<LocationSelection> {
       selectedState: selectedState ?? '',
       selectedDistrict: selectedDistrict ?? '',
       selectedBlock: selectedBlock ?? '',
+      showAllRegions: _showAllRegions,
+      onContainerCreated: (container) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DownloadProgressPage(
+              container: container,
+              selectedDistrict: selectedDistrict,
+              selectedBlock: selectedBlock,
+              selectedBlockID: selectedBlockID,
+              onDownloadComplete: showContainerList,
+            ),
+          ),
+        );
+      },
       onContainerSelected: (container) {
-        navigateToWebViewOffline(container);
+        if (container.isDownloaded) {
+          navigateToWebViewOffline(container);
+        } else {
+          showAgreementSheet(container);
+        }
       },
     );
   }
@@ -497,23 +529,39 @@ class _LocationSelectionState extends State<LocationSelection> {
   Future<void> navigateToWebViewOffline(OfflineContainer container) async {
     final localizations = AppLocalizations.of(context)!;
 
-    if (selectedBlockID == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(localizations.couldNotFindBlockInfo)),
-      );
+    final containerMatchesSelection = container.block == selectedBlock &&
+        container.district == selectedDistrict &&
+        container.state == selectedState;
+
+    String? blockId;
+    if (containerMatchesSelection) {
+      blockId = selectedBlockID;
+    } else {
+      blockId = await ContainerSheets.getBlockId(
+          container.state, container.district, container.block);
+    }
+
+    if (blockId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(localizations.couldNotFindBlockInfo)),
+        );
+      }
       return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => OfflineWebView(
-          container: container,
-          selectedBlockID: selectedBlockID!,
-          selectedLanguage: _selectedLanguage,
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OfflineWebView(
+            container: container,
+            selectedBlockID: blockId!,
+            selectedLanguage: _selectedLanguage,
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   List<DropdownMenuItem<String>> _buildDropdownItems(
@@ -623,20 +671,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     if (isOnlineMode) {
       submitLocation();
     } else {
-      ContainerSheets.showContainerList(
-        context: context,
-        selectedLanguage: _selectedLanguage,
-        selectedState: selectedState!,
-        selectedDistrict: selectedDistrict!,
-        selectedBlock: selectedBlock!,
-        onContainerSelected: (container) {
-          if (container.isDownloaded) {
-            navigateToWebViewOffline(container);
-          } else {
-            showAgreementSheet(container);
-          }
-        },
-      );
+      showContainerList();
     }
   }
 
@@ -906,7 +941,7 @@ class _LocationSelectionState extends State<LocationSelection> {
           MaterialPageRoute(
             builder: (context) => const ProfileStatsScreen(),
           ),
-        );
+        ).then((_) => _loadShowAllRegions());
         break;
       case 'logout':
         LogoutService.showLogoutConfirmationDialog(context);

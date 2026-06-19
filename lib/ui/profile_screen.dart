@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/login_service.dart';
 import '../services/cache_service.dart';
 import '../ui/login_screen.dart';
 import '../l10n/app_localizations.dart';
+
+const String kShowAllRegionsPrefKey = 'show_all_regions';
 
 class ProfileStatsScreen extends StatefulWidget {
   const ProfileStatsScreen({Key? key}) : super(key: key);
@@ -17,11 +20,27 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
   final CacheService _cacheService = CacheService();
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
+  bool _showAllRegions = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _loadShowAllRegions();
+  }
+
+  Future<void> _loadShowAllRegions() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _showAllRegions = prefs.getBool(kShowAllRegionsPrefKey) ?? false;
+      });
+    }
+  }
+
+  Future<void> _saveShowAllRegions(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(kShowAllRegionsPrefKey, value);
   }
 
   Future<void> _loadUserData() async {
@@ -1137,36 +1156,105 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                               borderRadius: BorderRadius.circular(20)),
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(16.0),
-                              decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(16.0),
-                                border: Border.all(
-                                  color: Colors.green.withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.admin_panel_settings,
-                                    color: Colors.green[700],
-                                    size: 24,
-                                  ),
-                                  const SizedBox(width: 12.0),
-                                  Text(
-                                    AppLocalizations.of(context)!
-                                        .superAdministrator,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.green[800],
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(16.0),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(16.0),
+                                    border: Border.all(
+                                      color: Colors.green.withOpacity(0.3),
+                                      width: 1,
                                     ),
                                   ),
-                                ],
-                              ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.admin_panel_settings,
+                                        color: Colors.green[700],
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 12.0),
+                                      Text(
+                                        AppLocalizations.of(context)!
+                                            .superAdministrator,
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.green[800],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 12.0),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16.0, vertical: 12.0),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16.0),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(10.0),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF592941)
+                                              .withValues(alpha: 0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(12.0),
+                                        ),
+                                        child: const Icon(
+                                          Icons.layers_outlined,
+                                          color: Color(0xFF592941),
+                                          size: 22,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16.0),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              AppLocalizations.of(context)!
+                                                  .showAllRegions,
+                                              style: const TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                                color: Color(0xFF592941),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4.0),
+                                            Text(
+                                              AppLocalizations.of(context)!
+                                                  .showAllRegionsDescription,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Switch(
+                                        value: _showAllRegions,
+                                        activeColor: const Color(0xFF592941),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _showAllRegions = value;
+                                          });
+                                          _saveShowAllRegions(value);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),

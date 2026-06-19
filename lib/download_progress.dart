@@ -18,12 +18,14 @@ import './l10n/app_localizations.dart';
 
 import './utils/s3_helper.dart';
 import './config/aws_config.dart';
+import './utils/toast.dart';
 
 class DownloadProgressPage extends StatefulWidget {
   final OfflineContainer container;
   final String? selectedDistrict;
   final String? selectedBlock;
   final String? selectedBlockID;
+  final VoidCallback? onDownloadComplete;
 
   const DownloadProgressPage({
     super.key,
@@ -31,6 +33,7 @@ class DownloadProgressPage extends StatefulWidget {
     this.selectedDistrict,
     this.selectedBlock,
     this.selectedBlockID,
+    this.onDownloadComplete,
   });
 
   @override
@@ -799,12 +802,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         print("=== DOWNLOAD COMPLETED SUCCESSFULLY ===");
         _logButtonState();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!
-                .successfullyDownloadedData(container.name)),
-            backgroundColor: Colors.green,
-          ),
+        showTopToast(
+          context,
+          AppLocalizations.of(context)!.successfullyDownloadedData(container.name),
         );
       }
     } catch (e) {
@@ -1477,43 +1477,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                           _verifyAllDownloadsComplete() &&
                           !hasAnyFailures) {
                         Navigator.pop(context);
-                        showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return AlertDialog(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              title: Text(
-                                l10n.downloadComplete,
-                                style: const TextStyle(
-                                  color: Color(0xFF592941),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              content: Text(
-                                l10n.allLayersDownloadedSuccessfully,
-                                style: const TextStyle(
-                                  color: Color(0xFF592941),
-                                ),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                  },
-                                  child: Text(
-                                    l10n.ok,
-                                    style: const TextStyle(
-                                      color: Color(0xFF592941),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        );
+                        showTopToast(context, l10n.allLayersDownloadedSuccessfully);
+                        widget.onDownloadComplete?.call();
                       } else if (hasAnyFailures ||
                           !_verifyAllDownloadsComplete()) {
                         showDialog(

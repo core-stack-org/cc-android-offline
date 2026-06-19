@@ -238,6 +238,8 @@
   "unknownProject": "Unknown Project",
   "adminStatus": "Admin Status",
   "superAdministrator": "Super Administrator",
+  "showAllRegions": "Show All Regions",
+  "showAllRegionsDescription": "Show regions from all locations, ignoring selected State, District & Tehsil",
   "security": "Security",
   "changePassword": "Change Password",
   "updateYourAccountPassword": "Update your account password",

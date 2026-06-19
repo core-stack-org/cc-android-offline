@@ -1028,6 +1028,18 @@ abstract class AppLocalizations {
   /// **'Super Administrator'**
   String get superAdministrator;
 
+  /// No description provided for @showAllRegions.
+  ///
+  /// In en, this message translates to:
+  /// **'Show All Regions'**
+  String get showAllRegions;
+
+  /// No description provided for @showAllRegionsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show regions from all locations, ignoring selected State, District & Tehsil'**
+  String get showAllRegionsDescription;
+
   /// No description provided for @security.
   ///
   /// In en, this message translates to:

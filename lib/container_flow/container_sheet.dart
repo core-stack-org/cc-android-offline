@@ -6,6 +6,7 @@ import 'package:nrmflutter/utils/layers_config.dart';
 import 'package:http/http.dart' as http;
 //import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/toast.dart';
 
 import 'dart:io';
 import 'container_manager.dart';
@@ -281,6 +282,8 @@ class ContainerSheets {
     required String selectedDistrict,
     required String selectedBlock,
     required Function(OfflineContainer) onContainerSelected,
+    Function(OfflineContainer)? onContainerCreated,
+    bool showAllRegions = false,
   }) {
     String? selectedContainerId;
     String? _refreshingContainerName;
@@ -303,7 +306,7 @@ class ContainerSheets {
             child: Column(
               children: [
                 Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Row(
                     children: [
                       Text(
@@ -317,6 +320,34 @@ class ContainerSheets {
                     ],
                   ),
                 ),
+                if (showAllRegions)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF592941).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.layers_outlined,
+                              size: 16, color: Color(0xFF592941)),
+                          const SizedBox(width: 8),
+                          Text(
+                            'All downloaded regions are shown',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: const Color(0xFF592941).withValues(alpha: 0.8),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 if (_refreshingContainerName != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -336,7 +367,15 @@ class ContainerSheets {
                               child: CircularProgressIndicator());
                         }
 
-                        final containers = snapshot.data!;
+                        final allContainers = snapshot.data!;
+                        final containers = showAllRegions
+                            ? allContainers
+                            : allContainers
+                                .where((c) =>
+                                    c.state == selectedState &&
+                                    c.district == selectedDistrict &&
+                                    c.block == selectedBlock)
+                                .toList();
 
                         if (containers.isEmpty) {
                           return Align(
@@ -366,19 +405,63 @@ class ContainerSheets {
                           );
                         }
 
-                        // Sort containers by creation date, newest first
-                        containers
-                            .sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-                        final selectedContainer = containers.firstWhere(
-                          (container) => container.name == selectedContainerId,
-                          orElse: () => containers.first,
-                        );
+                        // Group by tehsil key, sort groups then items within
+                        final Map<String, List<OfflineContainer>> grouped = {};
+                        for (final c in containers) {
+                          final key = '${c.state} › ${c.district} › ${c.block}';
+                          grouped.putIfAbsent(key, () => []).add(c);
+                        }
+                        for (final group in grouped.values) {
+                          group.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                        }
+                        final sortedKeys = grouped.keys.toList()..sort();
+                        final List<dynamic> listItems = [];
+                        for (final key in sortedKeys) {
+                          listItems.add(key);
+                          listItems.addAll(grouped[key]!);
+                        }
 
                         return ListView.builder(
-                          itemCount: containers.length,
+                          itemCount: listItems.length,
                           itemBuilder: (context, index) {
-                            final container = containers[index];
+                            final item = listItems[index];
+
+                            // Section header for grouped (showAllRegions) mode
+                            if (item is String) {
+                              final parts = item.split(' › ');
+                              final tehsilName = parts.length == 3 ? parts[2] : item;
+                              final locationPath = parts.length == 3
+                                  ? '${parts[0]} › ${parts[1]}'
+                                  : '';
+                              return Padding(
+                                padding: const EdgeInsets.only(
+                                    top: 16, bottom: 6),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      tehsilName,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF592941),
+                                      ),
+                                    ),
+                                    if (locationPath.isNotEmpty)
+                                      Text(
+                                        locationPath,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            final container = item as OfflineContainer;
                             final isSelected =
                                 container.name == selectedContainerId;
 
@@ -450,24 +533,8 @@ class ContainerSheets {
                                       if (confirm && context.mounted) {
                                         await _deleteContainerAndData(
                                             container.name);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(localizations
-                                                .regionDeleted(container.name)),
-                                            backgroundColor:
-                                                const Color(0xFFFF4D6D),
-                                            behavior: SnackBarBehavior.floating,
-                                            margin: EdgeInsets.only(
-                                              bottom: MediaQuery.of(context)
-                                                      .size
-                                                      .height *
-                                                  0.87,
-                                              left: 16,
-                                              right: 16,
-                                            ),
-                                          ),
-                                        );
+                                        showTopToast(context, localizations
+                                            .regionDeleted(container.name));
                                         setState(() {
                                           containersFuture =
                                               ContainerManager.getContainers();
@@ -515,28 +582,20 @@ class ContainerSheets {
                                     fontSize: 16,
                                   ),
                                 ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      '${container.state} > ${container.district} > ${container.block}',
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      container.isDownloaded
-                                          ? localizations.readyForOfflineUse
-                                          : localizations.notYetDownloaded,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: container.isDownloaded
-                                            ? Colors.green
-                                            : Colors.orange,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                                subtitle: Padding(
+                                                  padding: const EdgeInsets.only(top: 6),
+                                                  child: Text(
+                                                    container.isDownloaded
+                                                        ? localizations.readyForOfflineUse
+                                                        : localizations.notYetDownloaded,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: container.isDownloaded
+                                                          ? Colors.green
+                                                          : Colors.orange,
+                                                    ),
+                                                  ),
+                                                ),
                               ),
                             );
                           },
@@ -585,7 +644,7 @@ class ContainerSheets {
                               selectedDistrict: selectedDistrict,
                               selectedBlock: selectedBlock,
                               onContainerCreated: (container) {
-                                onContainerSelected(container);
+                                (onContainerCreated ?? onContainerSelected)(container);
                               },
                             );
                           },
@@ -615,10 +674,13 @@ class ContainerSheets {
                                       await ContainerManager.getContainer(
                                           selectedContainerId!);
                                   if (container != null && context.mounted) {
-                                    if (container.state == selectedState &&
-                                        container.district ==
-                                            selectedDistrict &&
-                                        container.block == selectedBlock) {
+                                    final locationMatches =
+                                        container.state == selectedState &&
+                                            container.district ==
+                                                selectedDistrict &&
+                                            container.block == selectedBlock;
+
+                                    if (locationMatches || showAllRegions) {
                                       if (container.isDownloaded) {
                                         Navigator.pop(context);
                                         onContainerSelected(container);
@@ -690,7 +752,7 @@ class ContainerSheets {
     final localizations = AppLocalizations.of(context)!;
 
     final blockId =
-        await _getBlockId(container.state, container.district, container.block);
+        await getBlockId(container.state, container.district, container.block);
     if (blockId == null) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -750,7 +812,7 @@ class ContainerSheets {
         )));
 
     final blockId =
-        await _getBlockId(container.state, container.district, container.block);
+        await getBlockId(container.state, container.district, container.block);
     if (blockId == null) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -830,7 +892,7 @@ class ContainerSheets {
     }
   }
 
-  static Future<String?> _getBlockId(
+  static Future<String?> getBlockId(
       String stateName, String districtName, String blockName) async {
     final List<Map<String, dynamic>> states =
         await LocationDatabase.instance.getLocationData();

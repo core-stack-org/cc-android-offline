@@ -534,6 +534,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get superAdministrator => 'Super Administrator';
 
   @override
+  String get showAllRegions => 'Show All Regions';
+
+  @override
+  String get showAllRegionsDescription =>
+      'Show regions from all locations, ignoring selected State, District & Tehsil';
+
+  @override
   String get security => 'Security';
 
   @override
