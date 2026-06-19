@@ -1339,6 +1339,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Type latitude and longitude'**
   String get typeLatitudeLongitude;
+
+  /// No description provided for @planLayersNotRefreshed.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan layers were not refreshed'**
+  String get planLayersNotRefreshed;
+
+  /// No description provided for @refreshPlanLayersOnNavigate.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh plan layers while navigating'**
+  String get refreshPlanLayersOnNavigate;
+
+  /// No description provided for @refreshPlanLayersOnNavigateDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically refresh plan layers before navigating to a region when on a strong network'**
+  String get refreshPlanLayersOnNavigateDescription;
 }
 
 class _AppLocalizationsDelegate

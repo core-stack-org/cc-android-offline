@@ -289,5 +289,8 @@
   "detectAutomatically": "स्वतः पता करें",
   "useGpsToDetect": "GPS से अपना स्थान पता करें",
   "enterManually": "मैन्युअल दर्ज करें",
-  "typeLatitudeLongitude": "अक्षांश और देशांतर टाइप करें"
+  "typeLatitudeLongitude": "अक्षांश और देशांतर टाइप करें",
+  "planLayersNotRefreshed": "योजना लेयर रीफ्रेश नहीं हुए",
+  "refreshPlanLayersOnNavigate": "नेविगेट करते समय योजना लेयर रीफ्रेश करें",
+  "refreshPlanLayersOnNavigateDescription": "मजबूत नेटवर्क होने पर किसी क्षेत्र में नेविगेट करने से पहले योजना लेयर स्वतः रीफ्रेश करें"
 }

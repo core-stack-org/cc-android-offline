@@ -7,6 +7,8 @@ import '../ui/login_screen.dart';
 import '../l10n/app_localizations.dart';
 
 const String kShowAllRegionsPrefKey = 'show_all_regions';
+const String kRefreshPlanLayersOnNavigatePrefKey =
+    'refresh_plan_layers_on_navigate';
 
 class ProfileStatsScreen extends StatefulWidget {
   const ProfileStatsScreen({Key? key}) : super(key: key);
@@ -21,19 +23,22 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
   bool _showAllRegions = false;
+  bool _refreshPlanLayersOnNavigate = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
-    _loadShowAllRegions();
+    _loadPreferences();
   }
 
-  Future<void> _loadShowAllRegions() async {
+  Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
       setState(() {
         _showAllRegions = prefs.getBool(kShowAllRegionsPrefKey) ?? false;
+        _refreshPlanLayersOnNavigate =
+            prefs.getBool(kRefreshPlanLayersOnNavigatePrefKey) ?? false;
       });
     }
   }
@@ -41,6 +46,11 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
   Future<void> _saveShowAllRegions(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(kShowAllRegionsPrefKey, value);
+  }
+
+  Future<void> _saveRefreshPlanLayersOnNavigate(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(kRefreshPlanLayersOnNavigatePrefKey, value);
   }
 
   Future<void> _loadUserData() async {
@@ -1338,6 +1348,87 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                   ),
                                 ],
                               ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16.0),
+                      Divider(
+                          thickness: 1,
+                          indent: 16,
+                          endIndent: 16,
+                          color: Colors.grey.withOpacity(0.3)),
+                      const SizedBox(height: 16.0),
+                      _buildSectionTitle('Navigation'),
+                      Card(
+                        elevation: 0,
+                        color: const Color.fromARGB(255, 238, 238, 238),
+                        margin: const EdgeInsets.symmetric(vertical: 8.0),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0, vertical: 12.0),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16.0),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10.0),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF592941)
+                                        .withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12.0),
+                                  ),
+                                  child: const Icon(
+                                    Icons.layers_outlined,
+                                    color: Color(0xFF592941),
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(width: 16.0),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        AppLocalizations.of(context)!
+                                            .refreshPlanLayersOnNavigate,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF592941),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4.0),
+                                      Text(
+                                        AppLocalizations.of(context)!
+                                            .refreshPlanLayersOnNavigateDescription,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Switch(
+                                  value: _refreshPlanLayersOnNavigate,
+                                  activeColor: const Color(0xFF592941),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _refreshPlanLayersOnNavigate = value;
+                                    });
+                                    _saveRefreshPlanLayersOnNavigate(value);
+                                  },
+                                ),
+                              ],
                             ),
                           ),
                         ),

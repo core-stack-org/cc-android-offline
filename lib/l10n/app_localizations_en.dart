@@ -701,4 +701,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get typeLatitudeLongitude => 'Type latitude and longitude';
+
+  @override
+  String get planLayersNotRefreshed => 'Plan layers were not refreshed';
+
+  @override
+  String get refreshPlanLayersOnNavigate =>
+      'Refresh plan layers while navigating';
+
+  @override
+  String get refreshPlanLayersOnNavigateDescription =>
+      'Automatically refresh plan layers before navigating to a region when on a strong network';
 }

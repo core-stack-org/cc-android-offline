@@ -289,5 +289,8 @@
   "detectAutomatically": "Detect Automatically",
   "useGpsToDetect": "Use GPS to detect your location",
   "enterManually": "Enter Manually",
-  "typeLatitudeLongitude": "Type latitude and longitude"
+  "typeLatitudeLongitude": "Type latitude and longitude",
+  "planLayersNotRefreshed": "Plan layers were not refreshed",
+  "refreshPlanLayersOnNavigate": "Refresh plan layers while navigating",
+  "refreshPlanLayersOnNavigateDescription": "Automatically refresh plan layers before navigating to a region when on a strong network"
 }

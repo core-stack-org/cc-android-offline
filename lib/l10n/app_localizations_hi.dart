@@ -702,4 +702,15 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get typeLatitudeLongitude => 'अक्षांश और देशांतर टाइप करें';
+
+  @override
+  String get planLayersNotRefreshed => 'योजना लेयर रीफ्रेश नहीं हुए';
+
+  @override
+  String get refreshPlanLayersOnNavigate =>
+      'नेविगेट करते समय योजना लेयर रीफ्रेश करें';
+
+  @override
+  String get refreshPlanLayersOnNavigateDescription =>
+      'मजबूत नेटवर्क होने पर किसी क्षेत्र में नेविगेट करने से पहले योजना लेयर स्वतः रीफ्रेश करें';
 }

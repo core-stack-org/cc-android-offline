@@ -1020,29 +1020,10 @@ class _LocationSelectionState extends State<LocationSelection> {
   }
 
   Future<void> _locateMeAutomatic() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            ),
-            SizedBox(width: 12),
-            Text('Detecting your location...'),
-          ],
-        ),
-        duration: Duration(seconds: 10),
-      ),
-    );
-
+    final dismiss = showLoadingToast(context, 'Detecting your location...');
     final result = await LocateMeService.fetchAdminDetailsFromLocation();
+    dismiss();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     _handleLocateResult(result);
   }
 
@@ -1127,57 +1108,23 @@ class _LocationSelectionState extends State<LocationSelection> {
   }
 
   Future<void> _locateMeManual(double latitude, double longitude) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            ),
-            SizedBox(width: 12),
-            Text('Fetching location details...'),
-          ],
-        ),
-        duration: Duration(seconds: 10),
-      ),
-    );
-
-    final result = await LocateMeService.fetchAdminDetailsByCoordinates(latitude, longitude);
+    final dismiss = showLoadingToast(context, 'Fetching location details...');
+    final result =
+        await LocateMeService.fetchAdminDetailsByCoordinates(latitude, longitude);
+    dismiss();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     _handleLocateResult(result);
   }
 
   void _handleLocateResult(LocateMeResult result) {
     if (result.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.message ?? 'Could not determine location'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+      showTopToast(context, result.message ?? 'Could not determine location');
       return;
     }
 
     final admin = result.data;
     if (admin == null || !admin.hasData) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('No admin details found for this location'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+      showTopToast(context, 'No admin details found for this location');
       return;
     }
 
@@ -1235,43 +1182,20 @@ class _LocationSelectionState extends State<LocationSelection> {
         _cachedBlockItems = null;
         _isSubmitEnabled = true;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Location set to ${admin.state}, ${admin.district}, ${admin.tehsil}'),
-          backgroundColor: const Color(0xFF592941),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+      showTopToast(context,
+          'Location set to ${admin.state}, ${admin.district}, ${admin.tehsil}');
     } else {
       _showPartialMatch('State & district matched, please select tehsil manually');
     }
   }
 
   void _showLocationMismatch(AdminDetails admin) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-            'Your location (${admin.state ?? ''}) is not in the proposed blocks'),
-        backgroundColor: Colors.orange.shade800,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+    showTopToast(context,
+        'Your location (${admin.state ?? ''}) is not in the proposed blocks');
   }
 
   void _showPartialMatch(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.orange.shade800,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+    showTopToast(context, message);
   }
 
   void _showModeToast(String message) => showTopToast(context, message);
