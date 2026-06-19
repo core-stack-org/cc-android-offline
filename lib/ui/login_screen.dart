@@ -577,49 +577,127 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildLanguageSelector() {
-    return Center(
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedLanguage,
-          onChanged: (String? newValue) async {
-            if (newValue != null) {
-              setState(() {
-                _selectedLanguage = newValue;
-              });
-              localeNotifier.value = Locale(newValue);
-              await _languageService.saveLanguage(newValue);
-              HapticFeedback.lightImpact();
-            }
+  String _languageLabel(String code) {
+    final l10n = AppLocalizations.of(context)!;
+    return code == 'hi' ? l10n.hindi : l10n.english;
+  }
+
+  void _showLanguageSheet() {
+    final l10n = AppLocalizations.of(context)!;
+    final languages = [
+      ('hi', l10n.hindi),
+      ('en', l10n.english),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        l10n.selectLanguage,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF592941),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
+                        color: const Color(0xFF592941),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ...languages.map((entry) {
+                    final (code, label) = entry;
+                    final isSelected = _selectedLanguage == code;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () async {
+                        setSheetState(() {});
+                        setState(() => _selectedLanguage = code);
+                        localeNotifier.value = Locale(code);
+                        await _languageService.saveLanguage(code);
+                        HapticFeedback.lightImpact();
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: const Color(0xFF592941),
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              isSelected
+                                  ? Icons.check_box
+                                  : Icons.check_box_outline_blank,
+                              color: const Color(0xFF592941),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            );
           },
-          dropdownColor: Colors.white,
+        );
+      },
+    );
+  }
+
+  Widget _buildLanguageSelector() {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: _showLanguageSheet,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFD6D4C8), width: 1.5),
           borderRadius: BorderRadius.circular(12),
-          items: [
-            DropdownMenuItem(
-              value: 'hi',
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.language, color: Color(0xFF592941), size: 20),
+            const SizedBox(width: 12),
+            Expanded(
               child: Text(
-                AppLocalizations.of(context)!.hindi,
+                _languageLabel(_selectedLanguage),
                 style: const TextStyle(
+                  fontSize: 15,
                   color: Color(0xFF592941),
-                  fontSize: 16,
                 ),
               ),
             ),
-            DropdownMenuItem(
-              value: 'en',
-              child: Text(
-                AppLocalizations.of(context)!.english,
-                style: const TextStyle(
-                  color: Color(0xFF592941),
-                  fontSize: 16,
-                ),
-              ),
-            ),
+            const Icon(Icons.arrow_drop_down,
+                color: Color(0xFF592941), size: 24),
           ],
-          icon: const Icon(
-            Icons.arrow_drop_down,
-            color: Color(0xFF592941),
-          ),
         ),
       ),
     );
@@ -643,20 +721,36 @@ class _LoginScreenState extends State<LoginScreen> {
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
+        leadingWidth: 140,
         leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFD6D4C8),
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: const Icon(
-                Icons.help_outline,
-                color: Color(0xFF592941),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+          child: GestureDetector(
+            onTap: _showHelpBottomSheet,
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFD6D4C8),
+                borderRadius: BorderRadius.circular(20),
               ),
-              onPressed: _showHelpBottomSheet,
-              tooltip: 'Demo Login Help',
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.help_outline,
+                    color: Color(0xFF592941),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    AppLocalizations.of(context)!.demoDetails,
+                    style: const TextStyle(
+                      color: Color(0xFF592941),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -681,167 +775,205 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  AppLocalizations.of(context)!.loginTitle,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: const Color(0xFF592941),
-                      ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                TextFormField(
-                  controller: _usernameController,
-                  decoration: InputDecoration(
-                    labelText:
-                        AppLocalizations.of(context)!.usernameOrPhoneNumber,
-                    hintText:
-                        AppLocalizations.of(context)!.usernameOrPhoneNumberHint,
-                    prefixIcon: const Icon(Icons.person_outline),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                      borderSide: const BorderSide(
-                          color: Color(0xFFD6D4C8), width: 2.0),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.7),
-                  ),
-                  keyboardType: TextInputType.text,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return AppLocalizations.of(context)!
-                          .pleaseEnterUsernameOrPhoneNumber;
-                    }
-
-                    final normalized = _normalizePhoneNumber(value.trim());
-                    if (RegExp(r'^[0-9]+$').hasMatch(normalized) &&
-                        normalized.length < 10) {
-                      return AppLocalizations.of(context)!
-                          .phoneNumberShouldBeAtLeast10Digits;
-                    }
-
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _passwordController,
-                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context)!.password,
-                    hintText: AppLocalizations.of(context)!.passwordHint,
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                      borderSide: const BorderSide(
-                          color: Color(0xFFD6D4C8), width: 2.0),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.7),
-                  ),
-                  obscureText: _obscurePassword,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return AppLocalizations.of(context)!.pleaseEnterPassword;
-                    }
-                    return null;
-                  },
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: _showForgotPasswordSheet,
-                    style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF592941),
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                    ),
-                    child: Text(
-                      AppLocalizations.of(context)!.forgotPassword,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _buildLanguageSelector(),
-                const SizedBox(height: 16),
-                if (_errorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10.0),
-                    child: Text(
-                      _errorMessage!,
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                          fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                const SizedBox(height: 16),
-                _isLoading
-                    ? Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                              const Color(0xFF592941)),
+                const SizedBox(height: 24),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(top: 14),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: const Color(0xFFD6D4C8),
+                          width: 1.5,
                         ),
-                      )
-                    : Center(
-                        child: SizedBox(
-                          width: 200,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _isFormValid
-                                  ? const Color(0xFFD6D4C8)
-                                  : Colors.grey.shade300,
-                              foregroundColor: _isFormValid
-                                  ? const Color(0xFF592941)
-                                  : Colors.grey.shade500,
-                              minimumSize: const Size(200, 50),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 16.0),
-                              textStyle: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.5),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20.0),
-                              ),
-                              elevation: _isFormValid ? 1 : 0,
-                            ).copyWith(
-                              overlayColor:
-                                  MaterialStateProperty.resolveWith<Color?>(
-                                (Set<MaterialState> states) {
-                                  if (states.contains(MaterialState.pressed) &&
-                                      _isFormValid) {
-                                    return const Color(0xFFC0BFB2);
-                                  }
-                                  return null;
-                                },
-                              ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      padding: const EdgeInsets.fromLTRB(20, 32, 20, 28),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _usernameController,
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!
+                              .usernameOrPhoneNumber,
+                          hintText: AppLocalizations.of(context)!
+                              .usernameOrPhoneNumberHint,
+                          prefixIcon: const Icon(Icons.person_outline),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                            borderSide: const BorderSide(
+                                color: Color(0xFFD6D4C8), width: 2.0),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.7),
+                        ),
+                        keyboardType: TextInputType.text,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return AppLocalizations.of(context)!
+                                .pleaseEnterUsernameOrPhoneNumber;
+                          }
+                          final normalized =
+                              _normalizePhoneNumber(value.trim());
+                          if (RegExp(r'^[0-9]+$').hasMatch(normalized) &&
+                              normalized.length < 10) {
+                            return AppLocalizations.of(context)!
+                                .phoneNumberShouldBeAtLeast10Digits;
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _passwordController,
+                        decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.password,
+                          hintText: AppLocalizations.of(context)!.passwordHint,
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
                             ),
-                            onPressed: _isFormValid ? _performLogin : null,
-                            child: Text(AppLocalizations.of(context)!.login),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                            borderSide: const BorderSide(
+                                color: Color(0xFFD6D4C8), width: 2.0),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.7),
+                        ),
+                        obscureText: _obscurePassword,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return AppLocalizations.of(context)!
+                                .pleaseEnterPassword;
+                          }
+                          return null;
+                        },
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _showForgotPasswordSheet,
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF592941),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4),
+                          ),
+                          child: Text(
+                            AppLocalizations.of(context)!.forgotPassword,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      _buildLanguageSelector(),
+                      const SizedBox(height: 24),
+                      if (_errorMessage != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10.0),
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                                fontSize: 14),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      const SizedBox(height: 12),
+                      _isLoading
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFF592941)),
+                              ),
+                            )
+                          : Center(
+                              child: SizedBox(
+                                width: 200,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _isFormValid
+                                        ? const Color(0xFFD6D4C8)
+                                        : Colors.grey.shade300,
+                                    foregroundColor: _isFormValid
+                                        ? const Color(0xFF592941)
+                                        : Colors.grey.shade500,
+                                    minimumSize: const Size(200, 50),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16.0),
+                                    textStyle: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.5),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(20.0),
+                                    ),
+                                    elevation: _isFormValid ? 1 : 0,
+                                  ).copyWith(
+                                    overlayColor: MaterialStateProperty
+                                        .resolveWith<Color?>(
+                                      (Set<MaterialState> states) {
+                                        if (states.contains(
+                                                MaterialState.pressed) &&
+                                            _isFormValid) {
+                                          return const Color(0xFFC0BFB2);
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ),
+                                  onPressed:
+                                      _isFormValid ? _performLogin : null,
+                                  child: Text(
+                                      AppLocalizations.of(context)!.login),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          color: const Color(0xFFFCF4E9),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            AppLocalizations.of(context)!.login,
+                            style: const TextStyle(
+                              color: Color(0xFF592941),
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 SizedBox(
                   height: MediaQuery.of(context).size.height * 0.15,
                 ),

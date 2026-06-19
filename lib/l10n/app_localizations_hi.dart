@@ -533,6 +533,13 @@ class AppLocalizationsHi extends AppLocalizations {
   String get superAdministrator => 'सुपर व्यवस्थापक';
 
   @override
+  String get showAllRegions => 'सभी क्षेत्र दिखाएं';
+
+  @override
+  String get showAllRegionsDescription =>
+      'चयनित राज्य, जिला और तहसील को अनदेखा करके सभी स्थानों के क्षेत्र दिखाएं';
+
+  @override
   String get security => 'सुरक्षा';
 
   @override
@@ -670,4 +677,40 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get userNotFound =>
       'अनुरोध प्रोसेस नहीं हो सका। कृपया अपना उपयोगकर्ता नाम जांचें और पुनः प्रयास करें।';
+
+  @override
+  String get demoDetails => 'डेमो विवरण';
+
+  @override
+  String get selectLanguage => 'भाषा चुनें';
+
+  @override
+  String get locateMe => 'मेरा स्थान पता करें';
+
+  @override
+  String get autoFillDropdownHint =>
+      'ड्रॉपडाउन में राज्य, जिला और तहसील स्वतः भरें';
+
+  @override
+  String get detectAutomatically => 'स्वतः पता करें';
+
+  @override
+  String get useGpsToDetect => 'GPS से अपना स्थान पता करें';
+
+  @override
+  String get enterManually => 'मैन्युअल दर्ज करें';
+
+  @override
+  String get typeLatitudeLongitude => 'अक्षांश और देशांतर टाइप करें';
+
+  @override
+  String get planLayersNotRefreshed => 'योजना लेयर रीफ्रेश नहीं हुए';
+
+  @override
+  String get refreshPlanLayersOnNavigate =>
+      'नेविगेट करते समय योजना लेयर रीफ्रेश करें';
+
+  @override
+  String get refreshPlanLayersOnNavigateDescription =>
+      'मजबूत नेटवर्क होने पर किसी क्षेत्र में नेविगेट करने से पहले योजना लेयर स्वतः रीफ्रेश करें';
 }

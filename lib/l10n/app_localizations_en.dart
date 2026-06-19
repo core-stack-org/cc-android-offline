@@ -534,6 +534,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get superAdministrator => 'Super Administrator';
 
   @override
+  String get showAllRegions => 'Show All Regions';
+
+  @override
+  String get showAllRegionsDescription =>
+      'Show regions from all locations, ignoring selected State, District & Tehsil';
+
+  @override
   String get security => 'Security';
 
   @override
@@ -669,4 +676,40 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get userNotFound =>
       'Could not process request. Please check your phone number and try again.';
+
+  @override
+  String get demoDetails => 'Demo details';
+
+  @override
+  String get selectLanguage => 'Select Language';
+
+  @override
+  String get locateMe => 'Locate Me';
+
+  @override
+  String get autoFillDropdownHint =>
+      'Auto-fill the State, District and Tehsil in the dropdown';
+
+  @override
+  String get detectAutomatically => 'Detect Automatically';
+
+  @override
+  String get useGpsToDetect => 'Use GPS to detect your location';
+
+  @override
+  String get enterManually => 'Enter Manually';
+
+  @override
+  String get typeLatitudeLongitude => 'Type latitude and longitude';
+
+  @override
+  String get planLayersNotRefreshed => 'Plan layers were not refreshed';
+
+  @override
+  String get refreshPlanLayersOnNavigate =>
+      'Refresh plan layers while navigating';
+
+  @override
+  String get refreshPlanLayersOnNavigateDescription =>
+      'Automatically refresh plan layers before navigating to a region when on a strong network';
 }

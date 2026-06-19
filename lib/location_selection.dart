@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui' as ui;
 
 import 'webview.dart';
@@ -22,6 +23,7 @@ import './services/logout.dart';
 import './services/language_service.dart';
 import './services/update_service.dart';
 import './services/locate_me_service.dart';
+import './utils/toast.dart';
 import './ui/update_bottom_sheet.dart';
 import './ui/offline_webview.dart';
 
@@ -62,21 +64,32 @@ class _LocationSelectionState extends State<LocationSelection> {
   List<DropdownMenuItem<String>>? _cachedBlockItems;
 
   bool _isLoadingData = true;
+  bool _isRefreshing = false;
   bool _hasCheckedUpdate = false;
+  bool _showAllRegions = false;
 
   final GlobalKey _profileButtonKey = GlobalKey();
-  final GlobalKey _languageButtonKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     _loadSavedLanguage();
     _loadInfo();
+    _loadShowAllRegions();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       fetchLocationData();
       _checkForUpdate();
     });
+  }
+
+  Future<void> _loadShowAllRegions() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _showAllRegions = prefs.getBool(kShowAllRegionsPrefKey) ?? false;
+      });
+    }
   }
 
   Future<void> _checkForUpdate() async {
@@ -182,24 +195,135 @@ class _LocationSelectionState extends State<LocationSelection> {
     try {
       final connectivityResult = await Connectivity().checkConnectivity();
       if (connectivityResult != ConnectivityResult.none) {
-        print('Syncing location data in background...');
         final response = await http.get(Uri.parse('${apiUrl}proposed_blocks/'));
         if (response.statusCode == 200) {
-          final apiData = json.decode(response.body);
-          await LocationDatabase.instance
-              .insertLocationData(List<Map<String, dynamic>>.from(apiData));
-
+          final freshStates = List<Map<String, dynamic>>.from(
+              json.decode(response.body));
+          await LocationDatabase.instance.insertLocationData(freshStates);
           await PlansDatabase.instance.syncPlans();
 
+          if (!mounted) return;
           setState(() {
-            states = List<Map<String, dynamic>>.from(apiData);
+            states = freshStates;
             _cachedStateItems = null;
           });
-          print('Background sync completed successfully');
+          _refreshDerivedSelections(freshStates);
         }
       }
     } catch (e) {
-      print('Background sync failed: $e');
+      debugPrint('Background sync failed: $e');
+    }
+  }
+
+  void _refreshDerivedSelections(List<Map<String, dynamic>> freshStates) {
+    if (selectedState == null) return;
+
+    final stateData = freshStates.cast<Map<String, dynamic>?>().firstWhere(
+          (s) => s!["label"] == selectedState,
+          orElse: () => null,
+        );
+
+    if (stateData == null) {
+      setState(() {
+        selectedState = null;
+        selectedStateID = null;
+        selectedDistrict = null;
+        selectedDistrictID = null;
+        selectedBlock = null;
+        selectedBlockID = null;
+        districts = [];
+        blocks = [];
+        _cachedStateItems = null;
+        _cachedDistrictItems = null;
+        _cachedBlockItems = null;
+        _isSubmitEnabled = false;
+      });
+      return;
+    }
+
+    final freshDistricts =
+        List<Map<String, dynamic>>.from(stateData["district"]);
+
+    if (selectedDistrict == null) {
+      setState(() {
+        districts = freshDistricts;
+        _cachedDistrictItems = null;
+      });
+      return;
+    }
+
+    final districtData = freshDistricts.cast<Map<String, dynamic>?>().firstWhere(
+          (d) => d!["label"] == selectedDistrict,
+          orElse: () => null,
+        );
+
+    if (districtData == null) {
+      setState(() {
+        districts = freshDistricts;
+        selectedDistrict = null;
+        selectedDistrictID = null;
+        selectedBlock = null;
+        selectedBlockID = null;
+        blocks = [];
+        _cachedDistrictItems = null;
+        _cachedBlockItems = null;
+        _isSubmitEnabled = false;
+      });
+      return;
+    }
+
+    final freshBlocks =
+        List<Map<String, dynamic>>.from(districtData["blocks"]);
+
+    final blockStillValid = selectedBlock == null ||
+        freshBlocks.any((b) => b["label"] == selectedBlock);
+
+    setState(() {
+      districts = freshDistricts;
+      blocks = freshBlocks;
+      _cachedDistrictItems = null;
+      _cachedBlockItems = null;
+      if (!blockStillValid) {
+        selectedBlock = null;
+        selectedBlockID = null;
+        _isSubmitEnabled = false;
+      }
+    });
+  }
+
+  Future<void> _refreshLocationData() async {
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No internet connection')),
+      );
+      return;
+    }
+
+    setState(() => _isRefreshing = true);
+
+    try {
+      final response = await http.get(Uri.parse('${apiUrl}proposed_blocks/'));
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final freshStates = List<Map<String, dynamic>>.from(
+            json.decode(response.body));
+        await LocationDatabase.instance.insertLocationData(freshStates);
+
+        if (!mounted) return;
+        setState(() {
+          states = freshStates;
+          _cachedStateItems = null;
+          _isRefreshing = false;
+        });
+        _refreshDerivedSelections(freshStates);
+      } else {
+        setState(() => _isRefreshing = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isRefreshing = false);
     }
   }
 
@@ -337,6 +461,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                                     selectedDistrict: selectedDistrict,
                                     selectedBlock: selectedBlock,
                                     selectedBlockID: selectedBlockID,
+                                    onDownloadComplete: showContainerList,
                                   ),
                                 ),
                               );
@@ -375,8 +500,27 @@ class _LocationSelectionState extends State<LocationSelection> {
       selectedState: selectedState ?? '',
       selectedDistrict: selectedDistrict ?? '',
       selectedBlock: selectedBlock ?? '',
+      showAllRegions: _showAllRegions,
+      onContainerCreated: (container) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DownloadProgressPage(
+              container: container,
+              selectedDistrict: selectedDistrict,
+              selectedBlock: selectedBlock,
+              selectedBlockID: selectedBlockID,
+              onDownloadComplete: showContainerList,
+            ),
+          ),
+        );
+      },
       onContainerSelected: (container) {
-        navigateToWebViewOffline(container);
+        if (container.isDownloaded) {
+          navigateToWebViewOffline(container);
+        } else {
+          showAgreementSheet(container);
+        }
       },
     );
   }
@@ -385,23 +529,39 @@ class _LocationSelectionState extends State<LocationSelection> {
   Future<void> navigateToWebViewOffline(OfflineContainer container) async {
     final localizations = AppLocalizations.of(context)!;
 
-    if (selectedBlockID == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(localizations.couldNotFindBlockInfo)),
-      );
+    final containerMatchesSelection = container.block == selectedBlock &&
+        container.district == selectedDistrict &&
+        container.state == selectedState;
+
+    String? blockId;
+    if (containerMatchesSelection) {
+      blockId = selectedBlockID;
+    } else {
+      blockId = await ContainerSheets.getBlockId(
+          container.state, container.district, container.block);
+    }
+
+    if (blockId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(localizations.couldNotFindBlockInfo)),
+        );
+      }
       return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => OfflineWebView(
-          container: container,
-          selectedBlockID: selectedBlockID!,
-          selectedLanguage: _selectedLanguage,
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OfflineWebView(
+            container: container,
+            selectedBlockID: blockId!,
+            selectedLanguage: _selectedLanguage,
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   List<DropdownMenuItem<String>> _buildDropdownItems(
@@ -511,20 +671,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     if (isOnlineMode) {
       submitLocation();
     } else {
-      ContainerSheets.showContainerList(
-        context: context,
-        selectedLanguage: _selectedLanguage,
-        selectedState: selectedState!,
-        selectedDistrict: selectedDistrict!,
-        selectedBlock: selectedBlock!,
-        onContainerSelected: (container) {
-          if (container.isDownloaded) {
-            navigateToWebViewOffline(container);
-          } else {
-            showAgreementSheet(container);
-          }
-        },
-      );
+      showContainerList();
     }
   }
 
@@ -593,200 +740,102 @@ class _LocationSelectionState extends State<LocationSelection> {
 
   Widget _buildLanguageSelector() {
     return IconButton(
-      key: _languageButtonKey,
-      icon: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            _selectedLanguage,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(width: 4),
-          const Icon(
-            Icons.arrow_drop_down,
-            color: Colors.white,
-            size: 20,
-          ),
-        ],
-      ),
-      tooltip: 'Language Selection',
-      onPressed: () => _showLanguageMenu(),
+      icon: const Icon(Icons.language, color: Colors.white),
+      tooltip: 'Select Language',
+      onPressed: _showLanguageSheet,
     );
   }
 
-  void _showLanguageMenu() async {
-    if (!mounted) return;
+  void _showLanguageSheet() {
+    final l10n = AppLocalizations.of(context)!;
+    final languages = [
+      ('en', l10n.english),
+      ('hi', l10n.hindi),
+    ];
 
-    await Future.delayed(Duration.zero);
+    HapticFeedback.lightImpact();
 
-    if (!mounted) return;
-
-    try {
-      final RenderBox? renderBox =
-          _languageButtonKey.currentContext?.findRenderObject() as RenderBox?;
-      if (renderBox == null || !renderBox.hasSize) {
-        return;
-      }
-
-      final Offset offset = renderBox.localToGlobal(Offset.zero);
-      final Size size = renderBox.size;
-
-      final RelativeRect position = RelativeRect.fromLTRB(
-        offset.dx - 150, // Adjust to center the popup better
-        offset.dy + size.height,
-        offset.dx + size.width + 150,
-        offset.dy + size.height + 200,
-      );
-
-      HapticFeedback.lightImpact();
-
-      final String? selected = await showMenu<String>(
-        context: context,
-        position: position,
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-        constraints: const BoxConstraints(
-          minWidth: 180,
-          maxWidth: 220,
-        ),
-        items: [
-          PopupMenuItem<String>(
-            value: 'en',
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8.0),
-                  decoration: BoxDecoration(
-                    color: _selectedLanguage == 'en'
-                        ? const Color(0xFF592941).withOpacity(0.1)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: Icon(
-                    Icons.language,
-                    color: _selectedLanguage == 'en'
-                        ? const Color(0xFF592941)
-                        : Colors.grey[600],
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'English',
-                        style: TextStyle(
-                          color: _selectedLanguage == 'en'
-                              ? const Color(0xFF592941)
-                              : Colors.grey[800],
-                          fontWeight: _selectedLanguage == 'en'
-                              ? FontWeight.w600
-                              : FontWeight.w500,
-                          fontSize: 15,
+                        l10n.selectLanguage,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF592941),
                         ),
                       ),
-                      Text(
-                        'EN',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w400,
-                          fontSize: 12,
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
+                        color: const Color(0xFF592941),
                       ),
                     ],
                   ),
-                ),
-                if (_selectedLanguage == 'en')
-                  Icon(
-                    Icons.check_circle,
-                    color: const Color(0xFF592941),
-                    size: 18,
-                  ),
-              ],
-            ),
-          ),
-          PopupMenuItem<String>(
-            value: 'hi',
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8.0),
-                  decoration: BoxDecoration(
-                    color: _selectedLanguage == 'hi'
-                        ? const Color(0xFF592941).withOpacity(0.1)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: Icon(
-                    Icons.translate,
-                    color: _selectedLanguage == 'hi'
-                        ? const Color(0xFF592941)
-                        : Colors.grey[600],
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'हिंदी',
-                        style: TextStyle(
-                          color: _selectedLanguage == 'hi'
-                              ? const Color(0xFF592941)
-                              : Colors.grey[800],
-                          fontWeight: _selectedLanguage == 'hi'
-                              ? FontWeight.w600
-                              : FontWeight.w500,
-                          fontSize: 15,
+                  const SizedBox(height: 8),
+                  ...languages.map((entry) {
+                    final (code, label) = entry;
+                    final isSelected = _selectedLanguage == code;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () async {
+                        setSheetState(() {});
+                        setState(() => _selectedLanguage = code);
+                        localeNotifier.value = Locale(code);
+                        await _languageService.saveLanguage(code);
+                        HapticFeedback.lightImpact();
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: const Color(0xFF592941),
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              isSelected
+                                  ? Icons.check_box
+                                  : Icons.check_box_outline_blank,
+                              color: const Color(0xFF592941),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        'HI',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w400,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (_selectedLanguage == 'hi')
-                  Icon(
-                    Icons.check_circle,
-                    color: const Color(0xFF592941),
-                    size: 18,
-                  ),
-              ],
-            ),
-          ),
-        ],
-      );
-
-      if (selected != null && selected != _selectedLanguage) {
-        setState(() {
-          _selectedLanguage = selected;
-          HapticFeedback.mediumImpact();
-          // Update the global locale
-          localeNotifier.value = Locale(selected);
-        });
-        await _languageService.saveLanguage(selected);
-      }
-    } catch (e) {
-      debugPrint('Error showing language menu: $e');
-    }
+                    );
+                  }),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _buildProfileMenu() {
@@ -892,7 +941,7 @@ class _LocationSelectionState extends State<LocationSelection> {
           MaterialPageRoute(
             builder: (context) => const ProfileStatsScreen(),
           ),
-        );
+        ).then((_) => _loadShowAllRegions());
         break;
       case 'logout':
         LogoutService.showLogoutConfirmationDialog(context);
@@ -903,12 +952,14 @@ class _LocationSelectionState extends State<LocationSelection> {
   void _showLocateMeOptions() {
     if (states.isEmpty) return;
 
+    final l10n = AppLocalizations.of(context)!;
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
+      builder: (ctx) {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -924,9 +975,9 @@ class _LocationSelectionState extends State<LocationSelection> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  'Locate Me',
-                  style: TextStyle(
+                Text(
+                  l10n.locateMe,
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF592941),
@@ -938,11 +989,11 @@ class _LocationSelectionState extends State<LocationSelection> {
                     backgroundColor: Color(0xFFF3E5F5),
                     child: Icon(Icons.gps_fixed, color: Color(0xFF592941)),
                   ),
-                  title: const Text('Detect Automatically',
-                      style: TextStyle(fontWeight: FontWeight.w500)),
-                  subtitle: const Text('Use GPS to detect your location'),
+                  title: Text(l10n.detectAutomatically,
+                      style: const TextStyle(fontWeight: FontWeight.w500)),
+                  subtitle: Text(l10n.useGpsToDetect),
                   onTap: () {
-                    Navigator.pop(context);
+                    Navigator.pop(ctx);
                     _locateMeAutomatic();
                   },
                 ),
@@ -951,11 +1002,11 @@ class _LocationSelectionState extends State<LocationSelection> {
                     backgroundColor: Color(0xFFF3E5F5),
                     child: Icon(Icons.edit_location_alt, color: Color(0xFF592941)),
                   ),
-                  title: const Text('Enter Manually',
-                      style: TextStyle(fontWeight: FontWeight.w500)),
-                  subtitle: const Text('Type latitude and longitude'),
+                  title: Text(l10n.enterManually,
+                      style: const TextStyle(fontWeight: FontWeight.w500)),
+                  subtitle: Text(l10n.typeLatitudeLongitude),
                   onTap: () {
-                    Navigator.pop(context);
+                    Navigator.pop(ctx);
                     _showManualLatLonDialog();
                   },
                 ),
@@ -969,29 +1020,10 @@ class _LocationSelectionState extends State<LocationSelection> {
   }
 
   Future<void> _locateMeAutomatic() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            ),
-            SizedBox(width: 12),
-            Text('Detecting your location...'),
-          ],
-        ),
-        duration: Duration(seconds: 10),
-      ),
-    );
-
+    final dismiss = showLoadingToast(context, 'Detecting your location...');
     final result = await LocateMeService.fetchAdminDetailsFromLocation();
+    dismiss();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     _handleLocateResult(result);
   }
 
@@ -1076,57 +1108,23 @@ class _LocationSelectionState extends State<LocationSelection> {
   }
 
   Future<void> _locateMeManual(double latitude, double longitude) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            ),
-            SizedBox(width: 12),
-            Text('Fetching location details...'),
-          ],
-        ),
-        duration: Duration(seconds: 10),
-      ),
-    );
-
-    final result = await LocateMeService.fetchAdminDetailsByCoordinates(latitude, longitude);
+    final dismiss = showLoadingToast(context, 'Fetching location details...');
+    final result =
+        await LocateMeService.fetchAdminDetailsByCoordinates(latitude, longitude);
+    dismiss();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     _handleLocateResult(result);
   }
 
   void _handleLocateResult(LocateMeResult result) {
     if (result.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.message ?? 'Could not determine location'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+      showTopToast(context, result.message ?? 'Could not determine location');
       return;
     }
 
     final admin = result.data;
     if (admin == null || !admin.hasData) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('No admin details found for this location'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+      showTopToast(context, 'No admin details found for this location');
       return;
     }
 
@@ -1184,44 +1182,23 @@ class _LocationSelectionState extends State<LocationSelection> {
         _cachedBlockItems = null;
         _isSubmitEnabled = true;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Location set to ${admin.state}, ${admin.district}, ${admin.tehsil}'),
-          backgroundColor: const Color(0xFF592941),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+      showTopToast(context,
+          'Location set to ${admin.state}, ${admin.district}, ${admin.tehsil}');
     } else {
       _showPartialMatch('State & district matched, please select tehsil manually');
     }
   }
 
   void _showLocationMismatch(AdminDetails admin) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-            'Your location (${admin.state ?? ''}) is not in the proposed blocks'),
-        backgroundColor: Colors.orange.shade800,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+    showTopToast(context,
+        'Your location (${admin.state ?? ''}) is not in the proposed blocks');
   }
 
   void _showPartialMatch(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.orange.shade800,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+    showTopToast(context, message);
   }
+
+  void _showModeToast(String message) => showTopToast(context, message);
 
   void _showFallbackProfileMenu() {
     showDialog(
@@ -1271,6 +1248,25 @@ class _LocationSelectionState extends State<LocationSelection> {
             title: Text(localizations.selectLocation),
             leading: _buildProfileMenu(),
             actions: [
+              _isRefreshing
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 14),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.refresh),
+                      tooltip: 'Refresh locations',
+                      onPressed: _refreshLocationData,
+                    ),
               _buildLanguageSelector(),
             ],
           ),
@@ -1447,7 +1443,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'Auto-fill the State, District and Tehsil in the dropdown',
+                    localizations.autoFillDropdownHint,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -1469,9 +1465,9 @@ class _LocationSelectionState extends State<LocationSelection> {
               ),
               onPressed: _showLocateMeOptions,
               icon: const Icon(Icons.gps_fixed, size: 18),
-              label: const Text(
-                'Locate Me',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              label: Text(
+                localizations.locateMe,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
               ),
             ),
             const SizedBox(height: 24.0),
@@ -1479,17 +1475,6 @@ class _LocationSelectionState extends State<LocationSelection> {
               height: 1,
               thickness: 1.5,
               color: Color.fromARGB(255, 211, 211, 211),
-            ),
-            const SizedBox(height: 15.0),
-            Text(
-              _isSelected[0]
-                  ? localizations.onlineModeSelected
-                  : localizations.offlineModeSelected,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF592941)),
             ),
             const SizedBox(height: 15.0),
             Row(
@@ -1507,12 +1492,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                             borderRadius: BorderRadius.circular(20.0),
                           ),
                         ),
-                        onPressed: () {
-                          setState(() {
-                            HapticFeedback.lightImpact();
-                            _isSelected = [true, false];
-                          });
-                        },
+                        onPressed: () {},
                         child: Text(localizations.onlineMode),
                       )
                     : OutlinedButton(
@@ -1527,10 +1507,9 @@ class _LocationSelectionState extends State<LocationSelection> {
                           ),
                         ),
                         onPressed: () {
-                          setState(() {
-                            HapticFeedback.lightImpact();
-                            _isSelected = [true, false];
-                          });
+                          HapticFeedback.lightImpact();
+                          setState(() => _isSelected = [true, false]);
+                          _showModeToast(localizations.onlineModeSelected);
                         },
                         child: Text(localizations.onlineMode),
                       ),
@@ -1547,12 +1526,7 @@ class _LocationSelectionState extends State<LocationSelection> {
                             borderRadius: BorderRadius.circular(20.0),
                           ),
                         ),
-                        onPressed: () {
-                          setState(() {
-                            HapticFeedback.lightImpact();
-                            _isSelected = [false, true];
-                          });
-                        },
+                        onPressed: () {},
                         child: Text(localizations.offlineMode),
                       )
                     : OutlinedButton(
@@ -1567,10 +1541,9 @@ class _LocationSelectionState extends State<LocationSelection> {
                           ),
                         ),
                         onPressed: () {
-                          setState(() {
-                            HapticFeedback.lightImpact();
-                            _isSelected = [false, true];
-                          });
+                          HapticFeedback.lightImpact();
+                          setState(() => _isSelected = [false, true]);
+                          _showModeToast(localizations.offlineModeSelected);
                         },
                         child: Text(localizations.offlineMode),
                       ),
@@ -1631,3 +1604,4 @@ class _LocationSelectionState extends State<LocationSelection> {
     );
   }
 }
+

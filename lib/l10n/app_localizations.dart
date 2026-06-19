@@ -1028,6 +1028,18 @@ abstract class AppLocalizations {
   /// **'Super Administrator'**
   String get superAdministrator;
 
+  /// No description provided for @showAllRegions.
+  ///
+  /// In en, this message translates to:
+  /// **'Show All Regions'**
+  String get showAllRegions;
+
+  /// No description provided for @showAllRegionsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Show regions from all locations, ignoring selected State, District & Tehsil'**
+  String get showAllRegionsDescription;
+
   /// No description provided for @security.
   ///
   /// In en, this message translates to:
@@ -1279,6 +1291,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not process request. Please check your phone number and try again.'**
   String get userNotFound;
+
+  /// No description provided for @demoDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo details'**
+  String get demoDetails;
+
+  /// No description provided for @selectLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Language'**
+  String get selectLanguage;
+
+  /// No description provided for @locateMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Locate Me'**
+  String get locateMe;
+
+  /// No description provided for @autoFillDropdownHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-fill the State, District and Tehsil in the dropdown'**
+  String get autoFillDropdownHint;
+
+  /// No description provided for @detectAutomatically.
+  ///
+  /// In en, this message translates to:
+  /// **'Detect Automatically'**
+  String get detectAutomatically;
+
+  /// No description provided for @useGpsToDetect.
+  ///
+  /// In en, this message translates to:
+  /// **'Use GPS to detect your location'**
+  String get useGpsToDetect;
+
+  /// No description provided for @enterManually.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Manually'**
+  String get enterManually;
+
+  /// No description provided for @typeLatitudeLongitude.
+  ///
+  /// In en, this message translates to:
+  /// **'Type latitude and longitude'**
+  String get typeLatitudeLongitude;
+
+  /// No description provided for @planLayersNotRefreshed.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan layers were not refreshed'**
+  String get planLayersNotRefreshed;
+
+  /// No description provided for @refreshPlanLayersOnNavigate.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh plan layers while navigating'**
+  String get refreshPlanLayersOnNavigate;
+
+  /// No description provided for @refreshPlanLayersOnNavigateDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically refresh plan layers before navigating to a region when on a strong network'**
+  String get refreshPlanLayersOnNavigateDescription;
 }
 
 class _AppLocalizationsDelegate

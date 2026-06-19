@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nrmflutter/utils/constants.dart';
 import 'package:nrmflutter/db/location_db.dart';
 import 'package:nrmflutter/utils/layers_config.dart';
 import 'package:http/http.dart' as http;
+import 'package:connectivity_plus/connectivity_plus.dart';
 //import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../l10n/app_localizations.dart';
+import '../ui/profile_screen.dart' show kRefreshPlanLayersOnNavigatePrefKey;
+import '../utils/toast.dart';
 
 import 'dart:io';
 import 'container_manager.dart';
@@ -225,22 +229,9 @@ class ContainerSheets {
                                   Navigator.pop(context);
                                   onContainerCreated(container);
                                 } catch (e) {
-                                  ScaffoldMessenger.of(sheetContext)
-                                      .showSnackBar(
-                                    SnackBar(
-                                      content: Text(e.toString()),
-                                      backgroundColor: Colors.red,
-                                      behavior: SnackBarBehavior.floating,
-                                      margin: EdgeInsets.only(
-                                        bottom: MediaQuery.of(sheetContext)
-                                                .size
-                                                .height *
-                                            0.7,
-                                        left: 16,
-                                        right: 16,
-                                      ),
-                                    ),
-                                  );
+                                  if (sheetContext.mounted) {
+                                    showTopToast(sheetContext, e.toString());
+                                  }
                                 }
                               }
                             : null,
@@ -281,9 +272,13 @@ class ContainerSheets {
     required String selectedDistrict,
     required String selectedBlock,
     required Function(OfflineContainer) onContainerSelected,
+    Function(OfflineContainer)? onContainerCreated,
+    bool showAllRegions = false,
   }) {
     String? selectedContainerId;
     String? _refreshingContainerName;
+    bool _isNavigating = false;
+    double _navigateProgress = 0.0;
     Future<List<OfflineContainer>> containersFuture =
         ContainerManager.getContainers();
 
@@ -303,7 +298,7 @@ class ContainerSheets {
             child: Column(
               children: [
                 Padding(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Row(
                     children: [
                       Text(
@@ -317,6 +312,34 @@ class ContainerSheets {
                     ],
                   ),
                 ),
+                if (showAllRegions)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF592941).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.layers_outlined,
+                              size: 16, color: Color(0xFF592941)),
+                          const SizedBox(width: 8),
+                          Text(
+                            'All downloaded regions are shown',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: const Color(0xFF592941).withValues(alpha: 0.8),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 if (_refreshingContainerName != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -336,7 +359,15 @@ class ContainerSheets {
                               child: CircularProgressIndicator());
                         }
 
-                        final containers = snapshot.data!;
+                        final allContainers = snapshot.data!;
+                        final containers = showAllRegions
+                            ? allContainers
+                            : allContainers
+                                .where((c) =>
+                                    c.state == selectedState &&
+                                    c.district == selectedDistrict &&
+                                    c.block == selectedBlock)
+                                .toList();
 
                         if (containers.isEmpty) {
                           return Align(
@@ -366,19 +397,63 @@ class ContainerSheets {
                           );
                         }
 
-                        // Sort containers by creation date, newest first
-                        containers
-                            .sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-                        final selectedContainer = containers.firstWhere(
-                          (container) => container.name == selectedContainerId,
-                          orElse: () => containers.first,
-                        );
+                        // Group by tehsil key, sort groups then items within
+                        final Map<String, List<OfflineContainer>> grouped = {};
+                        for (final c in containers) {
+                          final key = '${c.state} › ${c.district} › ${c.block}';
+                          grouped.putIfAbsent(key, () => []).add(c);
+                        }
+                        for (final group in grouped.values) {
+                          group.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                        }
+                        final sortedKeys = grouped.keys.toList()..sort();
+                        final List<dynamic> listItems = [];
+                        for (final key in sortedKeys) {
+                          listItems.add(key);
+                          listItems.addAll(grouped[key]!);
+                        }
 
                         return ListView.builder(
-                          itemCount: containers.length,
+                          itemCount: listItems.length,
                           itemBuilder: (context, index) {
-                            final container = containers[index];
+                            final item = listItems[index];
+
+                            // Section header for grouped (showAllRegions) mode
+                            if (item is String) {
+                              final parts = item.split(' › ');
+                              final tehsilName = parts.length == 3 ? parts[2] : item;
+                              final locationPath = parts.length == 3
+                                  ? '${parts[0]} › ${parts[1]}'
+                                  : '';
+                              return Padding(
+                                padding: const EdgeInsets.only(
+                                    top: 16, bottom: 6),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      tehsilName,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF592941),
+                                      ),
+                                    ),
+                                    if (locationPath.isNotEmpty)
+                                      Text(
+                                        locationPath,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            final container = item as OfflineContainer;
                             final isSelected =
                                 container.name == selectedContainerId;
 
@@ -450,24 +525,8 @@ class ContainerSheets {
                                       if (confirm && context.mounted) {
                                         await _deleteContainerAndData(
                                             container.name);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(localizations
-                                                .regionDeleted(container.name)),
-                                            backgroundColor:
-                                                const Color(0xFFFF4D6D),
-                                            behavior: SnackBarBehavior.floating,
-                                            margin: EdgeInsets.only(
-                                              bottom: MediaQuery.of(context)
-                                                      .size
-                                                      .height *
-                                                  0.87,
-                                              left: 16,
-                                              right: 16,
-                                            ),
-                                          ),
-                                        );
+                                        showTopToast(context, localizations
+                                            .regionDeleted(container.name));
                                         setState(() {
                                           containersFuture =
                                               ContainerManager.getContainers();
@@ -515,28 +574,20 @@ class ContainerSheets {
                                     fontSize: 16,
                                   ),
                                 ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      '${container.state} > ${container.district} > ${container.block}',
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      container.isDownloaded
-                                          ? localizations.readyForOfflineUse
-                                          : localizations.notYetDownloaded,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: container.isDownloaded
-                                            ? Colors.green
-                                            : Colors.orange,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                                subtitle: Padding(
+                                                  padding: const EdgeInsets.only(top: 6),
+                                                  child: Text(
+                                                    container.isDownloaded
+                                                        ? localizations.readyForOfflineUse
+                                                        : localizations.notYetDownloaded,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: container.isDownloaded
+                                                          ? Colors.green
+                                                          : Colors.orange,
+                                                    ),
+                                                  ),
+                                                ),
                               ),
                             );
                           },
@@ -585,7 +636,7 @@ class ContainerSheets {
                               selectedDistrict: selectedDistrict,
                               selectedBlock: selectedBlock,
                               onContainerCreated: (container) {
-                                onContainerSelected(container);
+                                (onContainerCreated ?? onContainerSelected)(container);
                               },
                             );
                           },
@@ -593,85 +644,223 @@ class ContainerSheets {
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: ElevatedButton.icon(
-                          icon: Transform.rotate(
-                            angle: 1.5708, // 90 degrees in radians (π/2)
-                            child: const Icon(Icons.navigation_rounded),
-                          ),
-                          label: Text(localizations.navigate),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFD6D5C9),
-                            foregroundColor: const Color(0xFF592941),
-                            side: const BorderSide(
-                                color: Color(0xFFD6D5C9), width: 2),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          onPressed: selectedContainerId != null
-                              ? () async {
-                                  final container =
-                                      await ContainerManager.getContainer(
-                                          selectedContainerId!);
-                                  if (container != null && context.mounted) {
-                                    if (container.state == selectedState &&
-                                        container.district ==
-                                            selectedDistrict &&
-                                        container.block == selectedBlock) {
-                                      if (container.isDownloaded) {
-                                        Navigator.pop(context);
-                                        onContainerSelected(container);
-                                      } else {
-                                        bool? confirm = await showDialog(
-                                          context: context,
-                                          builder: (context) => AlertDialog(
-                                            title: Text(
-                                                localizations.refreshLayers),
-                                            content: Text(localizations
-                                                .layersNotDownloaded),
-                                            actions: [
-                                              TextButton(
-                                                child:
-                                                    Text(localizations.cancel),
-                                                onPressed: () => Navigator.pop(
-                                                    context, false),
-                                              ),
-                                              TextButton(
-                                                child:
-                                                    Text(localizations.refresh),
-                                                onPressed: () => Navigator.pop(
-                                                    context, true),
+                        child: SizedBox(
+                          height: 48,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return ClipRRect(
+                                borderRadius: BorderRadius.circular(25),
+                                child: Stack(
+                                  children: [
+                                    Container(
+                                      color: selectedContainerId != null
+                                          ? const Color(0xFFD6D5C9)
+                                          : const Color(0xFFD6D5C9)
+                                              .withValues(alpha: 0.5),
+                                    ),
+                                    if (_isNavigating)
+                                      AnimatedContainer(
+                                        duration:
+                                            const Duration(milliseconds: 300),
+                                        width: constraints.maxWidth *
+                                            _navigateProgress,
+                                        color: const Color(0xFF592941)
+                                            .withValues(alpha: 0.25),
+                                      ),
+                                    Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: selectedContainerId != null &&
+                                                !_isNavigating
+                                            ? () async {
+                                                final container =
+                                                    await ContainerManager
+                                                        .getContainer(
+                                                            selectedContainerId!);
+                                                if (container == null ||
+                                                    !context.mounted) return;
+
+                                                final locationMatches =
+                                                    container.state ==
+                                                            selectedState &&
+                                                        container.district ==
+                                                            selectedDistrict &&
+                                                        container.block ==
+                                                            selectedBlock;
+
+                                                if (!locationMatches &&
+                                                    !showAllRegions) {
+                                                  showDialog(
+                                                    context: context,
+                                                    builder: (context) =>
+                                                        AlertDialog(
+                                                      title: Text(localizations
+                                                          .regionMismatch),
+                                                      content: Text(localizations
+                                                          .regionMismatchMessage),
+                                                      actions: [
+                                                        TextButton(
+                                                          child: Text(
+                                                              localizations.ok),
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                  context),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                  return;
+                                                }
+
+                                                if (!container.isDownloaded) {
+                                                  bool? confirm =
+                                                      await showDialog(
+                                                    context: context,
+                                                    builder: (context) =>
+                                                        AlertDialog(
+                                                      title: Text(localizations
+                                                          .refreshLayers),
+                                                      content: Text(localizations
+                                                          .layersNotDownloaded),
+                                                      actions: [
+                                                        TextButton(
+                                                          child: Text(
+                                                              localizations
+                                                                  .cancel),
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                  context,
+                                                                  false),
+                                                        ),
+                                                        TextButton(
+                                                          child: Text(
+                                                              localizations
+                                                                  .refresh),
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                  context,
+                                                                  true),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                  if (confirm == true &&
+                                                      context.mounted) {
+                                                    _handleRedownload(
+                                                        context, container);
+                                                  }
+                                                  return;
+                                                }
+
+                                                final prefs =
+                                                    await SharedPreferences
+                                                        .getInstance();
+                                                final refreshEnabled = prefs.getBool(
+                                                        kRefreshPlanLayersOnNavigatePrefKey) ??
+                                                    false;
+                                                if (!context.mounted) return;
+
+                                                if (!refreshEnabled) {
+                                                  Navigator.pop(context);
+                                                  onContainerSelected(
+                                                      container);
+                                                  return;
+                                                }
+
+                                                final strongNetwork =
+                                                    await _hasStrongNetwork();
+                                                if (!context.mounted) return;
+
+                                                if (!strongNetwork) {
+                                                  Navigator.pop(context);
+                                                  onContainerSelected(
+                                                      container);
+                                                  return;
+                                                }
+
+                                                setState(() {
+                                                  _isNavigating = true;
+                                                  _navigateProgress = 0.0;
+                                                });
+
+                                                final refreshed =
+                                                    await _refreshPlanLayersWithProgress(
+                                                  container,
+                                                  onProgress: (progress) {
+                                                    if (context.mounted) {
+                                                      setState(() {
+                                                        _navigateProgress =
+                                                            progress;
+                                                      });
+                                                    }
+                                                  },
+                                                );
+
+                                                if (!context.mounted) return;
+
+                                                if (!refreshed) {
+                                                  showTopToast(
+                                                      context,
+                                                      localizations
+                                                          .planLayersNotRefreshed);
+                                                }
+
+                                                Navigator.pop(context);
+                                                onContainerSelected(container);
+                                              }
+                                            : null,
+                                        child: Center(
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              if (_isNavigating)
+                                                const SizedBox(
+                                                  width: 18,
+                                                  height: 18,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Color(0xFF592941),
+                                                  ),
+                                                )
+                                              else
+                                                Transform.rotate(
+                                                  angle: 1.5708,
+                                                  child: Icon(
+                                                    Icons.navigation_rounded,
+                                                    color: selectedContainerId !=
+                                                            null
+                                                        ? const Color(
+                                                            0xFF592941)
+                                                        : const Color(
+                                                                0xFF592941)
+                                                            .withValues(
+                                                                alpha: 0.4),
+                                                  ),
+                                                ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                localizations.navigate,
+                                                style: TextStyle(
+                                                  color: selectedContainerId !=
+                                                          null
+                                                      ? const Color(0xFF592941)
+                                                      : const Color(0xFF592941)
+                                                          .withValues(
+                                                              alpha: 0.4),
+                                                  fontWeight: FontWeight.w500,
+                                                ),
                                               ),
                                             ],
                                           ),
-                                        );
-                                        if (confirm == true &&
-                                            context.mounted) {
-                                          _handleRedownload(context, container);
-                                        }
-                                      }
-                                    } else {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: Text(
-                                              localizations.regionMismatch),
-                                          content: Text(localizations
-                                              .regionMismatchMessage),
-                                          actions: [
-                                            TextButton(
-                                              child: Text(localizations.ok),
-                                              onPressed: () =>
-                                                  Navigator.pop(context),
-                                            ),
-                                          ],
                                         ),
-                                      );
-                                    }
-                                  }
-                                }
-                              : null,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ],
@@ -690,18 +879,10 @@ class ContainerSheets {
     final localizations = AppLocalizations.of(context)!;
 
     final blockId =
-        await _getBlockId(container.state, container.district, container.block);
+        await getBlockId(container.state, container.district, container.block);
     if (blockId == null) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(localizations.couldNotFindBlockInfo),
-          behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.only(
-            bottom: MediaQuery.of(context).size.height - 100,
-            left: 10,
-            right: 10,
-          ),
-        ));
+        showTopToast(context, localizations.couldNotFindBlockInfo);
       }
       return;
     }
@@ -725,14 +906,6 @@ class ContainerSheets {
   // TODO: Remove this function
   static Future<void> _handleRefresh(
       BuildContext context, OfflineContainer container) async {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Refreshing plan data for ${container.name}...'),
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.only(
-          bottom: MediaQuery.of(context).size.height - 100,
-          left: 10,
-          right: 10,
-        )));
     await _refreshPlanLayers(context, container);
   }
 
@@ -740,27 +913,13 @@ class ContainerSheets {
       BuildContext context, OfflineContainer container) async {
     final localizations = AppLocalizations.of(context)!;
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(localizations.refreshingPlanData(container.name)),
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.only(
-          bottom: MediaQuery.of(context).size.height - 100,
-          left: 10,
-          right: 10,
-        )));
+    showTopToast(context, localizations.refreshingPlanData(container.name));
 
     final blockId =
-        await _getBlockId(container.state, container.district, container.block);
+        await getBlockId(container.state, container.district, container.block);
     if (blockId == null) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(localizations.couldNotFindBlockInfoRefresh),
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.only(
-              bottom: MediaQuery.of(context).size.height - 100,
-              left: 10,
-              right: 10,
-            )));
+        showTopToast(context, localizations.couldNotFindBlockInfoRefresh);
       }
       return;
     }
@@ -787,14 +946,7 @@ class ContainerSheets {
 
       if (planLayers.isEmpty) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(localizations.noPlanLayersToRefresh),
-              behavior: SnackBarBehavior.floating,
-              margin: EdgeInsets.only(
-                bottom: MediaQuery.of(context).size.height - 100,
-                left: 10,
-                right: 10,
-              )));
+          showTopToast(context, localizations.noPlanLayersToRefresh);
         }
         return;
       }
@@ -804,33 +956,17 @@ class ContainerSheets {
             layer['name']!, layer['geoserverPath']!, container);
       }
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(
-                localizations.successfullyRefreshedPlanData(container.name)),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.only(
-              bottom: MediaQuery.of(context).size.height - 100,
-              left: 10,
-              right: 10,
-            )));
+        showTopToast(context,
+            localizations.successfullyRefreshedPlanData(container.name));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(localizations.errorRefreshingData(e.toString())),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.only(
-              bottom: MediaQuery.of(context).size.height - 100,
-              left: 10,
-              right: 10,
-            )));
+        showTopToast(context, localizations.errorRefreshingData(e.toString()));
       }
     }
   }
 
-  static Future<String?> _getBlockId(
+  static Future<String?> getBlockId(
       String stateName, String districtName, String blockName) async {
     final List<Map<String, dynamic>> states =
         await LocationDatabase.instance.getLocationData();
@@ -902,6 +1038,60 @@ class ContainerSheets {
     } catch (e) {
       print('Error downloading $layerName: $e');
       rethrow;
+    }
+  }
+
+  static Future<bool> _hasStrongNetwork() async {
+    final result = await Connectivity().checkConnectivity();
+    if (result == ConnectivityResult.none) return false;
+    try {
+      final response = await http
+          .head(Uri.parse(apiUrl))
+          .timeout(const Duration(seconds: 5));
+      return response.statusCode < 500;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> _refreshPlanLayersWithProgress(
+    OfflineContainer container, {
+    required void Function(double) onProgress,
+  }) async {
+    final blockId =
+        await getBlockId(container.state, container.district, container.block);
+    if (blockId == null) return false;
+
+    try {
+      final allLayers = await LayersConfig.getLayers(
+          container.district, container.block,
+          blockId: blockId);
+
+      const planLayerPrefixes = [
+        'settlement_',
+        'well_',
+        'waterbody_',
+        'cropping_',
+        'main_swb_',
+        'plan_agri_',
+        'plan_gw_',
+        'livelihood_'
+      ];
+      final planLayers = allLayers
+          .where((layer) => planLayerPrefixes
+              .any((prefix) => layer['name']!.startsWith(prefix)))
+          .toList();
+
+      if (planLayers.isEmpty) return true;
+
+      for (int i = 0; i < planLayers.length; i++) {
+        await _downloadVectorLayer(
+            planLayers[i]['name']!, planLayers[i]['geoserverPath']!, container);
+        onProgress((i + 1) / planLayers.length);
+      }
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
