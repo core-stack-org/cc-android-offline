@@ -670,4 +670,10 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get userNotFound =>
       'अनुरोध प्रोसेस नहीं हो सका। कृपया अपना उपयोगकर्ता नाम जांचें और पुनः प्रयास करें।';
+
+  @override
+  String get demoDetails => 'डेमो विवरण';
+
+  @override
+  String get selectLanguage => 'भाषा चुनें';
 }

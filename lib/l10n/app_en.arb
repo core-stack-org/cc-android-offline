@@ -279,5 +279,7 @@
   "pleaseEnterEmail": "Please enter your email",
   "pleaseEnterValidEmail": "Please enter a valid email address",
   "resetLinkSent": "Password reset link has been sent. Please check your email.",
-  "userNotFound": "Could not process request. Please check your phone number and try again."
+  "userNotFound": "Could not process request. Please check your phone number and try again.",
+  "demoDetails": "Demo details",
+  "selectLanguage": "Select Language"
 }

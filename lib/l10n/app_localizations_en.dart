@@ -669,4 +669,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get userNotFound =>
       'Could not process request. Please check your phone number and try again.';
+
+  @override
+  String get demoDetails => 'Demo details';
+
+  @override
+  String get selectLanguage => 'Select Language';
 }

@@ -1279,6 +1279,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not process request. Please check your phone number and try again.'**
   String get userNotFound;
+
+  /// No description provided for @demoDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo details'**
+  String get demoDetails;
+
+  /// No description provided for @selectLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Language'**
+  String get selectLanguage;
 }
 
 class _AppLocalizationsDelegate
