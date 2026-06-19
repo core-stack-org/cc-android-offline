@@ -675,4 +675,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get selectLanguage => 'Select Language';
+
+  @override
+  String get locateMe => 'Locate Me';
+
+  @override
+  String get autoFillDropdownHint =>
+      'Auto-fill the State, District and Tehsil in the dropdown';
+
+  @override
+  String get detectAutomatically => 'Detect Automatically';
+
+  @override
+  String get useGpsToDetect => 'Use GPS to detect your location';
+
+  @override
+  String get enterManually => 'Enter Manually';
+
+  @override
+  String get typeLatitudeLongitude => 'Type latitude and longitude';
 }

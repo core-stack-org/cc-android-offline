@@ -1291,6 +1291,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select Language'**
   String get selectLanguage;
+
+  /// No description provided for @locateMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Locate Me'**
+  String get locateMe;
+
+  /// No description provided for @autoFillDropdownHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-fill the State, District and Tehsil in the dropdown'**
+  String get autoFillDropdownHint;
+
+  /// No description provided for @detectAutomatically.
+  ///
+  /// In en, this message translates to:
+  /// **'Detect Automatically'**
+  String get detectAutomatically;
+
+  /// No description provided for @useGpsToDetect.
+  ///
+  /// In en, this message translates to:
+  /// **'Use GPS to detect your location'**
+  String get useGpsToDetect;
+
+  /// No description provided for @enterManually.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Manually'**
+  String get enterManually;
+
+  /// No description provided for @typeLatitudeLongitude.
+  ///
+  /// In en, this message translates to:
+  /// **'Type latitude and longitude'**
+  String get typeLatitudeLongitude;
 }
 
 class _AppLocalizationsDelegate

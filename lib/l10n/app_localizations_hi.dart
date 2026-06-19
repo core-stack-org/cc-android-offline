@@ -676,4 +676,23 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get selectLanguage => 'भाषा चुनें';
+
+  @override
+  String get locateMe => 'मेरा स्थान पता करें';
+
+  @override
+  String get autoFillDropdownHint =>
+      'ड्रॉपडाउन में राज्य, जिला और तहसील स्वतः भरें';
+
+  @override
+  String get detectAutomatically => 'स्वतः पता करें';
+
+  @override
+  String get useGpsToDetect => 'GPS से अपना स्थान पता करें';
+
+  @override
+  String get enterManually => 'मैन्युअल दर्ज करें';
+
+  @override
+  String get typeLatitudeLongitude => 'अक्षांश और देशांतर टाइप करें';
 }

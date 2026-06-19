@@ -281,5 +281,11 @@
   "resetLinkSent": "Password reset link has been sent. Please check your email.",
   "userNotFound": "Could not process request. Please check your phone number and try again.",
   "demoDetails": "Demo details",
-  "selectLanguage": "Select Language"
+  "selectLanguage": "Select Language",
+  "locateMe": "Locate Me",
+  "autoFillDropdownHint": "Auto-fill the State, District and Tehsil in the dropdown",
+  "detectAutomatically": "Detect Automatically",
+  "useGpsToDetect": "Use GPS to detect your location",
+  "enterManually": "Enter Manually",
+  "typeLatitudeLongitude": "Type latitude and longitude"
 }
