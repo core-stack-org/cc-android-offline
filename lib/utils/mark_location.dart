@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart';
-import 'package:nrmflutter/utils/utility.dart';
+import 'package:nrmflutter/config/geoserver_config.dart';
 //import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../l10n/app_localizations.dart';
 import './toast.dart';
@@ -149,13 +149,12 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
   }
 
   Future<void> fetchPanchayatBoundary() async {
-    final formattedDistrict = formatNameForGeoServer(widget.districtName);
-    final formattedBlock = formatNameForGeoServer(widget.blockName);
-
+    final ctx = GeoServerContext(
+      rawDistrict: widget.districtName,
+      rawBlock: widget.blockName,
+    );
     final url = Uri.parse(
-        '${widget.geoserverUrl}geoserver/panchayat_boundaries/ows?'
-        'service=WFS&version=1.0.0&request=GetFeature&typeName=panchayat_boundaries:${formattedDistrict}_${formattedBlock}'
-        '&outputFormat=application/json');
+        GeoServerRegistry.panchayatBoundaryWfsUrl(widget.geoserverUrl, ctx));
 
     print("geoserver url: $url");
 

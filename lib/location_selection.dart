@@ -9,7 +9,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui' as ui;
 
-import 'webview.dart';
+import 'package:nrmflutter/ui/home/home_screen.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 import 'package:nrmflutter/db/plans_db.dart';
@@ -374,14 +374,17 @@ class _LocationSelectionState extends State<LocationSelection> {
   // MARK: - Online Mode
   void submitLocation() {
     HapticFeedback.mediumImpact();
-    String url =
-        "${ccUrl}?geoserver_url=${geoserverUrl.substring(0, geoserverUrl.length - 1)}&app_name=nrmApp&state_name=$selectedState&dist_name=$selectedDistrict&block_name=$selectedBlock&block_id=$selectedBlockID&isOffline=false&language=$_selectedLanguage";
-    print('URL: $url');
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            WebViewApp(url: url, selectedLanguage: _selectedLanguage),
+        builder: (context) => HomeScreen(
+          state: selectedState!,
+          district: selectedDistrict!,
+          block: selectedBlock!,
+          blockId: selectedBlockID!,
+          geoserverUrl: geoserverUrl,
+          language: _selectedLanguage,
+        ),
       ),
     );
   }
