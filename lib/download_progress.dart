@@ -825,14 +825,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         });
 
         if (!isCancelled) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AppLocalizations.of(context)!
-                  .failedToDownloadData(e.toString())),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 5),
-            ),
-          );
+          showTopToast(context, AppLocalizations.of(context)!.failedToDownloadData(e.toString()));
         }
       }
 
@@ -875,13 +868,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                AppLocalizations.of(context)!.baseMapDownloadedSuccessfully),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showTopToast(context, AppLocalizations.of(context)!.baseMapDownloadedSuccessfully);
       }
     } catch (e) {
       print("Error retrying base map: $e");
@@ -893,13 +880,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           hasAnyFailures = true;
         });
         _updateVerificationStatus();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!
-                .failedToRetryBaseMap(e.toString())),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showTopToast(context, AppLocalizations.of(context)!.failedToRetryBaseMap(e.toString()));
       }
     }
   }
@@ -949,13 +930,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text(AppLocalizations.of(context)!.vectorLayersRetryCompleted),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showTopToast(context, AppLocalizations.of(context)!.vectorLayersRetryCompleted);
       }
     } catch (e) {
       print("Error retrying vector layers: $e");
@@ -964,13 +939,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!
-                .failedToRetryVectorLayers(e.toString())),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showTopToast(context, AppLocalizations.of(context)!.failedToRetryVectorLayers(e.toString()));
       }
     }
   }
@@ -1020,13 +989,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text(AppLocalizations.of(context)!.planLayersRetryCompleted),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showTopToast(context, AppLocalizations.of(context)!.planLayersRetryCompleted);
       }
     } catch (e) {
       print("Error retrying plan layers: $e");
@@ -1108,12 +1071,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.formDataRetryCompleted),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showTopToast(context, AppLocalizations.of(context)!.formDataRetryCompleted);
       }
     } catch (e) {
       print("Error retrying form data: $e");
@@ -1122,13 +1080,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!
-                .failedToRetryFormData(e.toString())),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showTopToast(context, AppLocalizations.of(context)!.failedToRetryFormData(e.toString()));
       }
     }
   }
@@ -1178,21 +1130,9 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         _updateVerificationStatus();
 
         if (!anyFailed) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(AppLocalizations.of(context)!
-                  .imageLayersDownloadedSuccessfully),
-              backgroundColor: Colors.green,
-            ),
-          );
+          showTopToast(context, AppLocalizations.of(context)!.imageLayersDownloadedSuccessfully);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content:
-                  Text(AppLocalizations.of(context)!.someImageLayersFailed),
-              backgroundColor: Colors.orange,
-            ),
-          );
+          showTopToast(context, AppLocalizations.of(context)!.someImageLayersFailed);
         }
       }
     } catch (e) {
@@ -1203,13 +1143,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           hasAnyFailures = true;
         });
         _updateVerificationStatus();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!
-                .failedToRetryImageLayers(e.toString())),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showTopToast(context, AppLocalizations.of(context)!.failedToRetryImageLayers(e.toString()));
       }
     }
   }
@@ -1262,13 +1196,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text(AppLocalizations.of(context)!.webAppFilesRetryCompleted),
-            backgroundColor: Colors.green,
-          ),
-        );
+        showTopToast(context, AppLocalizations.of(context)!.webAppFilesRetryCompleted);
       }
     } catch (e) {
       print("Error retrying web app: $e");
@@ -1277,13 +1205,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!
-                .failedToRetryWebApp(e.toString())),
-            backgroundColor: Colors.red,
-          ),
-        );
+        showTopToast(context, AppLocalizations.of(context)!.failedToRetryWebApp(e.toString()));
       }
     }
   }
@@ -1359,12 +1281,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
 
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.downloadCancelled),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        showTopToast(context, AppLocalizations.of(context)!.downloadCancelled);
       }
     }
   }

@@ -295,9 +295,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     final connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult == ConnectivityResult.none) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No internet connection')),
-      );
+      showTopToast(context, 'No internet connection');
       return;
     }
 
@@ -543,9 +541,7 @@ class _LocationSelectionState extends State<LocationSelection> {
 
     if (blockId == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(localizations.couldNotFindBlockInfo)),
-        );
+        showTopToast(context, localizations.couldNotFindBlockInfo);
       }
       return;
     }
@@ -655,16 +651,7 @@ class _LocationSelectionState extends State<LocationSelection> {
     if (selectedState == null ||
         selectedDistrict == null ||
         selectedBlock == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(localizations.pleaseSelectStateDistrictBlock),
-          backgroundColor: Theme.of(context).colorScheme.error,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+      showTopToast(context, localizations.pleaseSelectStateDistrictBlock);
       return;
     }
 
@@ -728,21 +715,34 @@ class _LocationSelectionState extends State<LocationSelection> {
     if (await canLaunchUrl(emailLaunchUri)) {
       await launchUrl(emailLaunchUri);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(localizations.couldNotOpenEmailClient),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      showTopToast(context, localizations.couldNotOpenEmailClient);
       print('Could not launch $emailLaunchUri');
     }
   }
 
   Widget _buildLanguageSelector() {
-    return IconButton(
-      icon: const Icon(Icons.language, color: Colors.white),
-      tooltip: 'Select Language',
-      onPressed: _showLanguageSheet,
+    return GestureDetector(
+      onTap: _showLanguageSheet,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+          ),
+          child: Text(
+            _selectedLanguage.toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
