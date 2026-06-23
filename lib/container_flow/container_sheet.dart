@@ -84,11 +84,16 @@ class ContainerSheets {
                               blockName: selectedBlock,
                               districtName: selectedDistrict,
                               geoserverUrl: geoserverUrl,
-                              onLocationSelect: (lat, lon) {
+                              onLocationSelect: (lat, lon, villageName) {
                                 setState(() {
                                   selectedLat = lat;
                                   selectedLon = lon;
                                   locationSelected = true;
+                                  if (villageName != null && villageName.isNotEmpty) {
+                                    containerNameController.text = villageName
+                                        .replaceAll(' ', '_')
+                                        .replaceAll('-', '_');
+                                  }
                                 });
                               },
                             ),

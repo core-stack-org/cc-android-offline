@@ -7,6 +7,7 @@ import '../location_selection.dart';
 import '../services/login_service.dart';
 import '../services/language_service.dart';
 import '../main.dart';
+import '../utils/toast.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -504,13 +505,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: () {
                             Clipboard.setData(
                                 const ClipboardData(text: '9898989898'));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content:
-                                    Text('Phone number copied to clipboard'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
+                            showTopToast(context, 'Phone number copied to clipboard');
                           },
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -554,12 +549,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: () {
                             Clipboard.setData(
                                 const ClipboardData(text: 'demo@1234'));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Password copied to clipboard'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
+                            showTopToast(context, 'Password copied to clipboard');
                           },
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),

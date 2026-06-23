@@ -8,12 +8,13 @@ import 'package:geolocator/geolocator.dart';
 import 'package:nrmflutter/utils/utility.dart';
 //import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import '../l10n/app_localizations.dart';
+import './toast.dart';
 
 class MapLocationSelector extends StatefulWidget {
   final String blockName;
   final String districtName;
   final String geoserverUrl;
-  final Function(double, double) onLocationSelect;
+  final Function(double, double, String?) onLocationSelect;
 
   const MapLocationSelector({
     Key? key,
@@ -29,6 +30,7 @@ class MapLocationSelector extends StatefulWidget {
 
 class _MapLocationSelectorState extends State<MapLocationSelector> {
   LatLng? selectedLocation;
+  String? _detectedVillageName;
   List<List<LatLng>> allPolygons = [];
   List<({LatLng point, String name})> villageMarkers = [];
   bool isLoading = true;
@@ -110,6 +112,39 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
     setState(() {
       _showSearchResults = false;
       _searchController.clear();
+    });
+  }
+
+  bool _pointInPolygon(LatLng point, List<LatLng> polygon) {
+    bool inside = false;
+    int j = polygon.length - 1;
+    for (int i = 0; i < polygon.length; i++) {
+      final yi = polygon[i].latitude;
+      final yj = polygon[j].latitude;
+      final xi = polygon[i].longitude;
+      final xj = polygon[j].longitude;
+      if (((yi > point.latitude) != (yj > point.latitude)) &&
+          (point.longitude < (xj - xi) * (point.latitude - yi) / (yj - yi) + xi)) {
+        inside = !inside;
+      }
+      j = i;
+    }
+    return inside;
+  }
+
+  String? _findVillageForPoint(LatLng point) {
+    for (final village in villages) {
+      if (_pointInPolygon(point, village.boundary)) {
+        return village.name;
+      }
+    }
+    return null;
+  }
+
+  void _updateSelectedLocation(LatLng point) {
+    setState(() {
+      selectedLocation = point;
+      _detectedVillageName = _findVillageForPoint(point);
     });
   }
 
@@ -239,13 +274,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
             isLoading = false;
           });
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                    'No boundary data found for ${widget.blockName}, ${widget.districtName}'),
-                backgroundColor: Colors.orange,
-              ),
-            );
+            showTopToast(context, 'No boundary data found for ${widget.blockName}, ${widget.districtName}');
           }
         }
       } else {
@@ -254,13 +283,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
           isLoading = false;
         });
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content:
-                  Text('Failed to load boundary data: ${response.statusCode}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          showTopToast(context, 'Failed to load boundary data: ${response.statusCode}');
         }
       }
     } catch (e) {
@@ -269,13 +292,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
         isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading boundary: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
+        showTopToast(context, 'Error loading boundary: ${e.toString()}');
       }
     }
   }
@@ -422,11 +439,9 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                             if (formKey.currentState!.validate()) {
                               final lat = double.parse(latController.text);
                               final lon = double.parse(lonController.text);
-                              setState(() {
-                                selectedLocation = LatLng(lat, lon);
-                              });
-                              mapController.move(
-                                  LatLng(lat, lon), _currentZoom);
+                              final point = LatLng(lat, lon);
+                              _updateSelectedLocation(point);
+                              mapController.move(point, _currentZoom);
                               Navigator.of(context).pop();
                             }
                           },
@@ -453,11 +468,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-                  Text(AppLocalizations.of(context)!.locationServicesDisabled)),
-        );
+        showTopToast(context, AppLocalizations.of(context)!.locationServicesDisabled);
         return;
       }
 
@@ -466,22 +477,14 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(
-                    AppLocalizations.of(context)!.locationPermissionsDenied)),
-          );
+          showTopToast(context, AppLocalizations.of(context)!.locationPermissionsDenied);
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(AppLocalizations.of(context)!
-                  .locationPermissionsPermanentlyDenied)),
-        );
+        showTopToast(context, AppLocalizations.of(context)!.locationPermissionsPermanentlyDenied);
         return;
       }
 
@@ -496,21 +499,15 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
 
       if (mounted) {
         setState(() {
-          selectedLocation = currentLocation;
           _currentZoom = newZoom;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-                  Text(AppLocalizations.of(context)!.movedToCurrentLocation)),
-        );
+        _updateSelectedLocation(currentLocation);
+        showTopToast(context, AppLocalizations.of(context)!.movedToCurrentLocation);
       }
     } catch (e) {
       print('Error getting current location: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error getting location: $e')),
-        );
+        showTopToast(context, 'Error getting location: $e');
       }
     } finally {
       if (mounted) {
@@ -552,9 +549,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
               minZoom: 2.0,
               maxZoom: 18.0,
               onTap: (tapPosition, point) {
-                setState(() {
-                  selectedLocation = point;
-                });
+                _updateSelectedLocation(point);
               },
             ),
             children: [
@@ -922,6 +917,26 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                               color: Color(0xFF592941),
                             ),
                           ),
+                          if (_detectedVillageName != null) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(Icons.location_city, size: 14, color: Color(0xFF592941)),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    _detectedVillageName!,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF592941),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -934,6 +949,7 @@ class _MapLocationSelectorState extends State<MapLocationSelector> {
                         widget.onLocationSelect(
                           selectedLocation!.latitude,
                           selectedLocation!.longitude,
+                          _detectedVillageName,
                         );
                         Navigator.pop(context);
                       },

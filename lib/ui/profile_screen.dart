@@ -5,6 +5,7 @@ import '../services/login_service.dart';
 import '../services/cache_service.dart';
 import '../ui/login_screen.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/toast.dart';
 
 const String kShowAllRegionsPrefKey = 'show_all_regions';
 const String kRefreshPlanLayersOnNavigatePrefKey =
@@ -833,82 +834,14 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                         if (success) {
                                           Navigator.of(dialogContext).pop();
                                           if (mounted) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                content: Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.check_circle,
-                                                      color: Colors.white,
-                                                    ),
-                                                    const SizedBox(width: 12),
-                                                    Expanded(
-                                                      child: Text(
-                                                        AppLocalizations.of(
-                                                                context)!
-                                                            .cacheClearedSuccessfully,
-                                                        style: const TextStyle(
-                                                          fontSize: 15,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                backgroundColor: Colors.green,
-                                                behavior:
-                                                    SnackBarBehavior.floating,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                ),
-                                                duration:
-                                                    const Duration(seconds: 3),
-                                              ),
-                                            );
+                                            showTopToast(context, AppLocalizations.of(context)!.cacheClearedSuccessfully);
                                           }
                                         } else {
                                           setState(() {
                                             isLoading = false;
                                           });
                                           if (mounted) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              SnackBar(
-                                                content: Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.error_outline,
-                                                      color: Colors.white,
-                                                    ),
-                                                    const SizedBox(width: 12),
-                                                    Expanded(
-                                                      child: Text(
-                                                        AppLocalizations.of(
-                                                                context)!
-                                                            .failedToClearCache,
-                                                        style: const TextStyle(
-                                                          fontSize: 15,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                backgroundColor: Colors.red,
-                                                behavior:
-                                                    SnackBarBehavior.floating,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                ),
-                                                duration:
-                                                    const Duration(seconds: 3),
-                                              ),
-                                            );
+                                            showTopToast(context, AppLocalizations.of(context)!.failedToClearCache);
                                           }
                                         }
                                       } catch (e) {
@@ -916,39 +849,7 @@ class _ProfileStatsScreenState extends State<ProfileStatsScreen> {
                                           isLoading = false;
                                         });
                                         if (mounted) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: Row(
-                                                children: [
-                                                  const Icon(
-                                                    Icons.error_outline,
-                                                    color: Colors.white,
-                                                  ),
-                                                  const SizedBox(width: 12),
-                                                  Expanded(
-                                                    child: Text(
-                                                      'Error: ${e.toString()}',
-                                                      style: const TextStyle(
-                                                        fontSize: 15,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              backgroundColor: Colors.red,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              duration:
-                                                  const Duration(seconds: 3),
-                                            ),
-                                          );
+                                          showTopToast(context, 'Error: ${e.toString()}');
                                         }
                                       }
                                     },

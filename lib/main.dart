@@ -8,6 +8,7 @@ import 'location_selection.dart';
 import './ui/login_screen.dart';
 import './utils/offline_asset.dart';
 import './services/language_service.dart';
+import './utils/toast.dart';
 
 // Global ValueNotifier for locale changes
 ValueNotifier<Locale> localeNotifier = ValueNotifier(const Locale('hi'));
@@ -17,23 +18,12 @@ Future<void> checkLocationPermission(BuildContext context) async {
   if (permission == LocationPermission.denied) {
     permission = await Geolocator.requestPermission();
     if (permission == LocationPermission.denied) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Location permissions are required for this app'),
-          duration: Duration(seconds: 3),
-        ),
-      );
+      showTopToast(context, 'Location permissions are required for this app');
     }
   }
 
   if (permission == LocationPermission.deniedForever) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-            'Location permissions are permanently denied. Please enable them in settings.'),
-        duration: Duration(seconds: 3),
-      ),
-    );
+    showTopToast(context, 'Location permissions are permanently denied. Please enable them in settings.');
     await Geolocator.openAppSettings();
   }
 }

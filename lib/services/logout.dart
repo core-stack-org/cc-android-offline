@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'login_service.dart';
+import '../utils/toast.dart';
 
 class LogoutService {
   static final LoginService _loginService = LoginService();
@@ -103,9 +104,7 @@ class LogoutService {
   }
 
   static Future<void> performLogout(BuildContext context) async {
-    // Store multiple references for better reliability
     final navigator = Navigator.of(context);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     bool dialogShown = false;
 
     try {
@@ -173,19 +172,6 @@ class LogoutService {
       );
 
       print('Navigation successful');
-
-      // Show success message
-      try {
-        scaffoldMessenger.showSnackBar(
-          const SnackBar(
-            content: Text('Logged out successfully'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      } catch (e) {
-        print('Error showing snackbar: $e');
-      }
     } catch (e) {
       print('Navigation error: $e');
 
@@ -200,17 +186,10 @@ class LogoutService {
       } catch (fallbackError) {
         print('Fallback navigation also failed: $fallbackError');
 
-        // Last resort: Show error message and let user manually navigate
         try {
-          scaffoldMessenger.showSnackBar(
-            const SnackBar(
-              content: Text('Logged out. Please restart the app.'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 5),
-            ),
-          );
+          showTopToast(context, 'Logged out. Please restart the app.');
         } catch (e) {
-          print('Error showing fallback snackbar: $e');
+          print('Error showing toast: $e');
         }
       }
     }
