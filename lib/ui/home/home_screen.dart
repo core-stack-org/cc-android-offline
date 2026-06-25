@@ -168,6 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
           geoserverUrl: widget.geoserverUrl,
           planId: _selectedPlanId!.toString(),
           planName: _selectedPlanName ?? '',
+          cachedAdminPolygons: _adminPolygons,
         ),
       ),
     );

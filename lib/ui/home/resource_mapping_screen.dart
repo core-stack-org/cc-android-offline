@@ -129,6 +129,8 @@ class ResourceMappingScreen extends StatefulWidget {
   final String geoserverUrl;
   final String planId;
   final String planName;
+  /// Pre-loaded admin boundary polygons from HomeScreen — skips re-fetch if provided.
+  final List<Polygon> cachedAdminPolygons;
 
   const ResourceMappingScreen({
     super.key,
@@ -139,6 +141,7 @@ class ResourceMappingScreen extends StatefulWidget {
     required this.geoserverUrl,
     required this.planId,
     required this.planName,
+    this.cachedAdminPolygons = const [],
   });
 
   @override
@@ -166,8 +169,11 @@ class _ResourceMappingScreenState extends State<ResourceMappingScreen> {
   // null = placing settlement; non-null = placing that resource type (during session)
   _ResourceType? _pendingType;
 
-  // Active settlement session (after adding a new settlement)
+  // Active settlement session (after adding a new settlement, or selecting an existing one)
   _SessionContext? _session;
+
+  // Feature tapped for info/resource overlay (settlement only)
+  _ResourceFeature? _tappedSettlement;
 
   // User GPS position for ODK prefill
   LatLng? _userPosition;
@@ -175,9 +181,15 @@ class _ResourceMappingScreenState extends State<ResourceMappingScreen> {
   // Layer legend expanded
   bool _showLegend = false;
 
+  bool _adminLoaded = false;
+
   @override
   void initState() {
     super.initState();
+    if (widget.cachedAdminPolygons.isNotEmpty) {
+      _adminPolygons = List.of(widget.cachedAdminPolygons);
+      _adminLoaded = true;
+    }
     _loadLayers();
   }
 
@@ -197,17 +209,26 @@ class _ResourceMappingScreenState extends State<ResourceMappingScreen> {
     try {
       final ctx = GeoServerContext(rawDistrict: widget.district, rawBlock: widget.block);
 
-      final results = await Future.wait([
-        _fetchAdminBoundaries(ctx),
+      // Skip admin boundary fetch if we have a cached copy
+      final futures = <Future<dynamic>>[
+        if (!_adminLoaded) _fetchAdminBoundaries(ctx),
         ..._ResourceType.values.map((t) => _fetchResourceLayer(t)),
-      ]);
+      ];
+      final results = await Future.wait(futures);
 
       if (!mounted) return;
 
-      final adminPolygons = results[0] as List<Polygon>;
+      int offset = 0;
+      List<Polygon> adminPolygons = _adminPolygons;
+      if (!_adminLoaded) {
+        adminPolygons = results[0] as List<Polygon>;
+        offset = 1;
+        _adminLoaded = true;
+      }
+
       final features = <_ResourceType, List<_ResourceFeature>>{
         for (var i = 0; i < _ResourceType.values.length; i++)
-          _ResourceType.values[i]: results[i + 1] as List<_ResourceFeature>,
+          _ResourceType.values[i]: results[i + offset] as List<_ResourceFeature>,
       };
 
       setState(() {
@@ -344,11 +365,10 @@ class _ResourceMappingScreenState extends State<ResourceMappingScreen> {
   // ---------------------------------------------------------------------------
 
   void _onMapTap(TapPosition _, LatLng pos) {
-    // Ignore taps while a pin is already placed (user must confirm/dismiss first)
-    if (_placedMarker != null) return;
     // If session is active but no pending type, ignore raw map taps
     if (_session != null && _pendingType == null) return;
     HapticFeedback.lightImpact();
+    // Tapping elsewhere re-positions the placed marker
     setState(() => _placedMarker = pos);
   }
 
@@ -427,19 +447,16 @@ class _ResourceMappingScreenState extends State<ResourceMappingScreen> {
   }
 
   void _showSettlementSheet(_ResourceFeature f) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _SettlementSheet(
-        feature: f,
-        block: widget.block,
-        district: widget.district,
-        planId: widget.planId,
-        planName: widget.planName,
-        userPos: _userPosition,
-      ),
-    );
+    // Enter a session for this existing settlement; show glass overlay for actions
+    setState(() {
+      _tappedSettlement = f;
+      // If no session yet, start one for this settlement so _SessionBar appears
+      _session ??= _SessionContext(
+        settlementPos: f.position,
+        settlementId: f.id,
+        settlementName: f.name,
+      );
+    });
   }
 
   void _showFeatureSheet(_ResourceFeature f) {
@@ -454,6 +471,7 @@ class _ResourceMappingScreenState extends State<ResourceMappingScreen> {
         planId: widget.planId,
         planName: widget.planName,
         userPos: _userPosition,
+        onLayersRefresh: _loadLayers,
       ),
     );
   }
@@ -754,8 +772,32 @@ class _ResourceMappingScreenState extends State<ResourceMappingScreen> {
                 session: _session!,
                 pendingType: _pendingType,
                 onAdd: (type) => setState(() { _pendingType = type; }),
-                onDone: () => setState(() { _session = null; _pendingType = null; }),
+                onDone: () => setState(() {
+                  _session = null;
+                  _pendingType = null;
+                  _tappedSettlement = null;
+                }),
                 bottomPadding: bottomPadding,
+              ),
+            ),
+
+          // Tapped-settlement overlay — glass action chips above session bar
+          if (_tappedSettlement != null && _placedMarker == null && _pendingType == null)
+            Positioned(
+              bottom: bottomPadding + sessionBarH + 24,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: _SettlementActionChips(
+                  feature: _tappedSettlement!,
+                  block: widget.block,
+                  district: widget.district,
+                  planId: widget.planId,
+                  planName: widget.planName,
+                  userPos: _userPosition,
+                  onDismiss: () => setState(() => _tappedSettlement = null),
+                  onLayersRefresh: _loadLayers,
+                ),
               ),
             ),
         ],
@@ -999,51 +1041,56 @@ class _MarkerActionCard extends StatelessWidget {
     final lat = position.latitude.toStringAsFixed(5);
     final lon = position.longitude.toStringAsFixed(5);
 
-    return Row(
+    return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Lat / lon chip
+        // Primary: prominent action chip + dismiss
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: onConfirm,
+              child: _GlassChip(
+                highlighted: true,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, color: Colors.white, size: 16),
+                    const SizedBox(width: 8),
+                    Text(label,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.2)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: onDismiss,
+              child: _GlassChip(
+                child: const Icon(Icons.close, color: Colors.white70, size: 16),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        // Secondary: lat/lon dimmed pill
         _GlassChip(
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.location_pin, color: Color(0xFFD32F2F), size: 13),
-              const SizedBox(width: 5),
+              Icon(Icons.location_pin, color: Colors.white.withValues(alpha: 0.55), size: 11),
+              const SizedBox(width: 4),
               Text('$lat, $lon',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w400,
                       fontFamily: 'monospace')),
             ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Action chip — tapping opens ODK form directly
-        GestureDetector(
-          onTap: onConfirm,
-          child: _GlassChip(
-            highlighted: true,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: Colors.white, size: 14),
-                const SizedBox(width: 6),
-                Text(label,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700)),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Dismiss chip
-        GestureDetector(
-          onTap: onDismiss,
-          child: _GlassChip(
-            child: const Icon(Icons.close, color: Colors.white70, size: 14),
           ),
         ),
       ],
@@ -1226,93 +1273,95 @@ class _QuickAddBtn extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Settlement action sheet (existing settlement tapped)
+// Glass overlay chips when an existing settlement is tapped
+// Shows settlement name + Resource Info button (Mark Resources via _SessionBar)
 // ---------------------------------------------------------------------------
 
-class _SettlementSheet extends StatelessWidget {
+class _SettlementActionChips extends StatelessWidget {
   final _ResourceFeature feature;
   final String block;
   final String district;
   final String planId;
   final String planName;
   final LatLng? userPos;
-  const _SettlementSheet({required this.feature, required this.block,
-      required this.district, required this.planId, required this.planName,
-      this.userPos});
+  final VoidCallback onDismiss;
+  final VoidCallback onLayersRefresh;
 
-  void _openForm(BuildContext ctx, _ResourceType type) {
-    final url = _url(type);
-    Navigator.pop(ctx);
-    Navigator.push(ctx, MaterialPageRoute(
-      builder: (_) => OdkFormScreen(
-        url: url,
-        title: 'Add ${type.singular}',
-        resourceType: type.apiResourceType,
-        planId: planId,
-        planName: planName,
-        district: district,
-        block: block,
-      ),
-    ));
-  }
-
-  String _url(_ResourceType type) {
-    switch (type) {
-      case _ResourceType.well:
-        return OdkUrls.well(marker: feature.position, block: block,
-            planId: planId, planName: planName,
-            settlementId: feature.id, settlementName: feature.name, userPos: userPos);
-      case _ResourceType.waterStructure:
-        return OdkUrls.waterStructure(marker: feature.position, block: block,
-            planId: planId, planName: planName,
-            settlementId: feature.id, settlementName: feature.name, userPos: userPos);
-      case _ResourceType.cropping:
-        return OdkUrls.cropping(marker: feature.position, block: block,
-            planId: planId, planName: planName,
-            settlementId: feature.id, settlementName: feature.name, userPos: userPos);
-      default:
-        return '';
-    }
-  }
+  const _SettlementActionChips({
+    required this.feature,
+    required this.block,
+    required this.district,
+    required this.planId,
+    required this.planName,
+    required this.onDismiss,
+    required this.onLayersRefresh,
+    this.userPos,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-    return Container(
-      decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      padding: EdgeInsets.only(bottom: bottomPadding + 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _Handle(),
-          _FeatureHeader(feature: feature),
-          _SectionLabel('MARK RESOURCES'),
-          _SheetAction(icon: Icons.water_drop, color: const Color(0xFF1565C0),
-              label: 'Add Well', onTap: () => _openForm(context, _ResourceType.well)),
-          _SheetAction(icon: Icons.water, color: const Color(0xFF00838F),
-              label: 'Add Water Structure', onTap: () => _openForm(context, _ResourceType.waterStructure)),
-          _SheetAction(icon: Icons.grass, color: const Color(0xFF2E7D32),
-              label: 'Add Cropping Pattern', onTap: () => _openForm(context, _ResourceType.cropping)),
-          const Divider(height: 1, indent: 20, endIndent: 20),
-          _SectionLabel('INFORMATION'),
-          _SheetAction(
-            icon: Icons.info_outline_rounded,
-            color: const Color(0xFF592941),
-            label: 'Resource Info',
-            onTap: () {
-              Navigator.pop(context);
-              showModalBottomSheet(
-                context: context, isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => _InfoSheet(feature: feature),
-              );
-            },
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Settlement name chip — prominent
+        _GlassChip(
+          highlighted: true,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.house_rounded, color: Colors.white, size: 15),
+              const SizedBox(width: 7),
+              Text(
+                feature.name,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-        ],
-      ),
+        ),
+        const SizedBox(height: 8),
+        // Action row: Resource Info + Dismiss
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () {
+                onDismiss();
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => _InfoSheet(feature: feature),
+                );
+              },
+              child: _GlassChip(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.info_outline_rounded,
+                        color: Colors.white.withValues(alpha: 0.85), size: 14),
+                    const SizedBox(width: 6),
+                    Text('Resource Info',
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: onDismiss,
+              child: _GlassChip(
+                child: const Icon(Icons.close, color: Colors.white70, size: 14),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -1328,9 +1377,10 @@ class _FeatureSheet extends StatelessWidget {
   final String planId;
   final String planName;
   final LatLng? userPos;
+  final VoidCallback? onLayersRefresh;
   const _FeatureSheet({required this.feature, required this.block,
       required this.district, required this.planId, required this.planName,
-      this.userPos});
+      this.userPos, this.onLayersRefresh});
 
   String get _addUrl {
     switch (feature.type) {
@@ -1383,7 +1433,7 @@ class _FeatureSheet extends StatelessWidget {
                   district: district,
                   block: block,
                 ),
-              ));
+              )).then((_) => onLayersRefresh?.call());
             },
           ),
           _SheetAction(
@@ -1534,24 +1584,6 @@ class _FeatureHeader extends StatelessWidget {
               onPressed: () => Navigator.pop(context),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  final String text;
-  const _SectionLabel(this.text);
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(text,
-            style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700,
-                color: Colors.grey.shade500, letterSpacing: 0.8)),
       ),
     );
   }
