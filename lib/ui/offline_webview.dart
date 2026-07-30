@@ -3,6 +3,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:nrmflutter/server/local_server.dart';
@@ -162,7 +163,21 @@ class _OfflineWebViewState extends State<OfflineWebView>
         throw Exception('Failed to fetch plans: ${plansResponse.statusCode}');
       }
 
-      final encodedPlans = Uri.encodeComponent(plansResponse.body);
+      var plansJson = plansResponse.body;
+      if (widget.container.planId != null) {
+        final plans = jsonDecode(plansResponse.body);
+        if (plans is List) {
+          plansJson = jsonEncode(
+            plans
+                .where(
+                  (plan) =>
+                      plan is Map && plan['id'] == widget.container.planId,
+                )
+                .toList(),
+          );
+        }
+      }
+      final encodedPlans = Uri.encodeComponent(plansJson);
 
       final url = "$serverUrl/maps?" +
           "geoserver_url=$serverUrl" +

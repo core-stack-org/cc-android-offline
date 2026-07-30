@@ -4,7 +4,7 @@ import 'package:nrmflutter/utils/utility.dart';
 class LayersConfig {
   static Future<List<Map<String, String>>> getLayers(
       String? district, String? block,
-      {String? blockId}) async {
+      {String? blockId, int? planId}) async {
     print(
         "LayersConfig.getLayers called with district: $district, block: $block, blockId: $blockId");
 
@@ -66,23 +66,25 @@ class LayersConfig {
       final resourceLayers = ['settlement', 'well', 'waterbody', 'cropping'];
       final worksLayers = ['main_swb', 'plan_agri', 'plan_gw', 'livelihood'];
 
-      for (var plan in plans) {
-        final planId = plan['id'];
+      for (var plan in plans.where(
+        (plan) => planId == null || plan['id'] == planId,
+      )) {
+        final currentPlanId = plan['id'];
 
         // Add resource layers
         for (var resourceType in resourceLayers) {
-          final layerName = "${resourceType}_${planId}";
+          final layerName = "${resourceType}_${currentPlanId}";
           final geoserverPath =
-              "resources:${resourceType}_${planId}_${formattedDistrict}_${formattedBlock}";
+              "resources:${resourceType}_${currentPlanId}_${formattedDistrict}_${formattedBlock}";
 
           layers.add({"name": layerName, "geoserverPath": geoserverPath});
         }
 
         // Add works layers
         for (var workType in worksLayers) {
-          final layerName = "${workType}_${planId}";
+          final layerName = "${workType}_${currentPlanId}";
           final geoserverPath =
-              "works:${workType}_${planId}_${formattedDistrict}_${formattedBlock}";
+              "works:${workType}_${currentPlanId}_${formattedDistrict}_${formattedBlock}";
 
           layers.add({"name": layerName, "geoserverPath": geoserverPath});
         }

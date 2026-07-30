@@ -13,6 +13,8 @@ import '../utils/toast.dart';
 
 import 'dart:io';
 import 'container_manager.dart';
+import 'plan_selection_sheet.dart';
+import '../services/plans_service.dart';
 import './../utils/mark_location.dart';
 import './../download_progress.dart';
 
@@ -24,12 +26,16 @@ class ContainerSheets {
     required String selectedState,
     required String selectedDistrict,
     required String selectedBlock,
+    required String selectedBlockId,
     required Function(OfflineContainer) onContainerCreated,
   }) {
     final containerNameController = TextEditingController();
+    final plansService = PlansService();
+    List<WatershedPlan>? availablePlans;
     double? selectedLat;
     double? selectedLon;
     bool locationSelected = false;
+    WatershedPlan? selectedPlan;
 
     bool _isValidRegionName(String name) {
       if (name.isEmpty) return false;
@@ -84,17 +90,39 @@ class ContainerSheets {
                               blockName: selectedBlock,
                               districtName: selectedDistrict,
                               geoserverUrl: geoserverUrl,
-                              onLocationSelect: (lat, lon, villageName) {
+                              onLocationSelect: (lat, lon, villageName) async {
                                 setState(() {
                                   selectedLat = lat;
                                   selectedLon = lon;
                                   locationSelected = true;
-                                  if (villageName != null && villageName.isNotEmpty) {
+                                  selectedPlan = null;
+                                  if (villageName != null &&
+                                      villageName.isNotEmpty) {
                                     containerNameController.text = villageName
                                         .replaceAll(' ', '_')
                                         .replaceAll('-', '_');
                                   }
                                 });
+
+                                if (villageName == null ||
+                                    villageName.isEmpty) {
+                                  return;
+                                }
+
+                                try {
+                                  availablePlans ??=
+                                      await plansService.fetchPlans(
+                                    tehsilId: selectedBlockId,
+                                  );
+                                  final matchingPlan = findPlanForVillage(
+                                    availablePlans!,
+                                    villageName,
+                                  );
+                                  if (sheetContext.mounted &&
+                                      matchingPlan != null) {
+                                    setState(() => selectedPlan = matchingPlan);
+                                  }
+                                } catch (_) {}
                               },
                             ),
                           ),
@@ -126,7 +154,51 @@ class ContainerSheets {
 
                     const SizedBox(height: 20),
 
-                    // Step 2: Container Name (disabled until location is selected)
+                    ElevatedButton(
+                      onPressed: () async {
+                        final plan = await PlanSelectionSheet.show(
+                          context: context,
+                          tehsilId: selectedBlockId,
+                          plansService: plansService,
+                          initialPlans: availablePlans,
+                          selectedPlanId: selectedPlan?.id,
+                        );
+                        if (plan != null) {
+                          setState(() => selectedPlan = plan);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD6D5C9),
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        alignment: Alignment.centerLeft,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              selectedPlan?.name ?? 'Select Plan',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF592941),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right,
+                            color: Color(0xFF592941),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -214,6 +286,7 @@ class ContainerSheets {
                     Center(
                       child: ElevatedButton(
                         onPressed: locationSelected &&
+                                selectedPlan != null &&
                                 _isValidRegionName(containerNameController.text)
                             ? () async {
                                 final regionName = containerNameController.text;
@@ -224,6 +297,10 @@ class ContainerSheets {
                                     state: selectedState,
                                     district: selectedDistrict,
                                     block: selectedBlock,
+                                    planId: selectedPlan!.id,
+                                    planName: selectedPlan!.name,
+                                    projectId: selectedPlan!.projectId,
+                                    projectName: selectedPlan!.projectName,
                                     createdAt: DateTime.now(),
                                     latitude: selectedLat!,
                                     longitude: selectedLon!,
@@ -231,6 +308,7 @@ class ContainerSheets {
 
                                   await ContainerManager.saveContainer(
                                       container);
+                                  if (!context.mounted) return;
                                   Navigator.pop(context);
                                   onContainerCreated(container);
                                 } catch (e) {
@@ -276,6 +354,7 @@ class ContainerSheets {
     required String selectedState,
     required String selectedDistrict,
     required String selectedBlock,
+    required String selectedBlockId,
     required Function(OfflineContainer) onContainerSelected,
     Function(OfflineContainer)? onContainerCreated,
     bool showAllRegions = false,
@@ -337,7 +416,8 @@ class ContainerSheets {
                             'All downloaded regions are shown',
                             style: TextStyle(
                               fontSize: 13,
-                              color: const Color(0xFF592941).withValues(alpha: 0.8),
+                              color: const Color(0xFF592941)
+                                  .withValues(alpha: 0.8),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -409,7 +489,8 @@ class ContainerSheets {
                           grouped.putIfAbsent(key, () => []).add(c);
                         }
                         for (final group in grouped.values) {
-                          group.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                          group.sort(
+                              (a, b) => b.createdAt.compareTo(a.createdAt));
                         }
                         final sortedKeys = grouped.keys.toList()..sort();
                         final List<dynamic> listItems = [];
@@ -426,13 +507,14 @@ class ContainerSheets {
                             // Section header for grouped (showAllRegions) mode
                             if (item is String) {
                               final parts = item.split(' › ');
-                              final tehsilName = parts.length == 3 ? parts[2] : item;
+                              final tehsilName =
+                                  parts.length == 3 ? parts[2] : item;
                               final locationPath = parts.length == 3
                                   ? '${parts[0]} › ${parts[1]}'
                                   : '';
                               return Padding(
-                                padding: const EdgeInsets.only(
-                                    top: 16, bottom: 6),
+                                padding:
+                                    const EdgeInsets.only(top: 16, bottom: 6),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -530,8 +612,10 @@ class ContainerSheets {
                                       if (confirm && context.mounted) {
                                         await _deleteContainerAndData(
                                             container.name);
-                                        showTopToast(context, localizations
-                                            .regionDeleted(container.name));
+                                        showTopToast(
+                                            context,
+                                            localizations
+                                                .regionDeleted(container.name));
                                         setState(() {
                                           containersFuture =
                                               ContainerManager.getContainers();
@@ -579,20 +663,20 @@ class ContainerSheets {
                                     fontSize: 16,
                                   ),
                                 ),
-                                                subtitle: Padding(
-                                                  padding: const EdgeInsets.only(top: 6),
-                                                  child: Text(
-                                                    container.isDownloaded
-                                                        ? localizations.readyForOfflineUse
-                                                        : localizations.notYetDownloaded,
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: container.isDownloaded
-                                                          ? Colors.green
-                                                          : Colors.orange,
-                                                    ),
-                                                  ),
-                                                ),
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Text(
+                                    container.isDownloaded
+                                        ? localizations.readyForOfflineUse
+                                        : localizations.notYetDownloaded,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: container.isDownloaded
+                                          ? Colors.green
+                                          : Colors.orange,
+                                    ),
+                                  ),
+                                ),
                               ),
                             );
                           },
@@ -640,8 +724,10 @@ class ContainerSheets {
                               selectedState: selectedState,
                               selectedDistrict: selectedDistrict,
                               selectedBlock: selectedBlock,
+                              selectedBlockId: selectedBlockId,
                               onContainerCreated: (container) {
-                                (onContainerCreated ?? onContainerSelected)(container);
+                                (onContainerCreated ??
+                                    onContainerSelected)(container);
                               },
                             );
                           },
@@ -760,9 +846,10 @@ class ContainerSheets {
                                                 final prefs =
                                                     await SharedPreferences
                                                         .getInstance();
-                                                final refreshEnabled = prefs.getBool(
-                                                        kRefreshPlanLayersOnNavigatePrefKey) ??
-                                                    false;
+                                                final refreshEnabled =
+                                                    prefs.getBool(
+                                                            kRefreshPlanLayersOnNavigatePrefKey) ??
+                                                        false;
                                                 if (!context.mounted) return;
 
                                                 if (!refreshEnabled) {
@@ -833,14 +920,15 @@ class ContainerSheets {
                                                   angle: 1.5708,
                                                   child: Icon(
                                                     Icons.navigation_rounded,
-                                                    color: selectedContainerId !=
-                                                            null
-                                                        ? const Color(
-                                                            0xFF592941)
-                                                        : const Color(
+                                                    color:
+                                                        selectedContainerId !=
+                                                                null
+                                                            ? const Color(
                                                                 0xFF592941)
-                                                            .withValues(
-                                                                alpha: 0.4),
+                                                            : const Color(
+                                                                    0xFF592941)
+                                                                .withValues(
+                                                                    alpha: 0.4),
                                                   ),
                                                 ),
                                               const SizedBox(width: 8),
@@ -932,7 +1020,7 @@ class ContainerSheets {
     try {
       final allLayers = await LayersConfig.getLayers(
           container.district, container.block,
-          blockId: blockId);
+          blockId: blockId, planId: container.planId);
 
       const planLayerPrefixes = [
         'settlement_',
@@ -1070,7 +1158,7 @@ class ContainerSheets {
     try {
       final allLayers = await LayersConfig.getLayers(
           container.district, container.block,
-          blockId: blockId);
+          blockId: blockId, planId: container.planId);
 
       const planLayerPrefixes = [
         'settlement_',
