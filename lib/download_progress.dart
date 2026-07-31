@@ -462,7 +462,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       'maintenance_water_structures.json': 'maintenance_water_structures.json',
       'recharge_structure.json': 'recharge_structure.json',
       'water_structure.json': 'water_structure.json',
-      'agrohorticulture.json' : 'agrohorticulture.json'
+      'agrohorticulture.json': 'agrohorticulture.json'
     };
 
     List<String> failedFiles = [];
@@ -470,7 +470,6 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
     for (var entry in s3Files.entries) {
       final s3ObjectKey = entry.key;
       final localFileName = entry.value;
-
 
       if (layerCancelled[localFileName] == true) {
         continue;
@@ -499,9 +498,10 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       String? district, String? block) async {
     if (_cachedLayers == null && !_isLoadingLayers) {
       _isLoadingLayers = true;
-      print("DownloadProgressPage.getLayers called with district: $district, block: $block, blockId: ${widget.selectedBlockID}");
+      print(
+          "DownloadProgressPage.getLayers called with district: $district, block: $block, blockId: ${widget.selectedBlockID}");
       _cachedLayers = LayersConfig.getLayers(district, block,
-          blockId: widget.selectedBlockID);
+          blockId: widget.selectedBlockID, planId: widget.container.planId);
       await _cachedLayers;
       _isLoadingLayers = false;
     }
@@ -661,15 +661,23 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         final blockFormatted =
             formatNameForGeoServer(widget.selectedBlock ?? '');
 
-        pngLayerProgress['clart_${districtFormatted}_${blockFormatted}_png'] = 0.0;
+        pngLayerProgress['clart_${districtFormatted}_${blockFormatted}_png'] =
+            0.0;
 
-        pngLayerProgress['stream_order_${districtFormatted}_${blockFormatted}_raster_png'] = 0.0;
+        pngLayerProgress[
+                'stream_order_${districtFormatted}_${blockFormatted}_raster_png'] =
+            0.0;
 
-        pngLayerProgress['natural_depression_${districtFormatted}_${blockFormatted}_raster_png'] = 0.0;
+        pngLayerProgress[
+                'natural_depression_${districtFormatted}_${blockFormatted}_raster_png'] =
+            0.0;
 
-        pngLayerProgress['${districtFormatted}_${blockFormatted}_terrain_raster_png'] = 0.0;
+        pngLayerProgress[
+            '${districtFormatted}_${blockFormatted}_terrain_raster_png'] = 0.0;
 
-        pngLayerProgress['${districtFormatted}_${blockFormatted}_site_suitability_raster_png'] = 0.0;
+        pngLayerProgress[
+                '${districtFormatted}_${blockFormatted}_site_suitability_raster_png'] =
+            0.0;
 
         final yearDataLulc = [
           "17_18",
@@ -804,7 +812,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
 
         showTopToast(
           context,
-          AppLocalizations.of(context)!.successfullyDownloadedData(container.name),
+          AppLocalizations.of(context)!
+              .successfullyDownloadedData(container.name),
         );
       }
     } catch (e) {
@@ -825,7 +834,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         });
 
         if (!isCancelled) {
-          showTopToast(context, AppLocalizations.of(context)!.failedToDownloadData(e.toString()));
+          showTopToast(context,
+              AppLocalizations.of(context)!.failedToDownloadData(e.toString()));
         }
       }
 
@@ -868,7 +878,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        showTopToast(context, AppLocalizations.of(context)!.baseMapDownloadedSuccessfully);
+        showTopToast(context,
+            AppLocalizations.of(context)!.baseMapDownloadedSuccessfully);
       }
     } catch (e) {
       print("Error retrying base map: $e");
@@ -880,7 +891,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           hasAnyFailures = true;
         });
         _updateVerificationStatus();
-        showTopToast(context, AppLocalizations.of(context)!.failedToRetryBaseMap(e.toString()));
+        showTopToast(context,
+            AppLocalizations.of(context)!.failedToRetryBaseMap(e.toString()));
       }
     }
   }
@@ -930,7 +942,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        showTopToast(context, AppLocalizations.of(context)!.vectorLayersRetryCompleted);
+        showTopToast(
+            context, AppLocalizations.of(context)!.vectorLayersRetryCompleted);
       }
     } catch (e) {
       print("Error retrying vector layers: $e");
@@ -939,7 +952,10 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        showTopToast(context, AppLocalizations.of(context)!.failedToRetryVectorLayers(e.toString()));
+        showTopToast(
+            context,
+            AppLocalizations.of(context)!
+                .failedToRetryVectorLayers(e.toString()));
       }
     }
   }
@@ -989,7 +1005,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        showTopToast(context, AppLocalizations.of(context)!.planLayersRetryCompleted);
+        showTopToast(
+            context, AppLocalizations.of(context)!.planLayersRetryCompleted);
       }
     } catch (e) {
       print("Error retrying plan layers: $e");
@@ -1071,7 +1088,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        showTopToast(context, AppLocalizations.of(context)!.formDataRetryCompleted);
+        showTopToast(
+            context, AppLocalizations.of(context)!.formDataRetryCompleted);
       }
     } catch (e) {
       print("Error retrying form data: $e");
@@ -1080,7 +1098,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        showTopToast(context, AppLocalizations.of(context)!.failedToRetryFormData(e.toString()));
+        showTopToast(context,
+            AppLocalizations.of(context)!.failedToRetryFormData(e.toString()));
       }
     }
   }
@@ -1130,9 +1149,11 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
         _updateVerificationStatus();
 
         if (!anyFailed) {
-          showTopToast(context, AppLocalizations.of(context)!.imageLayersDownloadedSuccessfully);
+          showTopToast(context,
+              AppLocalizations.of(context)!.imageLayersDownloadedSuccessfully);
         } else {
-          showTopToast(context, AppLocalizations.of(context)!.someImageLayersFailed);
+          showTopToast(
+              context, AppLocalizations.of(context)!.someImageLayersFailed);
         }
       }
     } catch (e) {
@@ -1143,7 +1164,10 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           hasAnyFailures = true;
         });
         _updateVerificationStatus();
-        showTopToast(context, AppLocalizations.of(context)!.failedToRetryImageLayers(e.toString()));
+        showTopToast(
+            context,
+            AppLocalizations.of(context)!
+                .failedToRetryImageLayers(e.toString()));
       }
     }
   }
@@ -1196,7 +1220,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        showTopToast(context, AppLocalizations.of(context)!.webAppFilesRetryCompleted);
+        showTopToast(
+            context, AppLocalizations.of(context)!.webAppFilesRetryCompleted);
       }
     } catch (e) {
       print("Error retrying web app: $e");
@@ -1205,7 +1230,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
           isRetrying = false;
         });
         _updateVerificationStatus();
-        showTopToast(context, AppLocalizations.of(context)!.failedToRetryWebApp(e.toString()));
+        showTopToast(context,
+            AppLocalizations.of(context)!.failedToRetryWebApp(e.toString()));
       }
     }
   }
@@ -1394,7 +1420,8 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                           _verifyAllDownloadsComplete() &&
                           !hasAnyFailures) {
                         Navigator.pop(context);
-                        showTopToast(context, l10n.allLayersDownloadedSuccessfully);
+                        showTopToast(
+                            context, l10n.allLayersDownloadedSuccessfully);
                         widget.onDownloadComplete?.call();
                       } else if (hasAnyFailures ||
                           !_verifyAllDownloadsComplete()) {
@@ -2200,22 +2227,29 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
                                           String displayName = fileName;
                                           if (fileName.contains('clart_')) {
                                             displayName = 'CLART Layer (PNG)';
-                                          } else if (fileName.contains('lulc_')) {
+                                          } else if (fileName
+                                              .contains('lulc_')) {
                                             final parts = fileName.split('_');
                                             if (parts.length > 1) {
                                               final year = parts[1];
                                               displayName =
                                                   'LULC 20$year (PNG)';
                                             }
-                                          }else if(fileName.contains('stream_order_')){
-                                            displayName = 'Stream Order Layer (PNG)';
-                                          }
-                                          else if(fileName.contains('natural_depression_')){
-                                            displayName = 'Natural Depression Layer (PNG)';
-                                          } else if(fileName.contains('terrain_')){
+                                          } else if (fileName
+                                              .contains('stream_order_')) {
+                                            displayName =
+                                                'Stream Order Layer (PNG)';
+                                          } else if (fileName.contains(
+                                              'natural_depression_')) {
+                                            displayName =
+                                                'Natural Depression Layer (PNG)';
+                                          } else if (fileName
+                                              .contains('terrain_')) {
                                             displayName = 'Terrain Layer (PNG)';
-                                          } else if(fileName.contains('site_suitability_')){
-                                            displayName = 'Site Suitability Layer (PNG)';
+                                          } else if (fileName
+                                              .contains('site_suitability_')) {
+                                            displayName =
+                                                'Site Suitability Layer (PNG)';
                                           }
 
                                           return Padding(
@@ -2807,7 +2841,7 @@ class _DownloadProgressPageState extends State<DownloadProgressPage> {
       'well_',
       'waterbody_',
       'cropping_'
-      'main_swb_',
+          'main_swb_',
       'plan_agri_',
       'plan_gw_',
       'livelihood_'

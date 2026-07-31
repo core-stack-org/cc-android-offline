@@ -12,7 +12,6 @@ import 'dart:ui' as ui;
 import 'webview.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
-import 'package:nrmflutter/db/plans_db.dart';
 import 'package:nrmflutter/db/location_db.dart';
 import 'package:nrmflutter/utils/constants.dart';
 import './container_flow/container_manager.dart';
@@ -168,7 +167,6 @@ class _LocationSelectionState extends State<LocationSelection> {
             // Sync DB in background
             LocationDatabase.instance
                 .insertLocationData(locationList)
-                .then((_) => PlansDatabase.instance.syncPlans())
                 .catchError((e) {
               print('Background sync error: $e');
             });
@@ -197,10 +195,9 @@ class _LocationSelectionState extends State<LocationSelection> {
       if (connectivityResult != ConnectivityResult.none) {
         final response = await http.get(Uri.parse('${apiUrl}proposed_blocks/'));
         if (response.statusCode == 200) {
-          final freshStates = List<Map<String, dynamic>>.from(
-              json.decode(response.body));
+          final freshStates =
+              List<Map<String, dynamic>>.from(json.decode(response.body));
           await LocationDatabase.instance.insertLocationData(freshStates);
-          await PlansDatabase.instance.syncPlans();
 
           if (!mounted) return;
           setState(() {
@@ -252,10 +249,11 @@ class _LocationSelectionState extends State<LocationSelection> {
       return;
     }
 
-    final districtData = freshDistricts.cast<Map<String, dynamic>?>().firstWhere(
-          (d) => d!["label"] == selectedDistrict,
-          orElse: () => null,
-        );
+    final districtData =
+        freshDistricts.cast<Map<String, dynamic>?>().firstWhere(
+              (d) => d!["label"] == selectedDistrict,
+              orElse: () => null,
+            );
 
     if (districtData == null) {
       setState(() {
@@ -272,8 +270,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       return;
     }
 
-    final freshBlocks =
-        List<Map<String, dynamic>>.from(districtData["blocks"]);
+    final freshBlocks = List<Map<String, dynamic>>.from(districtData["blocks"]);
 
     final blockStillValid = selectedBlock == null ||
         freshBlocks.any((b) => b["label"] == selectedBlock);
@@ -306,8 +303,8 @@ class _LocationSelectionState extends State<LocationSelection> {
       if (!mounted) return;
 
       if (response.statusCode == 200) {
-        final freshStates = List<Map<String, dynamic>>.from(
-            json.decode(response.body));
+        final freshStates =
+            List<Map<String, dynamic>>.from(json.decode(response.body));
         await LocationDatabase.instance.insertLocationData(freshStates);
 
         if (!mounted) return;
@@ -498,6 +495,7 @@ class _LocationSelectionState extends State<LocationSelection> {
       selectedState: selectedState ?? '',
       selectedDistrict: selectedDistrict ?? '',
       selectedBlock: selectedBlock ?? '',
+      selectedBlockId: selectedBlockID ?? '',
       showAllRegions: _showAllRegions,
       onContainerCreated: (container) {
         Navigator.push(
@@ -526,6 +524,14 @@ class _LocationSelectionState extends State<LocationSelection> {
   // MARK: - Offline
   Future<void> navigateToWebViewOffline(OfflineContainer container) async {
     final localizations = AppLocalizations.of(context)!;
+
+    if (container.planId == null) {
+      showTopToast(
+        context,
+        'This region has no plan. Please recreate it with a selected plan.',
+      );
+      return;
+    }
 
     final containerMatchesSelection = container.block == selectedBlock &&
         container.district == selectedDistrict &&
@@ -1000,7 +1006,8 @@ class _LocationSelectionState extends State<LocationSelection> {
                 ListTile(
                   leading: const CircleAvatar(
                     backgroundColor: Color(0xFFF3E5F5),
-                    child: Icon(Icons.edit_location_alt, color: Color(0xFF592941)),
+                    child:
+                        Icon(Icons.edit_location_alt, color: Color(0xFF592941)),
                   ),
                   title: Text(l10n.enterManually,
                       style: const TextStyle(fontWeight: FontWeight.w500)),
@@ -1036,10 +1043,12 @@ class _LocationSelectionState extends State<LocationSelection> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text(
             'Enter Coordinates',
-            style: TextStyle(color: Color(0xFF592941), fontWeight: FontWeight.bold),
+            style: TextStyle(
+                color: Color(0xFF592941), fontWeight: FontWeight.bold),
           ),
           content: Form(
             key: formKey,
@@ -1048,34 +1057,42 @@ class _LocationSelectionState extends State<LocationSelection> {
               children: [
                 TextFormField(
                   controller: latController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true, signed: true),
                   decoration: InputDecoration(
                     labelText: 'Latitude',
                     hintText: 'e.g. 28.6139',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: const Icon(Icons.north, color: Color(0xFF592941)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    prefixIcon:
+                        const Icon(Icons.north, color: Color(0xFF592941)),
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'Required';
                     final val = double.tryParse(v.trim());
-                    if (val == null || val < -90 || val > 90) return 'Must be -90 to 90';
+                    if (val == null || val < -90 || val > 90)
+                      return 'Must be -90 to 90';
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: lonController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true, signed: true),
                   decoration: InputDecoration(
                     labelText: 'Longitude',
                     hintText: 'e.g. 77.2090',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    prefixIcon: const Icon(Icons.east, color: Color(0xFF592941)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    prefixIcon:
+                        const Icon(Icons.east, color: Color(0xFF592941)),
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'Required';
                     final val = double.tryParse(v.trim());
-                    if (val == null || val < -180 || val > 180) return 'Must be -180 to 180';
+                    if (val == null || val < -180 || val > 180)
+                      return 'Must be -180 to 180';
                     return null;
                   },
                 ),
@@ -1090,7 +1107,8 @@ class _LocationSelectionState extends State<LocationSelection> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF592941),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () {
                 if (!formKey.currentState!.validate()) return;
@@ -1099,7 +1117,8 @@ class _LocationSelectionState extends State<LocationSelection> {
                 Navigator.pop(context);
                 _locateMeManual(lat, lon);
               },
-              child: const Text('Submit', style: TextStyle(color: Colors.white)),
+              child:
+                  const Text('Submit', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -1109,8 +1128,8 @@ class _LocationSelectionState extends State<LocationSelection> {
 
   Future<void> _locateMeManual(double latitude, double longitude) async {
     final dismiss = showLoadingToast(context, 'Fetching location details...');
-    final result =
-        await LocateMeService.fetchAdminDetailsByCoordinates(latitude, longitude);
+    final result = await LocateMeService.fetchAdminDetailsByCoordinates(
+        latitude, longitude);
     dismiss();
     if (!mounted) return;
     _handleLocateResult(result);
@@ -1133,7 +1152,8 @@ class _LocationSelectionState extends State<LocationSelection> {
 
   void _autoPopulateDropdowns(AdminDetails admin) {
     final matchedState = states.cast<Map<String, dynamic>?>().firstWhere(
-        (s) => s!["label"].toString().toLowerCase() == admin.state?.toLowerCase(),
+        (s) =>
+            s!["label"].toString().toLowerCase() == admin.state?.toLowerCase(),
         orElse: () => null);
 
     if (matchedState == null) {
@@ -1155,11 +1175,14 @@ class _LocationSelectionState extends State<LocationSelection> {
     });
 
     final matchedDistrict = districts.cast<Map<String, dynamic>?>().firstWhere(
-        (d) => d!["label"].toString().toLowerCase() == admin.district?.toLowerCase(),
+        (d) =>
+            d!["label"].toString().toLowerCase() ==
+            admin.district?.toLowerCase(),
         orElse: () => null);
 
     if (matchedDistrict == null) {
-      _showPartialMatch('State matched, but district not found in proposed blocks');
+      _showPartialMatch(
+          'State matched, but district not found in proposed blocks');
       return;
     }
 
@@ -1172,7 +1195,8 @@ class _LocationSelectionState extends State<LocationSelection> {
     });
 
     final matchedBlock = blocks.cast<Map<String, dynamic>?>().firstWhere(
-        (b) => b!["label"].toString().toLowerCase() == admin.tehsil?.toLowerCase(),
+        (b) =>
+            b!["label"].toString().toLowerCase() == admin.tehsil?.toLowerCase(),
         orElse: () => null);
 
     if (matchedBlock != null) {
@@ -1185,7 +1209,8 @@ class _LocationSelectionState extends State<LocationSelection> {
       showTopToast(context,
           'Location set to ${admin.state}, ${admin.district}, ${admin.tehsil}');
     } else {
-      _showPartialMatch('State & district matched, please select tehsil manually');
+      _showPartialMatch(
+          'State & district matched, please select tehsil manually');
     }
   }
 
@@ -1458,7 +1483,8 @@ class _LocationSelectionState extends State<LocationSelection> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF592941),
                 side: const BorderSide(color: Color(0xFF592941), width: 1.5),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20.0),
                 ),
@@ -1467,7 +1493,8 @@ class _LocationSelectionState extends State<LocationSelection> {
               icon: const Icon(Icons.gps_fixed, size: 18),
               label: Text(
                 localizations.locateMe,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                style:
+                    const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
               ),
             ),
             const SizedBox(height: 24.0),
@@ -1604,4 +1631,3 @@ class _LocationSelectionState extends State<LocationSelection> {
     );
   }
 }
-

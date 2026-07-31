@@ -4,8 +4,6 @@ import 'package:shelf/shelf.dart' as shelf;
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:path/path.dart' as path;
 import 'package:mime/mime.dart';
-import 'package:nrmflutter/db/plans_db.dart';
-
 import 'package:geolocator/geolocator.dart';
 
 class LocalServer {
@@ -192,43 +190,6 @@ class LocalServer {
     }
   }
 
-  Future<shelf.Response> _handlePlansRequest(String blockId) async {
-    print("DEBUG: Handling plans request for block/tehsil ID: $blockId");
-    try {
-      final plans =
-          await PlansDatabase.instance.getPlansForTehsil(int.parse(blockId));
-      print("DEBUG: Found ${plans.length} plans for tehsil ID $blockId");
-
-      if (plans.isEmpty) {
-        print("DEBUG: No plans found. Checking all plans in database...");
-        final allPlans = await PlansDatabase.instance.getAllPlans();
-        print("DEBUG: Total plans in database: ${allPlans.length}");
-        if (allPlans.isNotEmpty) {
-          print(
-              "DEBUG: Sample plan tehsil values: ${allPlans.map((p) => p['tehsil']).toSet()}");
-          print(
-              "DEBUG: Sample plan block values: ${allPlans.map((p) => p['block']).toSet()}");
-        }
-      }
-
-      final responseJson = json.encode({'plans': plans});
-
-      return shelf.Response.ok(
-        responseJson,
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Cache-Control': 'max-age=3600',
-          'Access-Control-Allow-Origin': '*',
-        },
-      );
-    } catch (e) {
-      print('Error serving plans: $e');
-      return shelf.Response.internalServerError(
-          body: json.encode({'error': e.toString()}),
-          headers: {'Content-Type': 'application/json; charset=utf-8'});
-    }
-  }
-
   Future<shelf.Response> _handleS3DataRequest(String? formName) async {
     print("Handling S3 data request for form: ${formName ?? 'list all'}");
 
@@ -378,15 +339,6 @@ class LocalServer {
       }
 
       final normalizedPath = requestPath.trim().toLowerCase();
-
-      // Handle plans
-      if (normalizedPath.startsWith('api/v1/watershed')) {
-        final blockId = request.url.queryParameters['block'];
-        if (blockId != null) {
-          return await _handlePlansRequest(blockId);
-        }
-        return shelf.Response.badRequest(body: 'Missing block_id parameter');
-      }
 
       // Handle S3 forms
       if (normalizedPath.startsWith('api/v1/forms')) {

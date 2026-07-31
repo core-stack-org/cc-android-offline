@@ -7,20 +7,30 @@ class OfflineContainer {
   final String state;
   final String district;
   final String block;
+  final int? planId;
+  final String? planName;
+  final int? projectId;
+  final String? projectName;
   final DateTime createdAt;
+  final DateTime? downloadedAt;
   final bool isDownloaded;
-  final double latitude; // New field for location
-  final double longitude; // New field for location
+  final double latitude;
+  final double longitude;
 
   OfflineContainer({
     required this.name,
     required this.state,
     required this.district,
     required this.block,
+    this.planId,
+    this.planName,
+    this.projectId,
+    this.projectName,
     required this.createdAt,
+    this.downloadedAt,
     this.isDownloaded = false,
-    required this.latitude, // Optional location
-    required this.longitude, // Optional location
+    required this.latitude,
+    required this.longitude,
   });
 
   Map<String, dynamic> toJson() => {
@@ -28,10 +38,15 @@ class OfflineContainer {
         'state': state,
         'district': district,
         'block': block,
+        'planId': planId,
+        'planName': planName,
+        'projectId': projectId,
+        'projectName': projectName,
         'createdAt': createdAt.toIso8601String(),
+        'downloadedAt': downloadedAt?.toIso8601String(),
         'isDownloaded': isDownloaded,
-        'latitude': latitude, // Save location to JSON
-        'longitude': longitude, // Save location to JSON
+        'latitude': latitude,
+        'longitude': longitude,
       };
 
   factory OfflineContainer.fromJson(Map<String, dynamic> json) =>
@@ -40,11 +55,25 @@ class OfflineContainer {
         state: json['state'],
         district: json['district'],
         block: json['block'],
+        planId: _asInt(json['planId']),
+        planName: json['planName'],
+        projectId: _asInt(json['projectId']),
+        projectName: json['projectName'],
         createdAt: DateTime.parse(json['createdAt']),
+        downloadedAt: _asDateTime(json['downloadedAt']),
         isDownloaded: json['isDownloaded'] ?? false,
-        latitude: json['latitude']?.toDouble(), // Read location from JSON
-        longitude: json['longitude']?.toDouble(), // Read location from JSON
+        latitude: json['latitude']?.toDouble(),
+        longitude: json['longitude']?.toDouble(),
       );
+}
+
+int? _asInt(dynamic value) {
+  if (value is int) return value;
+  return int.tryParse(value?.toString() ?? '');
+}
+
+DateTime? _asDateTime(dynamic value) {
+  return value == null ? null : DateTime.tryParse(value.toString());
 }
 
 /// Manager class handling offline container operations and persistence
@@ -90,10 +119,16 @@ class ContainerManager {
       state: containers[index].state,
       district: containers[index].district,
       block: containers[index].block,
+      planId: containers[index].planId,
+      planName: containers[index].planName,
+      projectId: containers[index].projectId,
+      projectName: containers[index].projectName,
       createdAt: containers[index].createdAt,
+      downloadedAt:
+          isDownloaded ? DateTime.now() : containers[index].downloadedAt,
       isDownloaded: isDownloaded,
-      latitude: containers[index].latitude, // Preserve location
-      longitude: containers[index].longitude, // Preserve location
+      latitude: containers[index].latitude,
+      longitude: containers[index].longitude,
     );
 
     final String jsonString =

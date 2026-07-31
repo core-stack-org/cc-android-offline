@@ -1,10 +1,9 @@
-import 'package:nrmflutter/db/plans_db.dart';
 import 'package:nrmflutter/utils/utility.dart';
 
 class LayersConfig {
   static Future<List<Map<String, String>>> getLayers(
       String? district, String? block,
-      {String? blockId}) async {
+      {String? blockId, int? planId}) async {
     print(
         "LayersConfig.getLayers called with district: $district, block: $block, blockId: $blockId");
 
@@ -59,36 +58,27 @@ class LayersConfig {
       }
     ];
 
-    if (blockId != null) {
-      final plans =
-          await PlansDatabase.instance.getPlansForTehsil(int.parse(blockId));
-
+    if (planId != null) {
       final resourceLayers = ['settlement', 'well', 'waterbody', 'cropping'];
       final worksLayers = ['main_swb', 'plan_agri', 'plan_gw', 'livelihood'];
 
-      for (var plan in plans) {
-        final planId = plan['id'];
+      for (var resourceType in resourceLayers) {
+        final layerName = "${resourceType}_$planId";
+        final geoserverPath =
+            "resources:${resourceType}_${planId}_${formattedDistrict}_${formattedBlock}";
 
-        // Add resource layers
-        for (var resourceType in resourceLayers) {
-          final layerName = "${resourceType}_${planId}";
-          final geoserverPath =
-              "resources:${resourceType}_${planId}_${formattedDistrict}_${formattedBlock}";
+        layers.add({"name": layerName, "geoserverPath": geoserverPath});
+      }
 
-          layers.add({"name": layerName, "geoserverPath": geoserverPath});
-        }
+      for (var workType in worksLayers) {
+        final layerName = "${workType}_$planId";
+        final geoserverPath =
+            "works:${workType}_${planId}_${formattedDistrict}_${formattedBlock}";
 
-        // Add works layers
-        for (var workType in worksLayers) {
-          final layerName = "${workType}_${planId}";
-          final geoserverPath =
-              "works:${workType}_${planId}_${formattedDistrict}_${formattedBlock}";
-
-          layers.add({"name": layerName, "geoserverPath": geoserverPath});
-        }
+        layers.add({"name": layerName, "geoserverPath": geoserverPath});
       }
     } else {
-      print("No blockId provided, skipping resource and works layers");
+      print("No planId provided, skipping resource and works layers");
     }
 
     print("Total layers generated: ${layers.length}");
