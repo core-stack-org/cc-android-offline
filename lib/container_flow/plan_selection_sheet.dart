@@ -54,6 +54,8 @@ class _PlanSelectionSheetState extends State<PlanSelectionSheet> {
   _PlanSearchField _searchField = _PlanSearchField.all;
   bool _detailsVisible = false;
   bool _showScrollToTop = false;
+  bool _filtersTouched = false;
+  String? _matchedFacilitatorName;
 
   @override
   void initState() {
@@ -63,14 +65,17 @@ class _PlanSelectionSheetState extends State<PlanSelectionSheet> {
         : Future.value(widget.initialPlans);
     _roleFuture = widget.plansService.getUserRoleLabel();
     _plansScrollController.addListener(_handlePlanScroll);
+    _applyUserFacilitatorFilter(_plansFuture);
   }
 
   void _retry() {
+    final plansFuture = widget.plansService.fetchPlans(
+      tehsilId: widget.tehsilId,
+    );
     setState(() {
-      _plansFuture = widget.plansService.fetchPlans(
-        tehsilId: widget.tehsilId,
-      );
+      _plansFuture = plansFuture;
     });
+    _applyUserFacilitatorFilter(plansFuture);
   }
 
   @override
@@ -93,6 +98,34 @@ class _PlanSelectionSheetState extends State<PlanSelectionSheet> {
       duration: const Duration(milliseconds: 420),
       curve: Curves.easeOutCubic,
     );
+  }
+
+  Future<void> _applyUserFacilitatorFilter(
+    Future<List<WatershedPlan>> plansFuture,
+  ) async {
+    try {
+      final results = await Future.wait([
+        plansFuture,
+        widget.plansService.getUserFullName(),
+      ]);
+      final plans = results[0] as List<WatershedPlan>;
+      final userFullName = results[1] as String?;
+      if (!mounted ||
+          _filtersTouched ||
+          userFullName == null ||
+          !plans.any(
+            (plan) =>
+                !plan.isTestPlan && planMatchesFacilitator(plan, userFullName),
+          )) {
+        return;
+      }
+
+      setState(() {
+        _searchController.text = userFullName;
+        _searchField = _PlanSearchField.facilitator;
+        _matchedFacilitatorName = userFullName;
+      });
+    } catch (_) {}
   }
 
   @override
@@ -195,10 +228,19 @@ class _PlanSelectionSheetState extends State<PlanSelectionSheet> {
     final projectPlans = _selectedProjectId == null
         ? plans
         : plans.where((plan) => plan.projectId == _selectedProjectId).toList();
+    final regularCandidates =
+        projectPlans.where((plan) => !plan.isTestPlan).toList();
     final query = _searchController.text.trim().toLowerCase();
-    final visiblePlans = query.isEmpty
-        ? projectPlans
-        : projectPlans.where((plan) {
+    final regularPlans = query.isEmpty
+        ? regularCandidates
+        : regularCandidates.where((plan) {
+            if (_matchedFacilitatorName != null &&
+                _searchField == _PlanSearchField.facilitator) {
+              return planMatchesFacilitator(
+                plan,
+                _matchedFacilitatorName!,
+              );
+            }
             final values = switch (_searchField) {
               _PlanSearchField.all => [
                   plan.name,
@@ -211,9 +253,8 @@ class _PlanSelectionSheetState extends State<PlanSelectionSheet> {
             };
             return values.any((value) => value.toLowerCase().contains(query));
           }).toList();
-    final regularPlans =
-        visiblePlans.where((plan) => !plan.isTestPlan).toList();
-    final testPlans = visiblePlans.where((plan) => plan.isTestPlan).toList();
+    final testPlans = plans.where((plan) => plan.isTestPlan).toList();
+    final visiblePlans = [...regularPlans, ...testPlans];
     final showScrollToTop = _showScrollToTop && visiblePlans.isNotEmpty;
 
     return Column(
@@ -232,7 +273,10 @@ class _PlanSelectionSheetState extends State<PlanSelectionSheet> {
             Expanded(
               child: TextField(
                 controller: _searchController,
-                onChanged: (_) => setState(() {}),
+                onChanged: (_) => setState(() {
+                  _filtersTouched = true;
+                  _matchedFacilitatorName = null;
+                }),
                 decoration: InputDecoration(
                   hintText: 'Search plans',
                   prefixIcon: const Icon(
@@ -245,7 +289,10 @@ class _PlanSelectionSheetState extends State<PlanSelectionSheet> {
                           icon: const Icon(Icons.close),
                           onPressed: () {
                             _searchController.clear();
-                            setState(() {});
+                            setState(() {
+                              _filtersTouched = true;
+                              _matchedFacilitatorName = null;
+                            });
                           },
                         ),
                   filled: true,
@@ -320,9 +367,11 @@ class _PlanSelectionSheetState extends State<PlanSelectionSheet> {
             if (_searchField != _PlanSearchField.all)
               _FilterChip(
                 label: _searchField.label,
-                onClear: () => setState(
-                  () => _searchField = _PlanSearchField.all,
-                ),
+                onClear: () => setState(() {
+                  _filtersTouched = true;
+                  _matchedFacilitatorName = null;
+                  _searchField = _PlanSearchField.all;
+                }),
               ),
           ],
         ),
@@ -458,7 +507,10 @@ class _PlanSelectionSheetState extends State<PlanSelectionSheet> {
     if (!mounted || selectedProject == null) return;
     final projectId = selectedProject == -1 ? null : selectedProject;
     if (projectId == _selectedProjectId) return;
-    setState(() => _selectedProjectId = projectId);
+    setState(() {
+      _filtersTouched = true;
+      _selectedProjectId = projectId;
+    });
   }
 
   Widget _projectOption(BuildContext context, int id, String name) {
@@ -519,7 +571,11 @@ class _PlanSelectionSheetState extends State<PlanSelectionSheet> {
       ),
     );
     if (field != null && mounted) {
-      setState(() => _searchField = field);
+      setState(() {
+        _filtersTouched = true;
+        _matchedFacilitatorName = null;
+        _searchField = field;
+      });
     }
   }
 
@@ -570,7 +626,7 @@ class _PlanSelectionSheetState extends State<PlanSelectionSheet> {
                         borderRadius: BorderRadius.circular(13),
                       ),
                       child: const Icon(
-                        Icons.map_outlined,
+                        Icons.description_outlined,
                         color: Colors.white,
                         size: 21,
                       ),

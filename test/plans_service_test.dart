@@ -113,9 +113,42 @@ void main() {
         responses: const {},
       ),
     );
+    final planUserService = PlansService(
+      loginService: _FakeLoginService(
+        user: {
+          'groups': [
+            {'name': 'App User'},
+          ],
+        },
+        responses: const {},
+      ),
+    );
 
     expect(await superadminService.getUserRoleLabel(), 'Superadmin');
     expect(await adminService.getUserRoleLabel(), 'Organization Admin');
+    expect(await planUserService.getUserRoleLabel(), 'Plan User');
+  });
+
+  test('matches plans to the logged-in user facilitator name', () async {
+    final service = PlansService(
+      loginService: _FakeLoginService(
+        user: {
+          'first_name': 'Ankit',
+          'last_name': 'Kumar',
+        },
+        responses: const {},
+      ),
+    );
+    final plan = WatershedPlan.fromJson({
+      'id': 1,
+      'plan': 'Village Plan',
+      'facilitator_name': '  ankit   kumar ',
+    });
+
+    final fullName = await service.getUserFullName();
+
+    expect(fullName, 'Ankit Kumar');
+    expect(planMatchesFacilitator(plan, fullName!), isTrue);
   });
 }
 

@@ -12,6 +12,7 @@ class OfflineContainer {
   final int? projectId;
   final String? projectName;
   final DateTime createdAt;
+  final DateTime? downloadedAt;
   final bool isDownloaded;
   final double latitude;
   final double longitude;
@@ -26,6 +27,7 @@ class OfflineContainer {
     this.projectId,
     this.projectName,
     required this.createdAt,
+    this.downloadedAt,
     this.isDownloaded = false,
     required this.latitude,
     required this.longitude,
@@ -41,6 +43,7 @@ class OfflineContainer {
         'projectId': projectId,
         'projectName': projectName,
         'createdAt': createdAt.toIso8601String(),
+        'downloadedAt': downloadedAt?.toIso8601String(),
         'isDownloaded': isDownloaded,
         'latitude': latitude,
         'longitude': longitude,
@@ -57,6 +60,7 @@ class OfflineContainer {
         projectId: _asInt(json['projectId']),
         projectName: json['projectName'],
         createdAt: DateTime.parse(json['createdAt']),
+        downloadedAt: _asDateTime(json['downloadedAt']),
         isDownloaded: json['isDownloaded'] ?? false,
         latitude: json['latitude']?.toDouble(),
         longitude: json['longitude']?.toDouble(),
@@ -66,6 +70,10 @@ class OfflineContainer {
 int? _asInt(dynamic value) {
   if (value is int) return value;
   return int.tryParse(value?.toString() ?? '');
+}
+
+DateTime? _asDateTime(dynamic value) {
+  return value == null ? null : DateTime.tryParse(value.toString());
 }
 
 /// Manager class handling offline container operations and persistence
@@ -116,6 +124,8 @@ class ContainerManager {
       projectId: containers[index].projectId,
       projectName: containers[index].projectName,
       createdAt: containers[index].createdAt,
+      downloadedAt:
+          isDownloaded ? DateTime.now() : containers[index].downloadedAt,
       isDownloaded: isDownloaded,
       latitude: containers[index].latitude,
       longitude: containers[index].longitude,

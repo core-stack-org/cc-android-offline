@@ -69,6 +69,15 @@ String _normalizeVillageName(String value) {
   return value.trim().toLowerCase().replaceAll(RegExp(r'[\s_-]+'), '');
 }
 
+bool planMatchesFacilitator(WatershedPlan plan, String userFullName) {
+  return _normalizePersonName(plan.facilitatorName) ==
+      _normalizePersonName(userFullName);
+}
+
+String _normalizePersonName(String value) {
+  return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+}
+
 class PlansService {
   final LoginService _loginService;
 
@@ -77,7 +86,7 @@ class PlansService {
 
   Future<String> getUserRoleLabel() async {
     final user = await _loginService.getUserData();
-    if (user == null) return 'App User';
+    if (user == null) return 'Plan User';
     if (user['is_superadmin'] == true) return 'Superadmin';
 
     final groups = user['groups'];
@@ -87,10 +96,23 @@ class PlansService {
           .map((group) => group['name']?.toString().trim())
           .whereType<String>()
           .where((name) => name.isNotEmpty)
+          .map(
+            (name) => name.toLowerCase() == 'app user' ? 'Plan User' : name,
+          )
           .toList();
       if (names.isNotEmpty) return names.join(', ');
     }
-    return 'App User';
+    return 'Plan User';
+  }
+
+  Future<String?> getUserFullName() async {
+    final user = await _loginService.getUserData();
+    if (user == null) return null;
+
+    final firstName = user['first_name']?.toString().trim() ?? '';
+    final lastName = user['last_name']?.toString().trim() ?? '';
+    if (firstName.isEmpty || lastName.isEmpty) return null;
+    return '$firstName $lastName';
   }
 
   Future<List<WatershedPlan>> fetchPlans({
