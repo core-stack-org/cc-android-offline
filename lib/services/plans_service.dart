@@ -75,6 +75,24 @@ class PlansService {
   PlansService({LoginService? loginService})
       : _loginService = loginService ?? LoginService();
 
+  Future<String> getUserRoleLabel() async {
+    final user = await _loginService.getUserData();
+    if (user == null) return 'App User';
+    if (user['is_superadmin'] == true) return 'Superadmin';
+
+    final groups = user['groups'];
+    if (groups is List) {
+      final names = groups
+          .whereType<Map>()
+          .map((group) => group['name']?.toString().trim())
+          .whereType<String>()
+          .where((name) => name.isNotEmpty)
+          .toList();
+      if (names.isNotEmpty) return names.join(', ');
+    }
+    return 'App User';
+  }
+
   Future<List<WatershedPlan>> fetchPlans({
     required String tehsilId,
   }) async {

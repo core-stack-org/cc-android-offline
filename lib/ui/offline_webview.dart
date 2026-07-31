@@ -3,13 +3,11 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:nrmflutter/server/local_server.dart';
 import 'package:nrmflutter/webview.dart';
 import 'package:nrmflutter/container_flow/container_manager.dart';
-import 'package:nrmflutter/config/api_config.dart';
 import 'package:nrmflutter/l10n/app_localizations.dart';
 
 class OfflineWebView extends StatefulWidget {
@@ -149,48 +147,27 @@ class _OfflineWebViewState extends State<OfflineWebView>
       final serverUrl = await _localServer!.start();
       print('Server started at: $serverUrl');
 
-      // Fetch plans using the local server
-      final plansResponse = await http.get(
-        Uri.parse(
-            '$serverUrl/api/v1/watershed/plans/?block=${widget.selectedBlockID}'),
-        headers: {
-          "Content-Type": "application/json",
-          'X-API-Key': apiKey,
-        },
-      );
-
-      if (plansResponse.statusCode != 200) {
-        throw Exception('Failed to fetch plans: ${plansResponse.statusCode}');
-      }
-
-      var plansJson = plansResponse.body;
+      final queryParameters = <String, String>{
+        'geoserver_url': serverUrl,
+        'state_name': widget.container.state,
+        'dist_name': widget.container.district,
+        'block_name': widget.container.block,
+        'block_id': widget.selectedBlockID,
+        'isOffline': 'true',
+        'container_name': widget.container.name,
+        'language': widget.selectedLanguage,
+        'latitude': widget.container.latitude.toString(),
+        'longitude': widget.container.longitude.toString(),
+      };
       if (widget.container.planId != null) {
-        final plans = jsonDecode(plansResponse.body);
-        if (plans is List) {
-          plansJson = jsonEncode(
-            plans
-                .where(
-                  (plan) =>
-                      plan is Map && plan['id'] == widget.container.planId,
-                )
-                .toList(),
-          );
-        }
+        queryParameters['plan_id'] = widget.container.planId.toString();
       }
-      final encodedPlans = Uri.encodeComponent(plansJson);
-
-      final url = "$serverUrl/maps?" +
-          "geoserver_url=$serverUrl" +
-          "&state_name=${widget.container.state}" +
-          "&dist_name=${widget.container.district}" +
-          "&block_name=${widget.container.block}" +
-          "&block_id=${widget.selectedBlockID}" +
-          "&isOffline=true" +
-          "&container_name=${widget.container.name}" +
-          "&plans=$encodedPlans" +
-          "&language=${widget.selectedLanguage}" +
-          "&latitude=${widget.container.latitude}" +
-          "&longitude=${widget.container.longitude}";
+      if (widget.container.planName?.isNotEmpty == true) {
+        queryParameters['plan_name'] = widget.container.planName!;
+      }
+      final url = Uri.parse(
+        '$serverUrl/maps',
+      ).replace(queryParameters: queryParameters).toString();
 
       print('Offline URL constructed: $url');
 

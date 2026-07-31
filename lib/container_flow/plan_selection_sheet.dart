@@ -47,6 +47,7 @@ class PlanSelectionSheet extends StatefulWidget {
 
 class _PlanSelectionSheetState extends State<PlanSelectionSheet> {
   late Future<List<WatershedPlan>> _plansFuture;
+  Future<String>? _roleFuture;
   final _searchController = TextEditingController();
   final _plansScrollController = ScrollController();
   int? _selectedProjectId;
@@ -60,6 +61,7 @@ class _PlanSelectionSheetState extends State<PlanSelectionSheet> {
     _plansFuture = widget.initialPlans == null
         ? widget.plansService.fetchPlans(tehsilId: widget.tehsilId)
         : Future.value(widget.initialPlans);
+    _roleFuture = widget.plansService.getUserRoleLabel();
     _plansScrollController.addListener(_handlePlanScroll);
   }
 
@@ -125,7 +127,17 @@ class _PlanSelectionSheetState extends State<PlanSelectionSheet> {
                     'Choose the watershed plan for this region',
                     style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 10),
+                  FutureBuilder<String>(
+                    future: _roleFuture ??=
+                        widget.plansService.getUserRoleLabel(),
+                    builder: (context, snapshot) => _RoleChip(
+                      role: snapshot.data ?? 'Loading role…',
+                      isLoading:
+                          snapshot.connectionState == ConnectionState.waiting,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Expanded(
                     child: FutureBuilder<List<WatershedPlan>>(
                       future: _plansFuture,
@@ -994,6 +1006,62 @@ class _ProjectSelector extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoleChip extends StatelessWidget {
+  final String role;
+  final bool isLoading;
+
+  const _RoleChip({required this.role, required this.isLoading});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: isLoading ? 0.55 : 1,
+      duration: const Duration(milliseconds: 180),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 300),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.admin_panel_settings_outlined,
+              color: Colors.white,
+              size: 15,
+            ),
+            const SizedBox(width: 6),
+            const Text(
+              'ROLE',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                role,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

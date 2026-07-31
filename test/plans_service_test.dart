@@ -95,6 +95,28 @@ void main() {
 
     expect(findPlanForVillage(plans, 'Belpahari'), isNull);
   });
+
+  test('uses superadmin flag or group names for the role label', () async {
+    final superadminService = PlansService(
+      loginService: _FakeLoginService(
+        user: {'is_superadmin': true},
+        responses: const {},
+      ),
+    );
+    final adminService = PlansService(
+      loginService: _FakeLoginService(
+        user: {
+          'groups': [
+            {'name': 'Organization Admin'},
+          ],
+        },
+        responses: const {},
+      ),
+    );
+
+    expect(await superadminService.getUserRoleLabel(), 'Superadmin');
+    expect(await adminService.getUserRoleLabel(), 'Organization Admin');
+  });
 }
 
 class _FakeLoginService extends LoginService {

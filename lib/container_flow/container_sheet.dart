@@ -121,8 +121,19 @@ class ContainerSheets {
                                   if (sheetContext.mounted &&
                                       matchingPlan != null) {
                                     setState(() => selectedPlan = matchingPlan);
+                                    showTopToast(
+                                      sheetContext,
+                                      'Plan matched: ${matchingPlan.name}',
+                                    );
                                   }
-                                } catch (_) {}
+                                } catch (_) {
+                                  if (sheetContext.mounted) {
+                                    showTopToast(
+                                      sheetContext,
+                                      'Could not match a plan automatically. Please select one.',
+                                    );
+                                  }
+                                }
                               },
                             ),
                           ),
@@ -163,8 +174,12 @@ class ContainerSheets {
                           initialPlans: availablePlans,
                           selectedPlanId: selectedPlan?.id,
                         );
-                        if (plan != null) {
+                        if (plan != null && sheetContext.mounted) {
                           setState(() => selectedPlan = plan);
+                          showTopToast(
+                            sheetContext,
+                            'Plan selected: ${plan.name}',
+                          );
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -665,16 +680,33 @@ class ContainerSheets {
                                 ),
                                 subtitle: Padding(
                                   padding: const EdgeInsets.only(top: 6),
-                                  child: Text(
-                                    container.isDownloaded
-                                        ? localizations.readyForOfflineUse
-                                        : localizations.notYetDownloaded,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: container.isDownloaded
-                                          ? Colors.green
-                                          : Colors.orange,
-                                    ),
+                                  child: Wrap(
+                                    spacing: 7,
+                                    runSpacing: 7,
+                                    children: [
+                                      _regionChip(
+                                        icon: container.isDownloaded
+                                            ? Icons.check_circle_outline
+                                            : Icons.downloading_outlined,
+                                        label: container.isDownloaded
+                                            ? localizations.readyForOfflineUse
+                                            : localizations.notYetDownloaded,
+                                        foreground: container.isDownloaded
+                                            ? const Color(0xFF2E7D32)
+                                            : const Color(0xFFB26A00),
+                                        background: container.isDownloaded
+                                            ? const Color(0xFFE8F5E9)
+                                            : const Color(0xFFFFF3E0),
+                                      ),
+                                      if (container.planName != null &&
+                                          container.planName!.isNotEmpty)
+                                        _regionChip(
+                                          icon: Icons.map_outlined,
+                                          label: container.planName!,
+                                          foreground: Colors.black87,
+                                          background: const Color(0xFFF0F0F0),
+                                        ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -1085,6 +1117,41 @@ class ContainerSheets {
 
   static String _formatLayerName(String layerName) {
     return layerName.toLowerCase().replaceAll(' ', '_');
+  }
+
+  static Widget _regionChip({
+    required IconData icon,
+    required String label,
+    required Color foreground,
+    required Color background,
+  }) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 240),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: foreground),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: foreground,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   static Future<void> _downloadVectorLayer(String layerName,

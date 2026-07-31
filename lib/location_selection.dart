@@ -12,7 +12,6 @@ import 'dart:ui' as ui;
 import 'webview.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
-import 'package:nrmflutter/db/plans_db.dart';
 import 'package:nrmflutter/db/location_db.dart';
 import 'package:nrmflutter/utils/constants.dart';
 import './container_flow/container_manager.dart';
@@ -168,7 +167,6 @@ class _LocationSelectionState extends State<LocationSelection> {
             // Sync DB in background
             LocationDatabase.instance
                 .insertLocationData(locationList)
-                .then((_) => PlansDatabase.instance.syncPlans())
                 .catchError((e) {
               print('Background sync error: $e');
             });
@@ -200,7 +198,6 @@ class _LocationSelectionState extends State<LocationSelection> {
           final freshStates =
               List<Map<String, dynamic>>.from(json.decode(response.body));
           await LocationDatabase.instance.insertLocationData(freshStates);
-          await PlansDatabase.instance.syncPlans();
 
           if (!mounted) return;
           setState(() {
@@ -527,6 +524,14 @@ class _LocationSelectionState extends State<LocationSelection> {
   // MARK: - Offline
   Future<void> navigateToWebViewOffline(OfflineContainer container) async {
     final localizations = AppLocalizations.of(context)!;
+
+    if (container.planId == null) {
+      showTopToast(
+        context,
+        'This region has no plan. Please recreate it with a selected plan.',
+      );
+      return;
+    }
 
     final containerMatchesSelection = container.block == selectedBlock &&
         container.district == selectedDistrict &&
